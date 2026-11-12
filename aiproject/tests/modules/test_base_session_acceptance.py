@@ -546,6 +546,7 @@ def test_refresh_logout_accepts_only_a_genuinely_expired_access(env):
         ),
     )
     for token in rejected_tokens:
+        before = _refresh_snapshot(db, live.session_id)
         with pytest.raises(BaseTokenError) as rejected:
             end_login(
                 db, access_token=token, refresh_token=live.refresh_token,
@@ -553,6 +554,7 @@ def test_refresh_logout_accepts_only_a_genuinely_expired_access(env):
             )
         assert session_failure_status(rejected.value) == 401
         assert _revoked(db, live.session_id) is None
+        assert _refresh_snapshot(db, live.session_id) == before
     genuine = issue_access_token(
         keyset, sub="10", sid=live.session_id, audience=AUD, user_type="employee",
         now=(NOW - timedelta(hours=2)).replace(tzinfo=timezone.utc),
@@ -562,6 +564,152 @@ def test_refresh_logout_accepts_only_a_genuinely_expired_access(env):
         keyset=keyset, audience=AUD, now=NOW,
     ) == "revoked"
     assert _revoked(db, live.session_id) is not None
+
+
+def _expired_for(keyset, session_id, sub="10"):
+    return issue_access_token(
+        keyset, sub=sub, sid=session_id, audience=AUD, user_type="employee",
+        now=(NOW - timedelta(hours=2)).replace(tzinfo=timezone.utc),
+    )
+
+
+def _refresh_snapshot(db, session_id):
+    rows = db.execute(
+        select(refresh_tokens).where(refresh_tokens.c.session_id == session_id)
+    ).mappings().all()
+    return tuple(
+        (row["token_hash"], row["family_id"], row["user_id"], row["session_id"], row["used_at"], row["revoked_at"], row["replaced_by"])
+        for row in rows
+    )
+
+
+def _reject_expired_logout(db, keyset, access_token, refresh_token, *session_ids):
+    before_ids = _session_ids(db)
+    before_hashes = _token_hashes(db)
+    snapshots = {session_id: _refresh_snapshot(db, session_id) for session_id in session_ids}
+    with pytest.raises(BaseSessionError) as rejected:
+        end_login(
+            db, access_token=access_token, refresh_token=refresh_token,
+            keyset=keyset, audience=AUD, now=NOW,
+        )
+    assert rejected.value.code == "invalid"
+    assert session_failure_status(rejected.value) == 401
+    assert _session_ids(db) == before_ids
+    assert _token_hashes(db) == before_hashes
+    for session_id, snapshot in snapshots.items():
+        assert _revoked(db, session_id) is None
+        assert _refresh_snapshot(db, session_id) == snapshot
+        assert _last_used(db, session_id) == NOW
+
+
+def test_expired_access_logs_out_only_its_own_refresh_family(env, monkeypatch):
+    db, _engine, keyset, _private = env
+    own = start_session(db, user_id=10, keyset=keyset, audience=AUD, now=NOW)
+    expired = _expired_for(keyset, own.session_id)
+    before_ids = _session_ids(db)
+    before_hashes = _token_hashes(db)
+
+    def forbid(*_args, **_kwargs):
+        raise AssertionError("expired logout created a login")
+
+    monkeypatch.setattr("app.core.security.base_session.start_session", forbid)
+    monkeypatch.setattr("app.core.security.base_session.refresh_session", forbid)
+    assert end_login(
+        db, access_token=expired, refresh_token=own.refresh_token,
+        keyset=keyset, audience=AUD, now=NOW,
+    ) == "revoked"
+    assert _revoked(db, own.session_id) is not None
+    assert _refresh_snapshot(db, own.session_id)[0][5] is not None
+    assert _session_ids(db) == before_ids
+    assert _token_hashes(db) == before_hashes
+
+
+def test_expired_access_rejects_another_users_refresh(env):
+    db, _engine, keyset, _private = env
+    _seed(db, 15, "expired.other", "employee", 1, "employee")
+    owner = start_session(db, user_id=10, keyset=keyset, audience=AUD, now=NOW)
+    other = start_session(db, user_id=15, keyset=keyset, audience=AUD, now=NOW)
+    expired = _expired_for(keyset, owner.session_id, sub="10")
+    _reject_expired_logout(db, keyset, expired, other.refresh_token, owner.session_id, other.session_id)
+
+
+def test_expired_access_rejects_another_session_of_the_same_user(env):
+    db, _engine, keyset, _private = env
+    first = start_session(db, user_id=10, keyset=keyset, audience=AUD, now=NOW)
+    second = start_session(db, user_id=10, keyset=keyset, audience=AUD, now=NOW)
+    expired = _expired_for(keyset, first.session_id)
+    _reject_expired_logout(db, keyset, expired, second.refresh_token, first.session_id, second.session_id)
+
+
+def test_expired_access_rejects_refresh_whose_session_user_differs(env):
+    db, _engine, keyset, _private = env
+    own = start_session(db, user_id=10, keyset=keyset, audience=AUD, now=NOW)
+    expired = _expired_for(keyset, own.session_id)
+    db.execute(update(base_sessions).where(base_sessions.c.id == own.session_id).values(user_id=15))
+    db.commit()
+    _reject_expired_logout(db, keyset, expired, own.refresh_token, own.session_id)
+
+
+def test_expired_access_rejects_refresh_user_mismatch(env):
+    db, _engine, keyset, _private = env
+    _seed(db, 15, "expired.refresh.user", "employee", 1, "employee")
+    own = start_session(db, user_id=10, keyset=keyset, audience=AUD, now=NOW)
+    expired = _expired_for(keyset, own.session_id)
+    db.execute(update(refresh_tokens).where(refresh_tokens.c.session_id == own.session_id).values(user_id=15))
+    db.commit()
+    _reject_expired_logout(db, keyset, expired, own.refresh_token, own.session_id)
+
+
+def test_expired_access_rejects_refresh_session_mismatch(env):
+    db, _engine, keyset, _private = env
+    first = start_session(db, user_id=10, keyset=keyset, audience=AUD, now=NOW)
+    second = start_session(db, user_id=10, keyset=keyset, audience=AUD, now=NOW)
+    expired = _expired_for(keyset, first.session_id)
+    _reject_expired_logout(db, keyset, expired, second.refresh_token, first.session_id, second.session_id)
+
+
+def test_missing_access_still_logs_out_with_refresh(env, monkeypatch):
+    db, _engine, keyset, _private = env
+    own = start_session(db, user_id=10, keyset=keyset, audience=AUD, now=NOW)
+    before_ids = _session_ids(db)
+
+    def forbid(*_args, **_kwargs):
+        raise AssertionError("missing access created a login")
+
+    monkeypatch.setattr("app.core.security.base_session.start_session", forbid)
+    monkeypatch.setattr("app.core.security.base_session.refresh_session", forbid)
+    assert end_login(
+        db, access_token=None, refresh_token=own.refresh_token,
+        keyset=keyset, audience=AUD, now=NOW,
+    ) == "revoked"
+    assert _revoked(db, own.session_id) is not None
+    assert _session_ids(db) == before_ids
+
+
+@pytest.mark.parametrize("make_error", [
+    lambda: OperationalError("SELECT", {}, Exception("unavailable")),
+    lambda: StoreTimeout("timeout"),
+])
+def test_expired_binding_database_failure_does_not_revoke(env, monkeypatch, make_error):
+    db, _engine, keyset, _private = env
+    own = start_session(db, user_id=10, keyset=keyset, audience=AUD, now=NOW)
+    expired = _expired_for(keyset, own.session_id)
+    before = _refresh_snapshot(db, own.session_id)
+    import app.core.security.base_session as session_mod
+
+    def fail_read(*_args, **_kwargs):
+        raise make_error()
+
+    monkeypatch.setattr(session_mod, "_session", fail_read)
+    with pytest.raises(BaseSessionUnavailable) as failed:
+        end_login(
+            db, access_token=expired, refresh_token=own.refresh_token,
+            keyset=keyset, audience=AUD, now=NOW,
+        )
+    assert session_failure_status(failed.value) == 503
+    assert _revoked(db, own.session_id) is None
+    assert _refresh_snapshot(db, own.session_id) == before
+    assert _last_used(db, own.session_id) == NOW
 
 
 def _grant(db, permission: str) -> None:

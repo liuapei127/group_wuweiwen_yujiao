@@ -339,13 +339,19 @@ def end_login(
 
     A present access token may fall through to the refresh cookie only when its
     signature, issuer, audience, and other access checks pass and exp is past.
-    A bad signature, issuer, or audience is rejected and does not use the cookie.
+    That expired access still has to name the same user and the same session as
+    the refresh row. A bad signature, issuer, or audience is rejected and does
+    not use the cookie. A missing access token keeps the refresh-only rule.
     """
     moment = _naive(now)
     kind, claims = _presented_access(access_token, keyset, audience)
     if kind == "valid":
         return _end_known_session(db, claims["sid"], int(claims["sub"]), moment)
-    if refresh_token and kind in {"absent", "expired"}:
+    if kind == "expired":
+        if not refresh_token:
+            return "already_logged_out"
+        return _end_expired_access(db, claims, refresh_token, moment)
+    if refresh_token and kind == "absent":
         return _end_by_refresh(db, refresh_token, moment)
     return "already_logged_out"
 
@@ -567,7 +573,8 @@ def _presented_access(token: str | None, keyset: BaseKeySet, audience: str):
     """Classify a logout access token as absent, valid, or expired-only.
 
     Any failure other than a past exp raises BaseTokenError. Callers must not
-    treat that failure as an expired token.
+    treat that failure as an expired token. The expired result is the verified
+    claim set from verify_expired_access, including sub and sid.
     """
     if not token:
         return "absent", None
@@ -596,6 +603,57 @@ def _end_known_session(db, session_id: str, user_id: int, moment: datetime) -> s
     if "error" in box:
         raise BaseSessionError(box["error"])
     return box["state"]
+
+
+def _end_expired_access(db, claims: dict, raw_token: str, moment: datetime) -> str:
+    """Revoke by refresh only when the verified expired access names that same login.
+
+    Binding is read under the refresh-row lock and before any revoke. A mismatch
+    writes nothing. This path does not call _foreign_binding.
+    """
+    digest = _hash(raw_token)
+    box = {"state": "already_logged_out"}
+
+    def work():
+        _lock_refresh_row(db, digest)
+        row = _row_by_hash(db, digest)
+        if row is None:
+            return
+        if not _expired_access_bound(db, claims, row):
+            box["error"] = "invalid"
+            return
+        if row["expires_at"] <= moment:
+            return
+        _revoke_family(db, row["family_id"], moment)
+        _revoke_session_tree(db, row["session_id"], moment)
+        box["state"] = "revoked"
+
+    _store(db, work)
+    if "error" in box:
+        raise BaseSessionError(box["error"])
+    return box["state"]
+
+
+def _expired_access_bound(db, claims: dict, row) -> bool:
+    """True when sub, sid, the refresh row, and the session row name one login."""
+    sub = claims.get("sub")
+    sid = claims.get("sid")
+    if not isinstance(sub, str) or not isinstance(sid, str):
+        return False
+    if row["session_id"] != sid or not _stored_user_is(row["user_id"], sub):
+        return False
+    session = _session(db, sid)
+    return session is not None and _stored_user_is(session["user_id"], sub)
+
+
+def _stored_user_is(stored, sub: str) -> bool:
+    if isinstance(stored, bool) or isinstance(stored, float):
+        return False
+    try:
+        number = int(stored)
+    except (TypeError, ValueError):
+        return False
+    return str(number) == sub
 
 
 def _end_by_refresh(db, raw_token: str, moment: datetime) -> str:
