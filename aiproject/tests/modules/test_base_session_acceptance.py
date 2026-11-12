@@ -1,31 +1,38 @@
 """Phase-3 acceptance gaps. Isolated SQLite; no production database writes."""
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import timedelta, timezone
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine, event, select, update
+from sqlalchemy import create_engine, delete, event, select, update
 from sqlalchemy import inspect as sa_inspect
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool
 
 from app.core.database import engine as production_engine
-
-from app.core.security.base_jwt import ACCESS_TOKEN_USE, verify_token
+from app.core.security.base_jwt import ACCESS_TOKEN_USE, issue_access_token, verify_token
 from app.core.security.base_session import (
     IDLE_TTL_MAX,
     REFRESH_TTL_MAX,
     RETENTION,
     SESSION_TTL_MAX,
     BaseSessionError,
+    BaseSessionUnavailable,
+    authorize_access,
+    end_login,
     note_verified_access,
     purge_expired_families,
     refresh_session,
+    revoke_all_sessions,
     revoke_sessions_for_kid,
+    revoke_user_sessions,
+    session_failure_status,
     start_session,
 )
 from app.core.security.base_session_schema import base_sessions, refresh_tokens, session_kids
+from app.modules.auth.models import accounts, role_permissions, roles
 from tests.modules.test_base_session import AUD, NOW, _keyset, _pair, _prepare, _seed
 
 @pytest.fixture()
@@ -202,6 +209,238 @@ def test_sqlite_kid_index_and_primary_key(env):
     assert primary == ["session_id", "kid"]
     indexes = inspector.get_indexes("auth_user_session_kid")
     assert any(item["name"] == "idx_kid" and item["column_names"] == ["kid"] for item in indexes)
+
+
+def test_revoke_joins_the_caller_or_commits_on_its_own(env):
+    db, engine, keyset, _private = env
+    _seed(db, 15, "other.session", "employee", 1, "employee")
+    own = start_session(db, user_id=10, keyset=keyset, audience=AUD, now=NOW)
+    other = start_session(db, user_id=15, keyset=keyset, audience=AUD, now=NOW)
+    with pytest.raises(ValueError):
+        revoke_user_sessions(db, 10, now=NOW)
+    kept = refresh_session(db, own.refresh_token, keyset=keyset, audience=AUD, now=NOW + timedelta(minutes=6))
+    try:
+        with db.begin():
+            revoke_user_sessions(db, 10, now=NOW + timedelta(minutes=7))
+            raise RuntimeError("caller failed")
+    except RuntimeError:
+        pass
+    again = refresh_session(db, kept.refresh_token, keyset=keyset, audience=AUD, now=NOW + timedelta(minutes=8))
+    with db.begin():
+        revoke_user_sessions(db, 10, now=NOW + timedelta(minutes=9))
+    with Session(engine) as seen:
+        assert seen.execute(
+            select(base_sessions.c.revoked_at).where(base_sessions.c.id == own.session_id)
+        ).scalar_one() is not None
+        assert seen.execute(
+            select(base_sessions.c.revoked_at).where(base_sessions.c.id == other.session_id)
+        ).scalar_one() is None
+    with pytest.raises(BaseSessionError):
+        refresh_session(db, again.refresh_token, keyset=keyset, audience=AUD, now=NOW + timedelta(minutes=10))
+    other_live = refresh_session(db, other.refresh_token, keyset=keyset, audience=AUD, now=NOW + timedelta(minutes=10))
+    revoke_all_sessions(db, 15, now=NOW + timedelta(minutes=11))
+    with Session(engine) as seen:
+        assert seen.execute(
+            select(base_sessions.c.revoked_at).where(base_sessions.c.id == other_live.session_id)
+        ).scalar_one() is not None
+        assert seen.execute(
+            select(base_sessions.c.revoked_at).where(base_sessions.c.id == own.session_id)
+        ).scalar_one() is not None
+
+
+def test_protected_request_rereads_account_role_and_permission(env):
+    db, _engine, keyset, _private = env
+    issued = start_session(db, user_id=10, keyset=keyset, audience=AUD, now=NOW)
+    assert note_verified_access(
+        db, issued.access_token, keyset=keyset, audience=AUD, now=NOW + timedelta(minutes=1),
+    )["sid"] == issued.session_id
+    with pytest.raises(BaseSessionError) as denied:
+        authorize_access(
+            db, issued.access_token, keyset=keyset, audience=AUD, permission="dashboard:read",
+            now=NOW + timedelta(minutes=6),
+        )
+    assert denied.value.code == "denied"
+    assert session_failure_status(denied.value) == 401
+    assert _last_used(db, issued.session_id) == NOW
+    _grant(db, "dashboard:read")
+    allowed = authorize_access(
+        db, issued.access_token, keyset=keyset, audience=AUD, permission="dashboard:read",
+        now=NOW + timedelta(minutes=6),
+    )
+    assert allowed.identity.user_id == 10
+    assert allowed.identity.user_type == "employee"
+    assert "dashboard:read" in allowed.identity.permissions
+    assert _last_used(db, issued.session_id) == NOW + timedelta(minutes=6)
+    db.execute(delete(role_permissions).where(role_permissions.c.role_id == 1))
+    db.commit()
+    with pytest.raises(BaseSessionError):
+        authorize_access(
+            db, issued.access_token, keyset=keyset, audience=AUD, permission="dashboard:read",
+            now=NOW + timedelta(minutes=12),
+        )
+    assert _last_used(db, issued.session_id) == NOW + timedelta(minutes=6)
+    _grant(db, "dashboard:read")
+    db.execute(update(accounts).where(accounts.c.id == 10).values(status="disabled"))
+    db.commit()
+    with pytest.raises(BaseSessionError) as disabled:
+        authorize_access(
+            db, issued.access_token, keyset=keyset, audience=AUD, permission="dashboard:read",
+            now=NOW + timedelta(minutes=13),
+        )
+    assert disabled.value.code == "denied"
+    assert note_verified_access(
+        db, issued.access_token, keyset=keyset, audience=AUD, now=NOW + timedelta(minutes=13),
+    )["sub"] == "10"
+    db.execute(update(accounts).where(accounts.c.id == 10).values(status="normal", user_type="student"))
+    db.commit()
+    with pytest.raises(BaseSessionError) as student:
+        authorize_access(
+            db, issued.access_token, keyset=keyset, audience=AUD, permission="dashboard:read",
+            now=NOW + timedelta(minutes=20),
+        )
+    assert student.value.code == "denied"
+    db.execute(update(accounts).where(accounts.c.id == 10).values(user_type="employee"))
+    db.execute(update(roles).where(roles.c.id == 1).values(status=0))
+    db.commit()
+    with pytest.raises(BaseSessionError) as role:
+        authorize_access(
+            db, issued.access_token, keyset=keyset, audience=AUD, permission="dashboard:read",
+            now=NOW + timedelta(minutes=21),
+        )
+    assert role.value.code == "denied"
+
+
+def test_logout_revokes_without_creating_a_session(env, monkeypatch):
+    db, _engine, keyset, _private = env
+    current = start_session(db, user_id=10, keyset=keyset, audience=AUD, now=NOW)
+    live = start_session(db, user_id=10, keyset=keyset, audience=AUD, now=NOW)
+    expired_access = issue_access_token(
+        keyset, sub="10", sid=live.session_id, audience=AUD, user_type="employee",
+        now=(NOW - timedelta(hours=2)).replace(tzinfo=timezone.utc),
+    )
+    old = start_session(
+        db, user_id=10, keyset=keyset, audience=AUD, now=NOW - timedelta(hours=3),
+        refresh_ttl=timedelta(minutes=30), session_ttl=timedelta(hours=1),
+    )
+    untouched = start_session(db, user_id=10, keyset=keyset, audience=AUD, now=NOW)
+
+    def forbid(*_args, **_kwargs):
+        raise AssertionError("logout created a login")
+
+    monkeypatch.setattr("app.core.security.base_session.start_session", forbid)
+    monkeypatch.setattr("app.core.security.base_session.refresh_session", forbid)
+    before_ids = _session_ids(db)
+    before_hashes = _token_hashes(db)
+    assert end_login(
+        db, access_token=current.access_token, refresh_token=current.refresh_token,
+        keyset=keyset, audience=AUD, now=NOW + timedelta(minutes=1),
+    ) == "revoked"
+    assert _session_ids(db) == before_ids
+    assert _token_hashes(db) == before_hashes
+    assert _revoked(db, current.session_id)
+    assert end_login(
+        db, access_token=expired_access, refresh_token=live.refresh_token,
+        keyset=keyset, audience=AUD, now=NOW + timedelta(minutes=2),
+    ) == "revoked"
+    assert _revoked(db, live.session_id)
+    assert end_login(
+        db, access_token=old.access_token, refresh_token=old.refresh_token,
+        keyset=keyset, audience=AUD, now=NOW,
+    ) == "already_logged_out"
+    assert _revoked(db, old.session_id) is None
+    assert end_login(
+        db, access_token=None, refresh_token=None, keyset=keyset, audience=AUD, now=NOW,
+    ) == "already_logged_out"
+    assert end_login(
+        db, access_token="", refresh_token="", keyset=keyset, audience=AUD, now=NOW,
+    ) == "already_logged_out"
+    assert _session_ids(db) == before_ids
+    assert _token_hashes(db) == before_hashes
+    assert _revoked(db, untouched.session_id) is None
+
+
+def test_database_failure_rejects_instead_of_accepting_the_signature(env, monkeypatch):
+    db, _engine, keyset, _private = env
+    issued = start_session(db, user_id=10, keyset=keyset, audience=AUD, now=NOW)
+    _grant(db, "dashboard:read")
+
+    import app.core.security.base_session as session_mod
+    original_session = session_mod._session
+    original_touch = session_mod._touch_last_used
+    original_identity = session_mod.resolve_identity
+
+    def fail_read(*_args, **_kwargs):
+        raise OperationalError("SELECT", {}, Exception("unavailable"))
+
+    monkeypatch.setattr(session_mod, "_session", fail_read)
+    with pytest.raises(BaseSessionUnavailable) as failed:
+        note_verified_access(db, issued.access_token, keyset=keyset, audience=AUD, now=NOW + timedelta(minutes=6))
+    assert session_failure_status(failed.value) == 503
+    with pytest.raises(BaseSessionUnavailable) as denied:
+        authorize_access(
+            db, issued.access_token, keyset=keyset, audience=AUD, permission="dashboard:read",
+            now=NOW + timedelta(minutes=6),
+        )
+    assert session_failure_status(denied.value) == 503
+    assert _last_used(db, issued.session_id) == NOW
+    monkeypatch.setattr(session_mod, "_session", original_session)
+
+    def fail_touch(*_args, **_kwargs):
+        raise OperationalError("UPDATE", {}, Exception("unavailable"))
+
+    monkeypatch.setattr(session_mod, "_touch_last_used", fail_touch)
+    with pytest.raises(BaseSessionUnavailable) as touch:
+        authorize_access(
+            db, issued.access_token, keyset=keyset, audience=AUD, permission="dashboard:read",
+            now=NOW + timedelta(minutes=6),
+        )
+    assert session_failure_status(touch.value) == 503
+    assert _last_used(db, issued.session_id) == NOW
+    monkeypatch.setattr(session_mod, "_touch_last_used", original_touch)
+
+    def fail_identity(*_args, **_kwargs):
+        raise OperationalError("SELECT", {}, Exception("unavailable"))
+
+    monkeypatch.setattr(session_mod, "resolve_identity", fail_identity)
+    with pytest.raises(BaseSessionUnavailable):
+        authorize_access(
+            db, issued.access_token, keyset=keyset, audience=AUD, permission="dashboard:read",
+            now=NOW + timedelta(minutes=6),
+        )
+    assert _last_used(db, issued.session_id) == NOW
+    monkeypatch.setattr(session_mod, "resolve_identity", original_identity)
+    monkeypatch.setattr(session_mod, "_session", fail_read)
+    with pytest.raises(BaseSessionUnavailable) as logout:
+        end_login(
+            db, access_token=issued.access_token, refresh_token=issued.refresh_token,
+            keyset=keyset, audience=AUD, now=NOW,
+        )
+    assert session_failure_status(logout.value) == 503
+    assert _revoked(db, issued.session_id) is None
+
+
+def _grant(db, permission: str) -> None:
+    if db.execute(
+        select(role_permissions.c.permission).where(
+            role_permissions.c.role_id == 1, role_permissions.c.permission == permission,
+        )
+    ).first() is None:
+        db.execute(role_permissions.insert().values(role_id=1, permission=permission))
+        db.commit()
+
+
+def _session_ids(db):
+    return set(db.execute(select(base_sessions.c.id)).scalars())
+
+
+def _token_hashes(db):
+    return set(db.execute(select(refresh_tokens.c.token_hash)).scalars())
+
+
+def _revoked(db, session_id):
+    return db.execute(
+        select(base_sessions.c.revoked_at).where(base_sessions.c.id == session_id)
+    ).scalar_one()
 
 
 def _last_used(db, session_id):
