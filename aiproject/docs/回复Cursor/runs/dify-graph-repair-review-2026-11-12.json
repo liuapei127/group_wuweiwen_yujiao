@@ -1,0 +1,520 @@
+{
+  "variants": [
+    {
+      "name": "draft",
+      "nodes": 10,
+      "edges": 10,
+      "graph_sha256": "62cb56b595d2b33c29e0c6e2ecda98011546b77188d3219cbc6af206e9b083cc",
+      "parser_cases": [
+        {
+          "id": "P01",
+          "case": "标准标记",
+          "expected": "lead_create",
+          "routed_or_pending_intent": "lead_create",
+          "will_call_http": true,
+          "outputs": {
+            "skip": false,
+            "method": "post",
+            "http_url": "http://host.docker.internal:8000/api/v1/consultant/leads",
+            "http_body": "{\"customer_name\": \"验证甲\", \"owner_employee_id\": 1, \"gender\": \"U\"}",
+            "intent": "lead_create"
+          },
+          "passed": true
+        },
+        {
+          "id": "P02",
+          "case": "标记后空格",
+          "expected": "lead_create",
+          "routed_or_pending_intent": "other",
+          "will_call_http": false,
+          "outputs": {
+            "skip": true,
+            "method": "get",
+            "http_url": "http://host.docker.internal:8000/health",
+            "http_body": "",
+            "intent": "other"
+          },
+          "passed": false
+        },
+        {
+          "id": "P03",
+          "case": "多行JSON",
+          "expected": "lead_create",
+          "routed_or_pending_intent": "other",
+          "will_call_http": false,
+          "outputs": {
+            "skip": true,
+            "method": "get",
+            "http_url": "http://host.docker.internal:8000/health",
+            "http_body": "",
+            "intent": "other"
+          },
+          "passed": false
+        },
+        {
+          "id": "P04",
+          "case": "缺少姓名必须追问",
+          "expected": "other",
+          "routed_or_pending_intent": "other",
+          "will_call_http": false,
+          "outputs": {
+            "skip": true,
+            "method": "get",
+            "http_url": "http://host.docker.internal:8000/health",
+            "http_body": "",
+            "intent": "other"
+          },
+          "passed": true
+        },
+        {
+          "id": "P05",
+          "case": "咨询且明确不执行",
+          "expected": "other",
+          "routed_or_pending_intent": "other",
+          "will_call_http": false,
+          "outputs": {
+            "skip": true,
+            "method": "get",
+            "http_url": "http://host.docker.internal:8000/health",
+            "http_body": "",
+            "intent": "other"
+          },
+          "passed": true
+        },
+        {
+          "id": "P06",
+          "case": "不完整成绩不得执行",
+          "expected": "other",
+          "routed_or_pending_intent": "other",
+          "will_call_http": false,
+          "outputs": {
+            "skip": true,
+            "method": "get",
+            "http_url": "http://host.docker.internal:8000/health",
+            "http_body": "",
+            "intent": "score_create"
+          },
+          "passed": true
+        },
+        {
+          "id": "P07",
+          "case": "缺姓名不得执行",
+          "expected": "other",
+          "routed_or_pending_intent": "other",
+          "will_call_http": false,
+          "outputs": {
+            "skip": true,
+            "method": "get",
+            "http_url": "http://host.docker.internal:8000/health",
+            "http_body": "",
+            "intent": "lead_create"
+          },
+          "passed": true
+        },
+        {
+          "id": "P08",
+          "case": "紧凑姓名查询",
+          "expected": "clarify_or_exact",
+          "routed_or_pending_intent": "other",
+          "will_call_http": false,
+          "outputs": {
+            "skip": true,
+            "method": "get",
+            "http_url": "http://host.docker.internal:8000/health",
+            "http_body": "",
+            "intent": "other"
+          },
+          "passed": true
+        }
+      ],
+      "http_nodes": [
+        {
+          "id": "health_http",
+          "method": "get",
+          "error_strategy": "fail",
+          "retry_enabled": true,
+          "url": "http://host.docker.internal:8000/health"
+        },
+        {
+          "id": "http_post",
+          "method": "post",
+          "error_strategy": "fail",
+          "retry_enabled": true,
+          "url": "{{#code1.http_url#}}"
+        },
+        {
+          "id": "http_get",
+          "method": "get",
+          "error_strategy": "fail",
+          "retry_enabled": true,
+          "url": "{{#code1.http_url#}}"
+        }
+      ],
+      "supported_business_http_paths": [
+        "/api/v1/consultant/leads"
+      ],
+      "conversation_confirmation_state_nodes": []
+    },
+    {
+      "name": "2026-11-11 16:15:39.545089",
+      "nodes": 10,
+      "edges": 10,
+      "graph_sha256": "8bd144dbb282b3588a8e4e306a09f8d5fec6311283e24cf5be6df67c5dfabdcf",
+      "parser_cases": [
+        {
+          "id": "P01",
+          "case": "标准标记",
+          "expected": "lead_create",
+          "routed_or_pending_intent": "lead_create",
+          "will_call_http": true,
+          "outputs": {
+            "skip": false,
+            "method": "post",
+            "http_url": "http://host.docker.internal:8000/api/v1/consultant/leads",
+            "http_body": "{\"customer_name\": \"验证甲\", \"owner_employee_id\": 1, \"gender\": \"U\"}",
+            "intent": "lead_create"
+          },
+          "passed": true
+        },
+        {
+          "id": "P02",
+          "case": "标记后空格",
+          "expected": "lead_create",
+          "routed_or_pending_intent": "other",
+          "will_call_http": false,
+          "outputs": {
+            "skip": true,
+            "method": "get",
+            "http_url": "http://host.docker.internal:8000/health",
+            "http_body": "",
+            "intent": "other"
+          },
+          "passed": false
+        },
+        {
+          "id": "P03",
+          "case": "多行JSON",
+          "expected": "lead_create",
+          "routed_or_pending_intent": "other",
+          "will_call_http": false,
+          "outputs": {
+            "skip": true,
+            "method": "get",
+            "http_url": "http://host.docker.internal:8000/health",
+            "http_body": "",
+            "intent": "other"
+          },
+          "passed": false
+        },
+        {
+          "id": "P04",
+          "case": "缺少姓名必须追问",
+          "expected": "other",
+          "routed_or_pending_intent": "other",
+          "will_call_http": false,
+          "outputs": {
+            "skip": true,
+            "method": "get",
+            "http_url": "http://host.docker.internal:8000/health",
+            "http_body": "",
+            "intent": "other"
+          },
+          "passed": true
+        },
+        {
+          "id": "P05",
+          "case": "咨询且明确不执行",
+          "expected": "other",
+          "routed_or_pending_intent": "other",
+          "will_call_http": false,
+          "outputs": {
+            "skip": true,
+            "method": "get",
+            "http_url": "http://host.docker.internal:8000/health",
+            "http_body": "",
+            "intent": "other"
+          },
+          "passed": true
+        },
+        {
+          "id": "P06",
+          "case": "不完整成绩不得执行",
+          "expected": "other",
+          "routed_or_pending_intent": "other",
+          "will_call_http": false,
+          "outputs": {
+            "skip": true,
+            "method": "get",
+            "http_url": "http://host.docker.internal:8000/health",
+            "http_body": "",
+            "intent": "score_create"
+          },
+          "passed": true
+        },
+        {
+          "id": "P07",
+          "case": "缺姓名不得执行",
+          "expected": "other",
+          "routed_or_pending_intent": "other",
+          "will_call_http": false,
+          "outputs": {
+            "skip": true,
+            "method": "get",
+            "http_url": "http://host.docker.internal:8000/health",
+            "http_body": "",
+            "intent": "lead_create"
+          },
+          "passed": true
+        },
+        {
+          "id": "P08",
+          "case": "紧凑姓名查询",
+          "expected": "clarify_or_exact",
+          "routed_or_pending_intent": "other",
+          "will_call_http": false,
+          "outputs": {
+            "skip": true,
+            "method": "get",
+            "http_url": "http://host.docker.internal:8000/health",
+            "http_body": "",
+            "intent": "other"
+          },
+          "passed": true
+        }
+      ],
+      "http_nodes": [
+        {
+          "id": "health_http",
+          "method": "get",
+          "error_strategy": "fail",
+          "retry_enabled": true,
+          "url": "http://host.docker.internal:8000/health"
+        },
+        {
+          "id": "http_post",
+          "method": "post",
+          "error_strategy": "fail",
+          "retry_enabled": true,
+          "url": "{{#code1.http_url#}}"
+        },
+        {
+          "id": "http_get",
+          "method": "get",
+          "error_strategy": "fail",
+          "retry_enabled": true,
+          "url": "{{#code1.http_url#}}"
+        }
+      ],
+      "supported_business_http_paths": [
+        "/api/v1/consultant/leads"
+      ],
+      "conversation_confirmation_state_nodes": []
+    },
+    {
+      "name": "repository_v3",
+      "nodes": 32,
+      "edges": 31,
+      "graph_sha256": "7181c44ee0619eb719b6e67212a061f69193e058a1174210d5241e3743b1f8bd",
+      "parser_cases": [
+        {
+          "id": "P01",
+          "case": "标准标记",
+          "expected": "lead_create",
+          "routed_or_pending_intent": "lead_create",
+          "will_call_http": false,
+          "outputs": {
+            "call_api": false,
+            "method": "get",
+            "http_url": "",
+            "http_body": "",
+            "reply": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nlead_create\n{\"customer_name\": \"验证甲\"}",
+            "pending": "{\"intent\": \"lead_create\", \"params\": {\"customer_name\": \"验证甲\"}, \"state\": \"confirm\"}",
+            "intent": "other"
+          },
+          "passed": true
+        },
+        {
+          "id": "P02",
+          "case": "标记后空格",
+          "expected": "lead_create",
+          "routed_or_pending_intent": "lead_create",
+          "will_call_http": false,
+          "outputs": {
+            "call_api": false,
+            "method": "get",
+            "http_url": "",
+            "http_body": "",
+            "reply": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nlead_create\n{\"customer_name\": \"验证甲\"}",
+            "pending": "{\"intent\": \"lead_create\", \"params\": {\"customer_name\": \"验证甲\"}, \"state\": \"confirm\"}",
+            "intent": "other"
+          },
+          "passed": true
+        },
+        {
+          "id": "P03",
+          "case": "多行JSON",
+          "expected": "lead_create",
+          "routed_or_pending_intent": "lead_create",
+          "will_call_http": false,
+          "outputs": {
+            "call_api": false,
+            "method": "get",
+            "http_url": "",
+            "http_body": "",
+            "reply": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nlead_create\n{\"customer_name\": \"验证甲\"}",
+            "pending": "{\"intent\": \"lead_create\", \"params\": {\"customer_name\": \"验证甲\"}, \"state\": \"confirm\"}",
+            "intent": "other"
+          },
+          "passed": true
+        },
+        {
+          "id": "P04",
+          "case": "缺少姓名必须追问",
+          "expected": "other",
+          "routed_or_pending_intent": "other",
+          "will_call_http": false,
+          "outputs": {
+            "call_api": false,
+            "method": "get",
+            "http_url": "",
+            "http_body": "",
+            "reply": "请补充具体操作和必要字段；未执行任何写入。",
+            "pending": "",
+            "intent": "other"
+          },
+          "passed": true
+        },
+        {
+          "id": "P05",
+          "case": "咨询且明确不执行",
+          "expected": "other",
+          "routed_or_pending_intent": "other",
+          "will_call_http": false,
+          "outputs": {
+            "call_api": false,
+            "method": "get",
+            "http_url": "",
+            "http_body": "",
+            "reply": "请补充具体操作和必要字段；未执行任何写入。",
+            "pending": "",
+            "intent": "other"
+          },
+          "passed": true
+        },
+        {
+          "id": "P06",
+          "case": "不完整成绩不得执行",
+          "expected": "other",
+          "routed_or_pending_intent": "other",
+          "will_call_http": false,
+          "outputs": {
+            "call_api": false,
+            "method": "get",
+            "http_url": "",
+            "http_body": "",
+            "reply": "请补充：course_name。未调用接口。",
+            "pending": "{\"intent\": \"score_create\", \"params\": {\"student_id\": 101, \"score\": 80}, \"state\": \"collect\"}",
+            "intent": "other"
+          },
+          "passed": true
+        },
+        {
+          "id": "P07",
+          "case": "缺姓名不得执行",
+          "expected": "other",
+          "routed_or_pending_intent": "other",
+          "will_call_http": false,
+          "outputs": {
+            "call_api": false,
+            "method": "get",
+            "http_url": "",
+            "http_body": "",
+            "reply": "请补充：customer_name。未调用接口。",
+            "pending": "{\"intent\": \"lead_create\", \"params\": {}, \"state\": \"collect\"}",
+            "intent": "other"
+          },
+          "passed": true
+        },
+        {
+          "id": "P08",
+          "case": "紧凑姓名查询",
+          "expected": "clarify_or_exact",
+          "routed_or_pending_intent": "other",
+          "will_call_http": false,
+          "outputs": {
+            "call_api": false,
+            "method": "get",
+            "http_url": "",
+            "http_body": "",
+            "reply": "请补充具体操作和必要字段；未执行任何写入。",
+            "pending": "",
+            "intent": "other"
+          },
+          "passed": true
+        }
+      ],
+      "http_nodes": [
+        {
+          "id": "health",
+          "method": "get",
+          "error_strategy": "default-value",
+          "retry_enabled": false,
+          "url": "http://host.docker.internal:8000/health"
+        },
+        {
+          "id": "http_get",
+          "method": "get",
+          "error_strategy": "fail-branch",
+          "retry_enabled": false,
+          "url": "{{#plan.http_url#}}"
+        },
+        {
+          "id": "http_post",
+          "method": "post",
+          "error_strategy": "fail-branch",
+          "retry_enabled": false,
+          "url": "{{#plan.http_url#}}"
+        },
+        {
+          "id": "http_put",
+          "method": "put",
+          "error_strategy": "fail-branch",
+          "retry_enabled": false,
+          "url": "{{#plan.http_url#}}"
+        },
+        {
+          "id": "http_patch",
+          "method": "patch",
+          "error_strategy": "fail-branch",
+          "retry_enabled": false,
+          "url": "{{#plan.http_url#}}"
+        }
+      ],
+      "supported_business_http_paths": [
+        "/api/v1/ai/nl2sql/query",
+        "/api/v1/consultant/leads",
+        "/api/v1/consultant/leads/{lead_id}",
+        "/api/v1/consultant/leads/{lead_id}/follow-ups",
+        "/api/v1/consultant/leads/{lead_id}/status",
+        "/api/v1/employee-reports",
+        "/api/v1/enterprise/colleagues/{employee_id}/contact",
+        "/api/v1/enterprise/notifications",
+        "/api/v1/enterprise/onboarding-guides",
+        "/api/v1/enterprise/organizations",
+        "/api/v1/enterprise/organizations/colleagues",
+        "/api/v1/enterprise/scores",
+        "/api/v1/enterprise/scores/{score_id}",
+        "/api/v1/enterprise/scores/{score_id}/history",
+        "/api/v1/enterprise/tickets",
+        "/api/v1/enterprise/tickets/{ticket_id}",
+        "/api/v1/enterprise/todos",
+        "/api/v1/enterprise/todos/{todo_id}",
+        "/api/v1/student-admin/leaves/pending",
+        "/api/v1/student-admin/leaves/{leave_id}/approve"
+      ],
+      "conversation_confirmation_state_nodes": [
+        "remember"
+      ]
+    }
+  ]
+}

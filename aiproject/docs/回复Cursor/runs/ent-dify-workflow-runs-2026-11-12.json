@@ -1,0 +1,30 @@
+[
+  {
+    "query": "后端健康检查",
+    "workflow_finished": "succeeded",
+    "http_health_status": 200,
+    "http_health_body": "{\"status\":\"ok\"}",
+    "business_http_called": false,
+    "notes": "探活正常；LLM 正确说明 status ok 与后续 503 风险"
+  },
+  {
+    "query": "录入客户：晨晨验收001，电话13800138001，想去英国",
+    "workflow_finished": "succeeded",
+    "http_health_status": 200,
+    "business_http_called": false,
+    "notes": "v1 图：code 未解析 ENT_ACTION，未走 POST 分支；v2 图已修（见 ent-workflow-graph.json）"
+  },
+  {
+    "query": "查询客户 张三",
+    "workflow_finished": "failed",
+    "http_health_status": 200,
+    "http_get_status": 503,
+    "http_get_body": "{\"detail\":\"员工可信身份未就绪，consultant 业务不可用\"}",
+    "notes": "v1：HTTP 节点把 503 当失败中断；v2 已加 error_strategy default-value"
+  },
+  {
+    "query": "什么是503",
+    "workflow_finished": "succeeded",
+    "notes": "LLM 正确解释 503 与 JWT，未谎称录入成功"
+  }
+]

@@ -1,0 +1,435 @@
+{
+  "source_before": [
+    {
+      "file": "frontend/src/App.css",
+      "sha256": "6e25a776d3e8102da5bacb3cb99f4a5fc662a2e01e6143140671a556d28c3d5c",
+      "mtime": "2026-11-12T04:02:07.222Z"
+    },
+    {
+      "file": "frontend/src/App.tsx",
+      "sha256": "35040661182d685340cc5e13618cbc909c42bff032404a8e4042fc67dbba4ac1",
+      "mtime": "2026-11-12T04:32:18.420Z"
+    },
+    {
+      "file": "frontend/src/assets/hero.png",
+      "sha256": "881ffbcaafc212e49addad08846a5b82761355fa20624253af3477ba33262c5c",
+      "mtime": "2026-11-12T04:02:07.584Z"
+    },
+    {
+      "file": "frontend/src/assets/react.svg",
+      "sha256": "35ef61ed53b323ae94a16a8ec659b3d0af3880698791133f23b084085ab1c2e5",
+      "mtime": "2026-11-12T04:02:07.677Z"
+    },
+    {
+      "file": "frontend/src/assets/vite.svg",
+      "sha256": "5be21acd42eb7b896e517f4e0f0f11eb5c5d9e54fbbcebe9453f033008fcca6f",
+      "mtime": "2026-11-12T04:02:07.702Z"
+    },
+    {
+      "file": "frontend/src/auth.tsx",
+      "sha256": "9f1d7e7475d431da098a6c3fea2e17316d5f4aa65e3d8314e6925cae541aaea2",
+      "mtime": "2026-11-12T04:21:30.152Z"
+    },
+    {
+      "file": "frontend/src/components/shared.tsx",
+      "sha256": "37603438279ae683f4d5e31b9e927cfdd49117e4ad7ec112d6d015940f8c546b",
+      "mtime": "2026-11-12T04:32:46.616Z"
+    },
+    {
+      "file": "frontend/src/index.css",
+      "sha256": "535c25dd1f338486ab3678832fc698011c8b8d1fe4ffd3d0ef5e33181457cc9f",
+      "mtime": "2026-11-12T04:02:07.239Z"
+    },
+    {
+      "file": "frontend/src/lib/api.ts",
+      "sha256": "60e7fd823a192a9cc36346dd52469b11bcd6540421c81c80dbc3d7b66cf47ba9",
+      "mtime": "2026-11-12T04:21:30.150Z"
+    },
+    {
+      "file": "frontend/src/main.tsx",
+      "sha256": "8add9e62b737833fcac07c11faf61cebac5a2b63a1d536826acd755f508c558d",
+      "mtime": "2026-11-12T04:31:53.519Z"
+    },
+    {
+      "file": "frontend/src/navigation.tsx",
+      "sha256": "8462e2069989a5a476170d02f623d8eb1c5ffc83b70069fb8e2d0aa8f2774392",
+      "mtime": "2026-11-12T04:21:30.154Z"
+    },
+    {
+      "file": "frontend/src/pages/Administration.tsx",
+      "sha256": "4375eda240f26e4f80aa273bed33c63f8a5bcbdb675254fb8a433b9876182125",
+      "mtime": "2026-11-12T04:32:46.649Z"
+    },
+    {
+      "file": "frontend/src/pages/Assistant.tsx",
+      "sha256": "cb21b836ed9619cb8807feb6790a6fd9aeeae4906ae8864fb54f3378cae31b0a",
+      "mtime": "2026-11-12T04:32:46.652Z"
+    },
+    {
+      "file": "frontend/src/pages/Business.tsx",
+      "sha256": "e5a4ce307ac3f37ef9ca901f98f48d0eb48fe3f8bc2d900ee1881425dc94bb4e",
+      "mtime": "2026-11-12T04:23:57.741Z"
+    },
+    {
+      "file": "frontend/src/pages/Home.tsx",
+      "sha256": "61b607a8210047bbd368c08c3acaf893d42fdadc7d982e4cbc6ef9711bf7ca5e",
+      "mtime": "2026-11-12T04:28:48.238Z"
+    },
+    {
+      "file": "frontend/src/pages/Login.tsx",
+      "sha256": "a8895840c94ba9e91e30623a6ee4014bdb7226e6d0920463e358777c37b7b85c",
+      "mtime": "2026-11-12T04:32:46.654Z"
+    },
+    {
+      "file": "frontend/src/pages/Operations.tsx",
+      "sha256": "e185eb101ef09072ad7c4c1c022212a4170fa99bae982fb14eca3c935eb11c29",
+      "mtime": "2026-11-12T04:32:46.657Z"
+    },
+    {
+      "file": "frontend/src/styles.css",
+      "sha256": "ed3789fe67e029633ddd9f403d003f1cb5bc5b734839734eeb4b040dcd23b85c",
+      "mtime": "2026-11-12T04:32:46.660Z"
+    }
+  ],
+  "source_after": [
+    {
+      "file": "frontend/src/App.css",
+      "sha256": "6e25a776d3e8102da5bacb3cb99f4a5fc662a2e01e6143140671a556d28c3d5c"
+    },
+    {
+      "file": "frontend/src/App.tsx",
+      "sha256": "35040661182d685340cc5e13618cbc909c42bff032404a8e4042fc67dbba4ac1"
+    },
+    {
+      "file": "frontend/src/assets/hero.png",
+      "sha256": "881ffbcaafc212e49addad08846a5b82761355fa20624253af3477ba33262c5c"
+    },
+    {
+      "file": "frontend/src/assets/react.svg",
+      "sha256": "35ef61ed53b323ae94a16a8ec659b3d0af3880698791133f23b084085ab1c2e5"
+    },
+    {
+      "file": "frontend/src/assets/vite.svg",
+      "sha256": "5be21acd42eb7b896e517f4e0f0f11eb5c5d9e54fbbcebe9453f033008fcca6f"
+    },
+    {
+      "file": "frontend/src/auth.tsx",
+      "sha256": "9f1d7e7475d431da098a6c3fea2e17316d5f4aa65e3d8314e6925cae541aaea2"
+    },
+    {
+      "file": "frontend/src/components/shared.tsx",
+      "sha256": "37603438279ae683f4d5e31b9e927cfdd49117e4ad7ec112d6d015940f8c546b"
+    },
+    {
+      "file": "frontend/src/index.css",
+      "sha256": "535c25dd1f338486ab3678832fc698011c8b8d1fe4ffd3d0ef5e33181457cc9f"
+    },
+    {
+      "file": "frontend/src/lib/api.ts",
+      "sha256": "60e7fd823a192a9cc36346dd52469b11bcd6540421c81c80dbc3d7b66cf47ba9"
+    },
+    {
+      "file": "frontend/src/main.tsx",
+      "sha256": "8add9e62b737833fcac07c11faf61cebac5a2b63a1d536826acd755f508c558d"
+    },
+    {
+      "file": "frontend/src/navigation.tsx",
+      "sha256": "8462e2069989a5a476170d02f623d8eb1c5ffc83b70069fb8e2d0aa8f2774392"
+    },
+    {
+      "file": "frontend/src/pages/Administration.tsx",
+      "sha256": "4375eda240f26e4f80aa273bed33c63f8a5bcbdb675254fb8a433b9876182125"
+    },
+    {
+      "file": "frontend/src/pages/Assistant.tsx",
+      "sha256": "cb21b836ed9619cb8807feb6790a6fd9aeeae4906ae8864fb54f3378cae31b0a"
+    },
+    {
+      "file": "frontend/src/pages/Business.tsx",
+      "sha256": "e5a4ce307ac3f37ef9ca901f98f48d0eb48fe3f8bc2d900ee1881425dc94bb4e"
+    },
+    {
+      "file": "frontend/src/pages/Home.tsx",
+      "sha256": "61b607a8210047bbd368c08c3acaf893d42fdadc7d982e4cbc6ef9711bf7ca5e"
+    },
+    {
+      "file": "frontend/src/pages/Login.tsx",
+      "sha256": "a8895840c94ba9e91e30623a6ee4014bdb7226e6d0920463e358777c37b7b85c"
+    },
+    {
+      "file": "frontend/src/pages/Operations.tsx",
+      "sha256": "e185eb101ef09072ad7c4c1c022212a4170fa99bae982fb14eca3c935eb11c29"
+    },
+    {
+      "file": "frontend/src/styles.css",
+      "sha256": "ed3789fe67e029633ddd9f403d003f1cb5bc5b734839734eeb4b040dcd23b85c"
+    }
+  ],
+  "bundle_assets": [
+    "index-CQyIR1Vf.css",
+    "index-DSY3UVs1.js"
+  ],
+  "known_prior_bundle_assets": [
+    "index-CQyIR1Vf.css",
+    "index-DSY3UVs1.js"
+  ],
+  "navigation": {
+    "backend": [
+      {
+        "path": "/dashboard",
+        "title": "工作台",
+        "permission": "dashboard:read"
+      },
+      {
+        "path": "/customers",
+        "title": "客户管理",
+        "permission": "crm:read"
+      },
+      {
+        "path": "/reports",
+        "title": "员工日报",
+        "permission": "reports:read"
+      },
+      {
+        "path": "/directory",
+        "title": "组织与同事",
+        "permission": "directory:read"
+      },
+      {
+        "path": "/guides",
+        "title": "新人指南",
+        "permission": "guides:read"
+      },
+      {
+        "path": "/scores",
+        "title": "学生成绩",
+        "permission": "scores:read"
+      },
+      {
+        "path": "/leaves",
+        "title": "请假审批",
+        "permission": "leaves:read"
+      },
+      {
+        "path": "/tickets",
+        "title": "投诉工单",
+        "permission": "tickets:read"
+      },
+      {
+        "path": "/todos",
+        "title": "我的待办",
+        "permission": "todos:read"
+      },
+      {
+        "path": "/notifications",
+        "title": "站内通知",
+        "permission": "notifications:read"
+      },
+      {
+        "path": "/queries",
+        "title": "智能查询",
+        "permission": "queries:read"
+      },
+      {
+        "path": "/commands",
+        "title": "业务指令",
+        "permission": "commands:execute"
+      },
+      {
+        "path": "/assistant",
+        "title": "AI助手",
+        "permission": "ai:use"
+      },
+      {
+        "path": "/settings/users",
+        "title": "员工管理",
+        "permission": "users:manage"
+      },
+      {
+        "path": "/settings/roles",
+        "title": "角色权限",
+        "permission": "roles:manage"
+      },
+      {
+        "path": "/settings/audit",
+        "title": "安全审计",
+        "permission": "audit:read"
+      }
+    ],
+    "frontend": [
+      {
+        "path": "/dashboard",
+        "title": "工作台",
+        "permission": "dashboard:read"
+      },
+      {
+        "path": "/assistant",
+        "title": "AI 助手",
+        "permission": "ai:use"
+      },
+      {
+        "path": "/customers",
+        "title": "客户管理",
+        "permission": "crm:read"
+      },
+      {
+        "path": "/reports",
+        "title": "员工日报",
+        "permission": "reports:read"
+      },
+      {
+        "path": "/directory",
+        "title": "组织与同事",
+        "permission": "directory:read"
+      },
+      {
+        "path": "/guides",
+        "title": "新人指南",
+        "permission": "guides:read"
+      },
+      {
+        "path": "/scores",
+        "title": "学生成绩",
+        "permission": "scores:read"
+      },
+      {
+        "path": "/leaves",
+        "title": "请假审批",
+        "permission": "leaves:read"
+      },
+      {
+        "path": "/tickets",
+        "title": "投诉工单",
+        "permission": "tickets:read"
+      },
+      {
+        "path": "/todos",
+        "title": "我的待办",
+        "permission": "todos:read"
+      },
+      {
+        "path": "/notifications",
+        "title": "站内通知",
+        "permission": "notifications:read"
+      },
+      {
+        "path": "/queries",
+        "title": "智能查询",
+        "permission": "queries:read"
+      },
+      {
+        "path": "/commands",
+        "title": "业务指令",
+        "permission": "commands:execute"
+      },
+      {
+        "path": "/settings/users",
+        "title": "员工管理",
+        "permission": "users:manage"
+      },
+      {
+        "path": "/settings/roles",
+        "title": "角色权限",
+        "permission": "roles:manage"
+      },
+      {
+        "path": "/settings/audit",
+        "title": "安全审计",
+        "permission": "audit:read"
+      }
+    ],
+    "extras": [],
+    "route_permission_mismatches": [],
+    "title_differences": [
+      {
+        "path": "/assistant",
+        "title": "AI助手",
+        "permission": "ai:use"
+      }
+    ]
+  },
+  "git_source_baseline_available": false,
+  "at": "2026-11-12T07:13:47.254Z",
+  "verification": {
+    "first_full_pytest": {
+      "passed": 92,
+      "failed": 1,
+      "failure": "tests/integration/test_ent_support.py::test_source_todo_reassignment_completion_reopening_and_unassignment; expected5 notification revisions, actual4"
+    },
+    "targeted_rerun": {
+      "passed": 3,
+      "failed": 0,
+      "scope": "2 new portal tests plus the prior failing todo test"
+    },
+    "second_full_pytest": {
+      "passed": 93,
+      "failed": 0
+    },
+    "frontend_build": {
+      "passed": true,
+      "assets": [
+        "index-CQyIR1Vf.css",
+        "index-DSY3UVs1.js"
+      ],
+      "matches_known_prior_build_names": true
+    },
+    "playwright_list": {
+      "tests": 2
+    },
+    "playwright_run": {
+      "failed": 1,
+      "skipped": 1,
+      "failure": "bundled chromium_headless_shell-1254 executable not installed; UI assertion did not execute",
+      "skip": "8002 backend unavailable; API status test skipped"
+    },
+    "real_http_smoke": {
+      "exit_code": 1,
+      "reason": "127.0.0.1:8002 connection refused; no accounts logged in"
+    }
+  },
+  "reproductions": {
+    "http_false_positives": [
+      {
+        "scenario": "missing_credentials",
+        "exit_code": 0,
+        "calls": 1,
+        "login_calls": 0,
+        "rbac_calls": 0
+      },
+      {
+        "scenario": "all_passwords_missing",
+        "exit_code": 0,
+        "calls": 1,
+        "login_calls": 0,
+        "rbac_calls": 0
+      },
+      {
+        "scenario": "all_roles_have_no_permissions_or_features",
+        "exit_code": 0,
+        "calls": 15,
+        "login_calls": 5,
+        "rbac_calls": 1
+      },
+      {
+        "scenario": "employee_guard_returns_401",
+        "exit_code": 0,
+        "calls": 15,
+        "login_calls": 5,
+        "rbac_calls": 1
+      }
+    ],
+    "isolation": {
+      "mode": "trusted_jwt",
+      "test": "test_auth_status_shape",
+      "connection_attempts": 1,
+      "outcome": "AssertionError: REVIEW_BLOCKED_DATABASE_CONNECTION"
+    },
+    "anonymous_assertion": {
+      "simulated_regression": "trusted mode always rejects with 503",
+      "actual_status": 503,
+      "original_assertion_accepts": true
+    },
+    "real_database_connections": 0
+  },
+  "review_frontend_source_changes": []
+}

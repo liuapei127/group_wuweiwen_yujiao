@@ -1,0 +1,106 @@
+[
+  {
+    "id": "D01",
+    "query": "后端健康检查，请根据实际HTTP探活结果回答，不要操作客户数据。",
+    "transport": "Dify existing public WebApp HTTP/SSE, inside Docker",
+    "events": [
+      {
+        "event": "workflow_started",
+        "conversation_id": "cad8bac5-b70e-41f6-bb56-b1c61a4ef0c0",
+        "message_id": "7b2bd19b-99bd-4b0b-9ca7-deaa5a2a53a6",
+        "created_at": 1794448251,
+        "task_id": "ffb247d2-07f3-4515-b4ff-05e802f596a5",
+        "workflow_run_id": "9e926da0-4413-463e-9fd5-9ab1c6922f41",
+        "data": {
+          "id": "9e926da0-4413-463e-9fd5-9ab1c6922f41",
+          "workflow_id": "b1fa9a00-e642-47c7-ad29-dee0dc7b1b93",
+          "inputs": {
+            "sys.query": "后端健康检查，请根据实际HTTP探活结果回答，不要操作客户数据。",
+            "sys.files": [],
+            "sys.user_id": "ent-review-af229816089c4083859ddbe8c7953337",
+            "sys.dialogue_count": 1,
+            "sys.app_id": "ac18cfb8-3f60-406f-99dd-d9cc635dc71f",
+            "sys.workflow_id": "b1fa9a00-e642-47c7-ad29-dee0dc7b1b93",
+            "sys.workflow_run_id": "9e926da0-4413-463e-9fd5-9ab1c6922f41"
+          },
+          "created_at": 1794448251,
+          "reason": "initial"
+        }
+      },
+      {
+        "event": "node_started",
+        "conversation_id": "cad8bac5-b70e-41f6-bb56-b1c61a4ef0c0",
+        "message_id": "7b2bd19b-99bd-4b0b-9ca7-deaa5a2a53a6",
+        "created_at": 1794448251,
+        "task_id": "ffb247d2-07f3-4515-b4ff-05e802f596a5",
+        "workflow_run_id": "9e926da0-4413-463e-9fd5-9ab1c6922f41",
+        "data": {
+          "id": "cb07acc4-1f9e-4add-8e33-65e5b0cdf907",
+          "node_id": "start1",
+          "node_type": "start",
+          "title": "用户输入",
+          "index": 1,
+          "predecessor_node_id": null,
+          "inputs": null,
+          "created_at": 1794448251,
+          "extras": {},
+          "iteration_id": null,
+          "loop_id": null
+        }
+      },
+      {
+        "event": "node_finished",
+        "conversation_id": "cad8bac5-b70e-41f6-bb56-b1c61a4ef0c0",
+        "message_id": "7b2bd19b-99bd-4b0b-9ca7-deaa5a2a53a6",
+        "created_at": 1794448251,
+        "task_id": "ffb247d2-07f3-4515-b4ff-05e802f596a5",
+        "workflow_run_id": "9e926da0-4413-463e-9fd5-9ab1c6922f41",
+        "data": {
+          "id": "cb07acc4-1f9e-4add-8e33-65e5b0cdf907",
+          "node_id": "start1",
+          "node_type": "start",
+          "title": "用户输入",
+          "index": 1,
+          "predecessor_node_id": null,
+          "inputs": null,
+          "process_data": null,
+          "outputs": null,
+          "status": "succeeded",
+          "error": null,
+          "elapsed_time": 0.000142,
+          "execution_metadata": null,
+          "created_at": 1794448251,
+          "finished_at": 1794448251,
+          "files": [],
+          "iteration_id": null,
+          "loop_id": null
+        }
+      },
+      {
+        "event": "node_started",
+        "conversation_id": "cad8bac5-b70e-41f6-bb56-b1c61a4ef0c0",
+        "message_id": "7b2bd19b-99bd-4b0b-9ca7-deaa5a2a53a6",
+        "created_at": 1794448251,
+        "task_id": "ffb247d2-07f3-4515-b4ff-05e802f596a5",
+        "workflow_run_id": "9e926da0-4413-463e-9fd5-9ab1c6922f41",
+        "data": {
+          "id": "33f7e6c7-6a79-499e-9b8a-25865a3b712c",
+          "node_id": "health_http",
+          "node_type": "http-request",
+          "title": "API探活",
+          "index": 1,
+          "predecessor_node_id": null,
+          "inputs": null,
+          "created_at": 1794448251,
+          "extras": {},
+          "iteration_id": null,
+          "loop_id": null
+        }
+      }
+    ],
+    "http_status": 200,
+    "error_type": "TimeoutError",
+    "error": "Review case exceeded 100 seconds",
+    "elapsed": 100.61
+  }
+]

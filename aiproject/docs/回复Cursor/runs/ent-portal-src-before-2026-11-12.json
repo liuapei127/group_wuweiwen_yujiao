@@ -1,0 +1,95 @@
+{
+  "count": 18,
+  "files": [
+    {
+      "file": "frontend\\src\\App.css",
+      "sha256": "6e25a776d3e8102da5bacb3cb99f4a5fc662a2e01e6143140671a556d28c3d5c",
+      "bytes": 2891
+    },
+    {
+      "file": "frontend\\src\\App.tsx",
+      "sha256": "35040661182d685340cc5e13618cbc909c42bff032404a8e4042fc67dbba4ac1",
+      "bytes": 4241
+    },
+    {
+      "file": "frontend\\src\\assets\\hero.png",
+      "sha256": "881ffbcaafc212e49addad08846a5b82761355fa20624253af3477ba33262c5c",
+      "bytes": 13057
+    },
+    {
+      "file": "frontend\\src\\assets\\react.svg",
+      "sha256": "35ef61ed53b323ae94a16a8ec659b3d0af3880698791133f23b084085ab1c2e5",
+      "bytes": 4126
+    },
+    {
+      "file": "frontend\\src\\assets\\vite.svg",
+      "sha256": "5be21acd42eb7b896e517f4e0f0f11eb5c5d9e54fbbcebe9453f033008fcca6f",
+      "bytes": 8709
+    },
+    {
+      "file": "frontend\\src\\auth.tsx",
+      "sha256": "9f1d7e7475d431da098a6c3fea2e17316d5f4aa65e3d8314e6925cae541aaea2",
+      "bytes": 2034
+    },
+    {
+      "file": "frontend\\src\\components\\shared.tsx",
+      "sha256": "37603438279ae683f4d5e31b9e927cfdd49117e4ad7ec112d6d015940f8c546b",
+      "bytes": 7510
+    },
+    {
+      "file": "frontend\\src\\index.css",
+      "sha256": "535c25dd1f338486ab3678832fc698011c8b8d1fe4ffd3d0ef5e33181457cc9f",
+      "bytes": 2169
+    },
+    {
+      "file": "frontend\\src\\lib\\api.ts",
+      "sha256": "60e7fd823a192a9cc36346dd52469b11bcd6540421c81c80dbc3d7b66cf47ba9",
+      "bytes": 1902
+    },
+    {
+      "file": "frontend\\src\\main.tsx",
+      "sha256": "8add9e62b737833fcac07c11faf61cebac5a2b63a1d536826acd755f508c558d",
+      "bytes": 1107
+    },
+    {
+      "file": "frontend\\src\\navigation.tsx",
+      "sha256": "8462e2069989a5a476170d02f623d8eb1c5ffc83b70069fb8e2d0aa8f2774392",
+      "bytes": 2730
+    },
+    {
+      "file": "frontend\\src\\pages\\Administration.tsx",
+      "sha256": "4375eda240f26e4f80aa273bed33c63f8a5bcbdb675254fb8a433b9876182125",
+      "bytes": 8766
+    },
+    {
+      "file": "frontend\\src\\pages\\Assistant.tsx",
+      "sha256": "cb21b836ed9619cb8807feb6790a6fd9aeeae4906ae8864fb54f3378cae31b0a",
+      "bytes": 7543
+    },
+    {
+      "file": "frontend\\src\\pages\\Business.tsx",
+      "sha256": "e5a4ce307ac3f37ef9ca901f98f48d0eb48fe3f8bc2d900ee1881425dc94bb4e",
+      "bytes": 13053
+    },
+    {
+      "file": "frontend\\src\\pages\\Home.tsx",
+      "sha256": "61b607a8210047bbd368c08c3acaf893d42fdadc7d982e4cbc6ef9711bf7ca5e",
+      "bytes": 5291
+    },
+    {
+      "file": "frontend\\src\\pages\\Login.tsx",
+      "sha256": "a8895840c94ba9e91e30623a6ee4014bdb7226e6d0920463e358777c37b7b85c",
+      "bytes": 3348
+    },
+    {
+      "file": "frontend\\src\\pages\\Operations.tsx",
+      "sha256": "e185eb101ef09072ad7c4c1c022212a4170fa99bae982fb14eca3c935eb11c29",
+      "bytes": 8728
+    },
+    {
+      "file": "frontend\\src\\styles.css",
+      "sha256": "ed3789fe67e029633ddd9f403d003f1cb5bc5b734839734eeb4b040dcd23b85c",
+      "bytes": 11938
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+*.egg-info/
+.pytest_cache/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Python version-specific virtual environments
+.venv*/
+
+# Local process files, private keys, and credential snapshots. Do not commit.
+.uvicorn_test_pid.txt
+*.pem
+*.key
+*credentials*.json
+*dify-secret*.json
+private-env*.txt
+*portal-env*
+.env
+.env.*
+*.env
+!.env.example

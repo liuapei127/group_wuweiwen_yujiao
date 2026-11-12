@@ -1,0 +1,345 @@
+{
+  "api": "http://127.0.0.1:8002",
+  "scope": "four-role-rbac",
+  "status": "passed",
+  "checks": [
+    {
+      "name": "auth_ready",
+      "passed": true
+    },
+    {
+      "name": "identity_permissions_features",
+      "role": "admin",
+      "passed": true,
+      "permissions": 24,
+      "features": [
+        "/assistant",
+        "/commands",
+        "/customers",
+        "/dashboard",
+        "/directory",
+        "/guides",
+        "/leaves",
+        "/notifications",
+        "/queries",
+        "/reports",
+        "/scores",
+        "/settings/audit",
+        "/settings/roles",
+        "/settings/users",
+        "/tickets",
+        "/todos"
+      ]
+    },
+    {
+      "name": "identity_permissions_features",
+      "role": "employee",
+      "passed": true,
+      "permissions": 15,
+      "features": [
+        "/assistant",
+        "/commands",
+        "/customers",
+        "/dashboard",
+        "/directory",
+        "/guides",
+        "/notifications",
+        "/queries",
+        "/reports",
+        "/tickets",
+        "/todos"
+      ]
+    },
+    {
+      "name": "identity_permissions_features",
+      "role": "manager",
+      "passed": true,
+      "permissions": 17,
+      "features": [
+        "/assistant",
+        "/commands",
+        "/customers",
+        "/dashboard",
+        "/directory",
+        "/guides",
+        "/notifications",
+        "/queries",
+        "/reports",
+        "/tickets",
+        "/todos"
+      ]
+    },
+    {
+      "name": "identity_permissions_features",
+      "role": "team_leader",
+      "passed": true,
+      "permissions": 18,
+      "features": [
+        "/assistant",
+        "/commands",
+        "/dashboard",
+        "/directory",
+        "/guides",
+        "/leaves",
+        "/notifications",
+        "/queries",
+        "/reports",
+        "/scores",
+        "/tickets",
+        "/todos"
+      ]
+    },
+    {
+      "name": "api_permission",
+      "role": "admin",
+      "permission": "users:manage",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "admin",
+      "permission": "roles:manage",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "admin",
+      "permission": "audit:read",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "admin",
+      "permission": "crm:read",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "admin",
+      "permission": "leaves:read",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "admin",
+      "permission": "scores:read",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "admin",
+      "permission": "directory:contacts",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "employee",
+      "permission": "users:manage",
+      "expected": 403,
+      "actual": 403,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "employee",
+      "permission": "roles:manage",
+      "expected": 403,
+      "actual": 403,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "employee",
+      "permission": "audit:read",
+      "expected": 403,
+      "actual": 403,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "employee",
+      "permission": "crm:read",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "employee",
+      "permission": "leaves:read",
+      "expected": 403,
+      "actual": 403,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "employee",
+      "permission": "scores:read",
+      "expected": 403,
+      "actual": 403,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "employee",
+      "permission": "directory:contacts",
+      "expected": 403,
+      "actual": 403,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "manager",
+      "permission": "users:manage",
+      "expected": 403,
+      "actual": 403,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "manager",
+      "permission": "roles:manage",
+      "expected": 403,
+      "actual": 403,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "manager",
+      "permission": "audit:read",
+      "expected": 403,
+      "actual": 403,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "manager",
+      "permission": "crm:read",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "manager",
+      "permission": "leaves:read",
+      "expected": 403,
+      "actual": 403,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "manager",
+      "permission": "scores:read",
+      "expected": 403,
+      "actual": 403,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "manager",
+      "permission": "directory:contacts",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "team_leader",
+      "permission": "users:manage",
+      "expected": 403,
+      "actual": 403,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "team_leader",
+      "permission": "roles:manage",
+      "expected": 403,
+      "actual": 403,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "team_leader",
+      "permission": "audit:read",
+      "expected": 403,
+      "actual": 403,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "team_leader",
+      "permission": "crm:read",
+      "expected": 403,
+      "actual": 403,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "team_leader",
+      "permission": "leaves:read",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "team_leader",
+      "permission": "scores:read",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    },
+    {
+      "name": "api_permission",
+      "role": "team_leader",
+      "permission": "directory:contacts",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "role": "admin",
+      "logged_out": true,
+      "revoked_status": 401
+    },
+    {
+      "role": "employee",
+      "logged_out": true,
+      "revoked_status": 401
+    },
+    {
+      "role": "manager",
+      "logged_out": true,
+      "revoked_status": 401
+    },
+    {
+      "role": "team_leader",
+      "logged_out": true,
+      "revoked_status": 401
+    }
+  ],
+  "verified_roles": [
+    "admin",
+    "employee",
+    "manager",
+    "team_leader"
+  ]
+}

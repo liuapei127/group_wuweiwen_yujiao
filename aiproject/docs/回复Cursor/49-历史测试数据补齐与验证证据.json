@@ -1,0 +1,737 @@
+{
+  "date": "2026-11-11",
+  "authorization": "User explicitly requested autonomous database data completion followed by validation",
+  "initial_completion": {
+    "date": "2026-11-11",
+    "connection": {
+      "host": "127.0.0.1",
+      "port": 3306,
+      "database": "education_service"
+    },
+    "ddl_executed": false,
+    "server": {
+      "db": "education_service",
+      "hostname": "DESKTOP-DKO2LI9",
+      "port": 3306,
+      "version": "8.0.27",
+      "server_now": "2026-11-11 23:24:34"
+    },
+    "schema": {
+      "standard_sql": "D:\\Project course\\group_wuweiwen_yujiao\\教育服务_0914\\2222通过表可以实现curd\\db_init.sql",
+      "standard_sha256": "2f21633a2667d088e9118d2d24a9ac1b668c756e605f0cc5de2fc0e5e15512c0",
+      "expected_table_count": 31,
+      "actual_table_count": 31,
+      "missing_tables": [],
+      "extra_tables": [],
+      "checked_dimensions": [
+        "columns",
+        "types",
+        "nullability",
+        "defaults",
+        "auto_increment",
+        "on_update",
+        "indexes",
+        "engine",
+        "collation"
+      ],
+      "differences": [],
+      "table_counts": {
+        "academic_deadline": 0,
+        "application_progress": 0,
+        "chat_message": 0,
+        "chat_session": 0,
+        "course_project": 0,
+        "crm_follow_up": 9,
+        "crm_lead": 27,
+        "customer_profile": 0,
+        "customer_source": 0,
+        "employee_daily_report": 4,
+        "event_lecture": 0,
+        "event_registration": 0,
+        "intent_config": 20,
+        "knowledge_base": 0,
+        "notification_log": 3,
+        "onboarding_guide": 4,
+        "overseas_life_knowledge": 0,
+        "profile_rule": 0,
+        "report_generation": 0,
+        "report_schedule": 0,
+        "student_admin_service": 6,
+        "student_feedback_ticket": 6,
+        "student_info": 3,
+        "student_psych_alert": 0,
+        "student_psych_profile": 0,
+        "student_psych_record": 0,
+        "student_score": 4,
+        "sys_organization": 4,
+        "sys_role": 5,
+        "sys_user": 6,
+        "todo_item": 5
+      }
+    },
+    "data_integrity": {
+      "checked": "ENT user, role, student and CRM references",
+      "gaps": [],
+      "auto_repaired": false
+    },
+    "legacy_completion": {
+      "created_total": 2,
+      "ids": [
+        1,
+        2
+      ],
+      "status": "disabled",
+      "usable_login": false,
+      "synthetic_placeholders": true,
+      "linked_customer_counts": {
+        "1": 12,
+        "2": 7
+      },
+      "linked_follow_up_count": 5
+    },
+    "fixtures": {
+      "marker": "ENT_LOCAL_VERIFY_V1",
+      "date": "2026-11-11",
+      "ids": {
+        "employee_a": 1000001,
+        "employee_b": 1000002,
+        "employee_disabled": 1000003,
+        "student_a": 1000004,
+        "student_b": 1000005,
+        "student_disabled": 1000006,
+        "org_company": 1,
+        "org_a": 2,
+        "org_b": 3,
+        "org_disabled": 4,
+        "guide_entry": 1,
+        "guide_crm": 2,
+        "guide_leave": 3,
+        "guide_disabled": 4,
+        "info_student_a": 1,
+        "info_student_b": 2,
+        "info_student_disabled": 3,
+        "lead_0": 20,
+        "lead_1": 21,
+        "follow_1": 6,
+        "lead_2": 22,
+        "follow_2": 7,
+        "lead_3": 23,
+        "follow_3": 8,
+        "lead_4": 24,
+        "lead_5": 25,
+        "lead_6": 26,
+        "lead_7": 27,
+        "follow_7": 9,
+        "report_employee_a0": 1,
+        "report_employee_a1": 2,
+        "report_employee_b0": 3,
+        "report_employee_b1": 4,
+        "score_0": 1,
+        "score_1": 2,
+        "score_2": 3,
+        "score_3": 4,
+        "leave_0": 1,
+        "leave_1": 2,
+        "leave_2": 3,
+        "leave_3": 4,
+        "leave_4": 5,
+        "leave_5": 6,
+        "ticket_0": 1,
+        "ticket_1": 2,
+        "ticket_2": 3,
+        "ticket_3": 4,
+        "ticket_4": 5,
+        "ticket_5": 6,
+        "todo_0": 1,
+        "todo_1": 2,
+        "todo_2": 3,
+        "todo_3": 4,
+        "todo_4": 5,
+        "notice_0": 1,
+        "notice_1": 2,
+        "notice_2": 3
+      },
+      "created_counts": {},
+      "created_total": 0,
+      "accounts_have_no_usable_password": true
+    },
+    "existing_rows_preserved": true,
+    "verification": {
+      "transport": "isolated FastAPI TestClient/ASGI",
+      "database": "real localhost MySQL",
+      "identity": "test-only dependency override, not real JWT",
+      "mutation_policy": "all API and scanner writes rolled back by outer transaction",
+      "checks": [
+        {
+          "case": "组织检索",
+          "status": 200
+        },
+        {
+          "case": "员工联系方式",
+          "status": 200
+        },
+        {
+          "case": "指南检索",
+          "status": 200
+        },
+        {
+          "case": "本人成绩查询",
+          "status": 200
+        },
+        {
+          "case": "越范围成绩拒绝",
+          "status": 403
+        },
+        {
+          "case": "成绩写入",
+          "status": 200
+        },
+        {
+          "case": "成绩更正",
+          "status": 200
+        },
+        {
+          "case": "停用学生成绩录入拒绝",
+          "status": 422
+        },
+        {
+          "case": "停用学生成绩更正拒绝",
+          "status": 422
+        },
+        {
+          "case": "客户范围",
+          "status": 200
+        },
+        {
+          "case": "他人客户拒绝",
+          "status": 403
+        },
+        {
+          "case": "同名客户冲突",
+          "status": 409
+        },
+        {
+          "case": "客户状态更新",
+          "status": 200
+        },
+        {
+          "case": "客户跟进写入",
+          "status": 200
+        },
+        {
+          "case": "本人日报查询",
+          "status": 200
+        },
+        {
+          "case": "日报写入",
+          "status": 200
+        },
+        {
+          "case": "他人日报拒绝",
+          "status": 403
+        },
+        {
+          "case": "请假审批范围",
+          "status": 200
+        },
+        {
+          "case": "他人请假拒绝",
+          "status": 403
+        },
+        {
+          "case": "未分配请假拒绝",
+          "status": 403
+        },
+        {
+          "case": "本人请假审批",
+          "status": 200
+        },
+        {
+          "case": "重复请假审批拒绝",
+          "status": 409
+        },
+        {
+          "case": "他人工单拒绝",
+          "status": 403
+        },
+        {
+          "case": "投诉流转",
+          "status": 200
+        },
+        {
+          "case": "投诉陈旧状态拒绝",
+          "status": 409
+        },
+        {
+          "case": "待办到期查询",
+          "status": 200
+        },
+        {
+          "case": "待办完成",
+          "status": 200
+        },
+        {
+          "case": "他人待办拒绝",
+          "status": 403
+        },
+        {
+          "case": "站内通知范围",
+          "status": 200
+        },
+        {
+          "case": "真实MySQL扫描与重复扫描去重",
+          "first": {
+            "todos_created": 5,
+            "system_notifications_created": 6
+          },
+          "second": {
+            "todos_created": 0,
+            "system_notifications_created": 0
+          },
+          "fixture_source_counts": {
+            "student_admin_service/2": 1,
+            "student_admin_service/6": 1,
+            "student_feedback_ticket/1": 1,
+            "student_feedback_ticket/2": 1,
+            "student_feedback_ticket/5": 1
+          }
+        },
+        {
+          "case": "正常身份仍默认拒绝",
+          "status": 503
+        }
+      ],
+      "passed": 31,
+      "rollback_confirmed": true
+    },
+    "after_table_counts": {
+      "academic_deadline": 0,
+      "application_progress": 0,
+      "chat_message": 0,
+      "chat_session": 0,
+      "course_project": 0,
+      "crm_follow_up": 9,
+      "crm_lead": 27,
+      "customer_profile": 0,
+      "customer_source": 0,
+      "employee_daily_report": 4,
+      "event_lecture": 0,
+      "event_registration": 0,
+      "intent_config": 20,
+      "knowledge_base": 0,
+      "notification_log": 3,
+      "onboarding_guide": 4,
+      "overseas_life_knowledge": 0,
+      "profile_rule": 0,
+      "report_generation": 0,
+      "report_schedule": 0,
+      "student_admin_service": 6,
+      "student_feedback_ticket": 6,
+      "student_info": 3,
+      "student_psych_alert": 0,
+      "student_psych_profile": 0,
+      "student_psych_record": 0,
+      "student_score": 4,
+      "sys_organization": 4,
+      "sys_role": 5,
+      "sys_user": 8,
+      "todo_item": 5
+    },
+    "data_integrity_before": {
+      "checked": "ENT user, role, student and CRM references",
+      "gaps": [
+        {
+          "table": "crm_lead",
+          "column": "owner_employee_id",
+          "target": "sys_user",
+          "missing_id": 1,
+          "affected_rows": 12
+        },
+        {
+          "table": "crm_lead",
+          "column": "owner_employee_id",
+          "target": "sys_user",
+          "missing_id": 2,
+          "affected_rows": 7
+        },
+        {
+          "table": "crm_follow_up",
+          "column": "employee_id",
+          "target": "sys_user",
+          "missing_id": 1,
+          "affected_rows": 5
+        }
+      ],
+      "auto_repaired": false
+    },
+    "status": "passed"
+  },
+  "repeat_completion": {
+    "date": "2026-11-11",
+    "connection": {
+      "host": "127.0.0.1",
+      "port": 3306,
+      "database": "education_service"
+    },
+    "ddl_executed": false,
+    "server": {
+      "db": "education_service",
+      "hostname": "DESKTOP-DKO2LI9",
+      "port": 3306,
+      "version": "8.0.27",
+      "server_now": "2026-11-11 23:25:26"
+    },
+    "schema": {
+      "standard_sql": "D:\\Project course\\group_wuweiwen_yujiao\\教育服务_0914\\2222通过表可以实现curd\\db_init.sql",
+      "standard_sha256": "2f21633a2667d088e9118d2d24a9ac1b668c756e605f0cc5de2fc0e5e15512c0",
+      "expected_table_count": 31,
+      "actual_table_count": 31,
+      "missing_tables": [],
+      "extra_tables": [],
+      "checked_dimensions": [
+        "columns",
+        "types",
+        "nullability",
+        "defaults",
+        "auto_increment",
+        "on_update",
+        "indexes",
+        "engine",
+        "collation"
+      ],
+      "differences": [],
+      "table_counts": {
+        "academic_deadline": 0,
+        "application_progress": 0,
+        "chat_message": 0,
+        "chat_session": 0,
+        "course_project": 0,
+        "crm_follow_up": 9,
+        "crm_lead": 27,
+        "customer_profile": 0,
+        "customer_source": 0,
+        "employee_daily_report": 4,
+        "event_lecture": 0,
+        "event_registration": 0,
+        "intent_config": 20,
+        "knowledge_base": 0,
+        "notification_log": 3,
+        "onboarding_guide": 4,
+        "overseas_life_knowledge": 0,
+        "profile_rule": 0,
+        "report_generation": 0,
+        "report_schedule": 0,
+        "student_admin_service": 6,
+        "student_feedback_ticket": 6,
+        "student_info": 3,
+        "student_psych_alert": 0,
+        "student_psych_profile": 0,
+        "student_psych_record": 0,
+        "student_score": 4,
+        "sys_organization": 4,
+        "sys_role": 5,
+        "sys_user": 8,
+        "todo_item": 5
+      }
+    },
+    "data_integrity": {
+      "checked": "ENT user, role, student and CRM references",
+      "gaps": [],
+      "auto_repaired": false
+    },
+    "legacy_completion": {
+      "created_total": 0,
+      "ids": [
+        1,
+        2
+      ],
+      "status": "disabled",
+      "usable_login": false,
+      "synthetic_placeholders": true,
+      "linked_customer_counts": {
+        "1": 12,
+        "2": 7
+      },
+      "linked_follow_up_count": 5
+    },
+    "fixtures": {
+      "marker": "ENT_LOCAL_VERIFY_V1",
+      "date": "2026-11-11",
+      "ids": {
+        "employee_a": 1000001,
+        "employee_b": 1000002,
+        "employee_disabled": 1000003,
+        "student_a": 1000004,
+        "student_b": 1000005,
+        "student_disabled": 1000006,
+        "org_company": 1,
+        "org_a": 2,
+        "org_b": 3,
+        "org_disabled": 4,
+        "guide_entry": 1,
+        "guide_crm": 2,
+        "guide_leave": 3,
+        "guide_disabled": 4,
+        "info_student_a": 1,
+        "info_student_b": 2,
+        "info_student_disabled": 3,
+        "lead_0": 20,
+        "lead_1": 21,
+        "follow_1": 6,
+        "lead_2": 22,
+        "follow_2": 7,
+        "lead_3": 23,
+        "follow_3": 8,
+        "lead_4": 24,
+        "lead_5": 25,
+        "lead_6": 26,
+        "lead_7": 27,
+        "follow_7": 9,
+        "report_employee_a0": 1,
+        "report_employee_a1": 2,
+        "report_employee_b0": 3,
+        "report_employee_b1": 4,
+        "score_0": 1,
+        "score_1": 2,
+        "score_2": 3,
+        "score_3": 4,
+        "leave_0": 1,
+        "leave_1": 2,
+        "leave_2": 3,
+        "leave_3": 4,
+        "leave_4": 5,
+        "leave_5": 6,
+        "ticket_0": 1,
+        "ticket_1": 2,
+        "ticket_2": 3,
+        "ticket_3": 4,
+        "ticket_4": 5,
+        "ticket_5": 6,
+        "todo_0": 1,
+        "todo_1": 2,
+        "todo_2": 3,
+        "todo_3": 4,
+        "todo_4": 5,
+        "notice_0": 1,
+        "notice_1": 2,
+        "notice_2": 3
+      },
+      "created_counts": {},
+      "created_total": 0,
+      "accounts_have_no_usable_password": true
+    },
+    "existing_rows_preserved": true,
+    "verification": {
+      "transport": "isolated FastAPI TestClient/ASGI",
+      "database": "real localhost MySQL",
+      "identity": "test-only dependency override, not real JWT",
+      "mutation_policy": "all API and scanner writes rolled back by outer transaction",
+      "checks": [
+        {
+          "case": "组织检索",
+          "status": 200
+        },
+        {
+          "case": "员工联系方式",
+          "status": 200
+        },
+        {
+          "case": "指南检索",
+          "status": 200
+        },
+        {
+          "case": "本人成绩查询",
+          "status": 200
+        },
+        {
+          "case": "越范围成绩拒绝",
+          "status": 403
+        },
+        {
+          "case": "成绩写入",
+          "status": 200
+        },
+        {
+          "case": "成绩更正",
+          "status": 200
+        },
+        {
+          "case": "停用学生成绩录入拒绝",
+          "status": 422
+        },
+        {
+          "case": "停用学生成绩更正拒绝",
+          "status": 422
+        },
+        {
+          "case": "客户范围",
+          "status": 200
+        },
+        {
+          "case": "他人客户拒绝",
+          "status": 403
+        },
+        {
+          "case": "同名客户冲突",
+          "status": 409
+        },
+        {
+          "case": "客户状态更新",
+          "status": 200
+        },
+        {
+          "case": "客户跟进写入",
+          "status": 200
+        },
+        {
+          "case": "本人日报查询",
+          "status": 200
+        },
+        {
+          "case": "日报写入",
+          "status": 200
+        },
+        {
+          "case": "他人日报拒绝",
+          "status": 403
+        },
+        {
+          "case": "请假审批范围",
+          "status": 200
+        },
+        {
+          "case": "他人请假拒绝",
+          "status": 403
+        },
+        {
+          "case": "未分配请假拒绝",
+          "status": 403
+        },
+        {
+          "case": "本人请假审批",
+          "status": 200
+        },
+        {
+          "case": "重复请假审批拒绝",
+          "status": 409
+        },
+        {
+          "case": "他人工单拒绝",
+          "status": 403
+        },
+        {
+          "case": "投诉流转",
+          "status": 200
+        },
+        {
+          "case": "投诉陈旧状态拒绝",
+          "status": 409
+        },
+        {
+          "case": "待办到期查询",
+          "status": 200
+        },
+        {
+          "case": "待办完成",
+          "status": 200
+        },
+        {
+          "case": "他人待办拒绝",
+          "status": 403
+        },
+        {
+          "case": "站内通知范围",
+          "status": 200
+        },
+        {
+          "case": "真实MySQL扫描与重复扫描去重",
+          "first": {
+            "todos_created": 5,
+            "system_notifications_created": 6
+          },
+          "second": {
+            "todos_created": 0,
+            "system_notifications_created": 0
+          },
+          "fixture_source_counts": {
+            "student_admin_service/2": 1,
+            "student_admin_service/6": 1,
+            "student_feedback_ticket/1": 1,
+            "student_feedback_ticket/2": 1,
+            "student_feedback_ticket/5": 1
+          }
+        },
+        {
+          "case": "正常身份仍默认拒绝",
+          "status": 503
+        }
+      ],
+      "passed": 31,
+      "rollback_confirmed": true
+    },
+    "after_table_counts": {
+      "academic_deadline": 0,
+      "application_progress": 0,
+      "chat_message": 0,
+      "chat_session": 0,
+      "course_project": 0,
+      "crm_follow_up": 9,
+      "crm_lead": 27,
+      "customer_profile": 0,
+      "customer_source": 0,
+      "employee_daily_report": 4,
+      "event_lecture": 0,
+      "event_registration": 0,
+      "intent_config": 20,
+      "knowledge_base": 0,
+      "notification_log": 3,
+      "onboarding_guide": 4,
+      "overseas_life_knowledge": 0,
+      "profile_rule": 0,
+      "report_generation": 0,
+      "report_schedule": 0,
+      "student_admin_service": 6,
+      "student_feedback_ticket": 6,
+      "student_info": 3,
+      "student_psych_alert": 0,
+      "student_psych_profile": 0,
+      "student_psych_record": 0,
+      "student_score": 4,
+      "sys_organization": 4,
+      "sys_role": 5,
+      "sys_user": 8,
+      "todo_item": 5
+    },
+    "data_integrity_before": {
+      "checked": "ENT user, role, student and CRM references",
+      "gaps": [],
+      "auto_repaired": false
+    },
+    "status": "passed"
+  },
+  "repeat_command_result": {
+    "code": 0,
+    "output": "{\"report\": \"D:\\\\Project course\\\\group_wuweiwen_yujiao\\\\aiproject\\\\docs\\\\回复Cursor\\\\runs\\\\local-ent-validation-latest.json\", \"status\": \"passed\", \"data_gap_groups\": 0, \"schema_differences\": 0, \"created_total\": 0, \"legacy_created_total\": 0, \"verification_passed\": 31}\r\n"
+  },
+  "regression": {
+    "utf8_warnings_as_errors": {
+      "code": 0,
+      "output": "......................................                                   [100%]\r\n38 passed in 7.85s\r\n"
+    },
+    "standard": {
+      "code": 0,
+      "output": "......................................                                   [100%]\r\n38 passed in 8.15s\r\n"
+    }
+  },
+  "source_sha256": {
+    "scripts/local_ent_validation.py": "972d71f7969cd31bbb97ae653575ab0e754e29417548d11551e470b2d2d2e5f2",
+    "tests/modules/test_legacy_demo_completion.py": "c03a203573f3e9dc8171a80a05e56d4f7ca21da10cb7617139de64729adea7bc"
+  },
+  "limits": [
+    "Only localhost education_service database",
+    "Disabled synthetic placeholders for historical test employee IDs; no real identities or login credentials",
+    "No original customer/follow-up content or owner IDs rewritten",
+    "31 checks use isolated ASGI identity overrides, not real JWT/TCP/Dify acceptance",
+    "No DDL or cloud deployment"
+  ]
+}

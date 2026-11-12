@@ -1,0 +1,1767 @@
+{
+  "date": "2026-11-12",
+  "app_id": "ac18cfb8-3f60-406f-99dd-d9cc635dc71f",
+  "published_workflow_id": "b1fa9a00-e642-47c7-ad29-dee0dc7b1b93",
+  "conclusion": "NOT_ACCEPTED_FOR_FULL_DIFY_DELIVERY",
+  "scope": "read-only review of app graphs and source; live tests create synthetic Dify run logs; no workflow save/publish or authentication changes",
+  "environment": {
+    "host_console_connection": "Windows TCP reset to 127.0.0.1:8088; Browser could not open page",
+    "container_console_route_http": 200,
+    "direct_backend_health": 200,
+    "proxy_health": "Connected to ssrf_proxy:3128 then timeout with zero bytes",
+    "dify_persistent_api_keys_created": 0
+  },
+  "backend": {
+    "historical_fingerprints_checked": 20,
+    "changed_since_51": [],
+    "pytest": {
+      "command": ".venv313/Scripts/python.exe -X utf8 -m pytest tests -q -W error",
+      "exit_code": 0,
+      "observed_summary": "44 passed in 6.35s"
+    },
+    "mysql": {
+      "date": "2026-11-11",
+      "connection": {
+        "host": "127.0.0.1",
+        "port": 3306,
+        "database": "education_service"
+      },
+      "ddl_executed": false,
+      "server": {
+        "db": "education_service",
+        "hostname": "DESKTOP-DKO2LI9",
+        "port": 3306,
+        "version": "8.0.27",
+        "server_now": "2026-11-12 09:42:13"
+      },
+      "schema": {
+        "standard_sql": "D:\\Project course\\group_wuweiwen_yujiao\\教育服务_0914\\2222通过表可以实现curd\\db_init.sql",
+        "standard_sha256": "2f21633a2667d088e9118d2d24a9ac1b668c756e605f0cc5de2fc0e5e15512c0",
+        "migration_expected_sha256": "771235b71ae25afe888a4997a27f6f8028dab3cffb30fc664fdc26f0a10061f0",
+        "expected_table_count": 32,
+        "actual_table_count": 32,
+        "missing_tables": [],
+        "extra_tables": [],
+        "checked_dimensions": [
+          "columns",
+          "types",
+          "nullability",
+          "defaults",
+          "auto_increment",
+          "on_update",
+          "indexes",
+          "engine",
+          "collation"
+        ],
+        "differences": [],
+        "table_counts": {
+          "academic_deadline": 0,
+          "application_progress": 0,
+          "chat_message": 0,
+          "chat_session": 0,
+          "course_project": 0,
+          "crm_follow_up": 9,
+          "crm_lead": 27,
+          "customer_profile": 0,
+          "customer_source": 0,
+          "employee_daily_report": 4,
+          "event_lecture": 0,
+          "event_registration": 0,
+          "intent_config": 20,
+          "knowledge_base": 0,
+          "notification_log": 3,
+          "onboarding_guide": 4,
+          "overseas_life_knowledge": 0,
+          "profile_rule": 0,
+          "report_generation": 0,
+          "report_schedule": 0,
+          "student_admin_service": 6,
+          "student_feedback_ticket": 6,
+          "student_info": 3,
+          "student_psych_alert": 0,
+          "student_psych_profile": 0,
+          "student_psych_record": 0,
+          "student_score": 4,
+          "student_score_history": 4,
+          "sys_organization": 4,
+          "sys_role": 5,
+          "sys_user": 8,
+          "todo_item": 5
+        }
+      },
+      "data_integrity": {
+        "checked": "ENT user, role, student and CRM references",
+        "gaps": [],
+        "auto_repaired": false
+      },
+      "fixtures": {
+        "marker": "ENT_LOCAL_VERIFY_V1",
+        "date": "2026-11-11",
+        "ids": {
+          "employee_a": 1000001,
+          "employee_b": 1000002,
+          "employee_disabled": 1000003,
+          "student_a": 1000004,
+          "student_b": 1000005,
+          "student_disabled": 1000006,
+          "org_company": 1,
+          "org_a": 2,
+          "org_b": 3,
+          "org_disabled": 4,
+          "guide_entry": 1,
+          "guide_crm": 2,
+          "guide_leave": 3,
+          "guide_disabled": 4,
+          "info_student_a": 1,
+          "info_student_b": 2,
+          "info_student_disabled": 3,
+          "lead_0": 20,
+          "lead_1": 21,
+          "follow_1": 6,
+          "lead_2": 22,
+          "follow_2": 7,
+          "lead_3": 23,
+          "follow_3": 8,
+          "lead_4": 24,
+          "lead_5": 25,
+          "lead_6": 26,
+          "lead_7": 27,
+          "follow_7": 9,
+          "report_employee_a0": 1,
+          "report_employee_a1": 2,
+          "report_employee_b0": 3,
+          "report_employee_b1": 4,
+          "score_0": 1,
+          "score_1": 2,
+          "score_2": 3,
+          "score_3": 4,
+          "leave_0": 1,
+          "leave_1": 2,
+          "leave_2": 3,
+          "leave_3": 4,
+          "leave_4": 5,
+          "leave_5": 6,
+          "ticket_0": 1,
+          "ticket_1": 2,
+          "ticket_2": 3,
+          "ticket_3": 4,
+          "ticket_4": 5,
+          "ticket_5": 6,
+          "todo_0": 1,
+          "todo_1": 2,
+          "todo_2": 3,
+          "todo_3": 4,
+          "todo_4": 5,
+          "notice_0": 1,
+          "notice_1": 2,
+          "notice_2": 3
+        },
+        "created_counts": {},
+        "created_total": 0,
+        "accounts_have_no_usable_password": true
+      },
+      "existing_rows_preserved": true,
+      "verification": {
+        "transport": "isolated FastAPI TestClient/ASGI",
+        "database": "real localhost MySQL",
+        "identity": "test-only dependency override, not real JWT",
+        "mutation_policy": "all API and scanner writes rolled back by outer transaction",
+        "checks": [
+          {
+            "case": "组织检索",
+            "status": 200
+          },
+          {
+            "case": "员工联系方式",
+            "status": 200
+          },
+          {
+            "case": "指南检索",
+            "status": 200
+          },
+          {
+            "case": "本人成绩查询",
+            "status": 200
+          },
+          {
+            "case": "越范围成绩拒绝",
+            "status": 403
+          },
+          {
+            "case": "成绩写入",
+            "status": 200
+          },
+          {
+            "case": "成绩更正",
+            "status": 200
+          },
+          {
+            "case": "停用学生成绩录入拒绝",
+            "status": 422
+          },
+          {
+            "case": "停用学生成绩更正拒绝",
+            "status": 422
+          },
+          {
+            "case": "客户范围",
+            "status": 200
+          },
+          {
+            "case": "他人客户拒绝",
+            "status": 403
+          },
+          {
+            "case": "同名客户冲突",
+            "status": 409
+          },
+          {
+            "case": "客户状态更新",
+            "status": 200
+          },
+          {
+            "case": "客户跟进写入",
+            "status": 200
+          },
+          {
+            "case": "本人日报查询",
+            "status": 200
+          },
+          {
+            "case": "日报写入",
+            "status": 200
+          },
+          {
+            "case": "他人日报拒绝",
+            "status": 403
+          },
+          {
+            "case": "请假审批范围",
+            "status": 200
+          },
+          {
+            "case": "他人请假拒绝",
+            "status": 403
+          },
+          {
+            "case": "未分配请假拒绝",
+            "status": 403
+          },
+          {
+            "case": "本人请假审批",
+            "status": 200
+          },
+          {
+            "case": "重复请假审批拒绝",
+            "status": 409
+          },
+          {
+            "case": "他人工单拒绝",
+            "status": 403
+          },
+          {
+            "case": "投诉流转",
+            "status": 200
+          },
+          {
+            "case": "投诉陈旧状态拒绝",
+            "status": 409
+          },
+          {
+            "case": "待办到期查询",
+            "status": 200
+          },
+          {
+            "case": "待办完成",
+            "status": 200
+          },
+          {
+            "case": "他人待办拒绝",
+            "status": 403
+          },
+          {
+            "case": "站内通知范围",
+            "status": 200
+          },
+          {
+            "case": "真实MySQL扫描与重复扫描去重",
+            "first": {
+              "todos_created": 4,
+              "system_notifications_created": 6
+            },
+            "second": {
+              "todos_created": 0,
+              "system_notifications_created": 0
+            },
+            "fixture_source_counts": {
+              "student_admin_service/2": 1,
+              "student_admin_service/6": 1,
+              "student_feedback_ticket/1": 1,
+              "student_feedback_ticket/2": 1,
+              "student_feedback_ticket/5": 1
+            }
+          },
+          {
+            "case": "正常身份仍默认拒绝",
+            "status": 503
+          }
+        ],
+        "passed": 31,
+        "rollback_confirmed": true
+      },
+      "after_table_counts": {
+        "academic_deadline": 0,
+        "application_progress": 0,
+        "chat_message": 0,
+        "chat_session": 0,
+        "course_project": 0,
+        "crm_follow_up": 9,
+        "crm_lead": 27,
+        "customer_profile": 0,
+        "customer_source": 0,
+        "employee_daily_report": 4,
+        "event_lecture": 0,
+        "event_registration": 0,
+        "intent_config": 20,
+        "knowledge_base": 0,
+        "notification_log": 3,
+        "onboarding_guide": 4,
+        "overseas_life_knowledge": 0,
+        "profile_rule": 0,
+        "report_generation": 0,
+        "report_schedule": 0,
+        "student_admin_service": 6,
+        "student_feedback_ticket": 6,
+        "student_info": 3,
+        "student_psych_alert": 0,
+        "student_psych_profile": 0,
+        "student_psych_record": 0,
+        "student_score": 4,
+        "student_score_history": 4,
+        "sys_organization": 4,
+        "sys_role": 5,
+        "sys_user": 8,
+        "todo_item": 5
+      },
+      "data_integrity_before": {
+        "checked": "ENT user, role, student and CRM references",
+        "gaps": [],
+        "auto_repaired": false
+      },
+      "status": "passed"
+    },
+    "http_all_operations": {
+      "transport": "real TCP normal app.main",
+      "openapi_operations": 30,
+      "tests": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "status": 200,
+          "expected": 200,
+          "body": {
+            "status": "ok"
+          },
+          "passed": true
+        },
+        {
+          "method": "GET",
+          "path": "/health/db",
+          "status": 200,
+          "expected": 200,
+          "body": {
+            "status": "ok",
+            "database": "connected"
+          },
+          "passed": true
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/enterprise/organizations",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/enterprise/organizations/colleagues",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/enterprise/colleagues/{employee_id}/contact",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/enterprise/onboarding-guides",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/enterprise/onboarding-guides",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/enterprise/scores",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/enterprise/scores",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "PUT",
+          "path": "/api/v1/enterprise/scores/{score_id}",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/enterprise/scores/{score_id}/history",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/enterprise/tickets",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/enterprise/tickets/{ticket_id}",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/v1/enterprise/tickets/{ticket_id}",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/enterprise/todos",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/enterprise/todos",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/v1/enterprise/todos/{todo_id}",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/enterprise/notifications",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/consultant/leads",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/consultant/leads",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/consultant/leads/{lead_id}",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/v1/consultant/leads/{lead_id}",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/v1/consultant/leads/{lead_id}/status",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/consultant/leads/{lead_id}/follow-ups",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/employee-reports",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/employee-reports",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/student-admin/leaves/pending",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/student-admin/leaves/{leave_id}/approve",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/enterprise/commands",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/ai/nl2sql/query",
+          "status": 503,
+          "expected": 503,
+          "body": {
+            "detail": "员工可信身份未就绪，consultant 业务不可用"
+          },
+          "passed": true
+        },
+        {
+          "case": "forged identity rejected",
+          "headers": {
+            "X-Employee-Id": "1"
+          },
+          "status": 503,
+          "expected": 503,
+          "passed": true
+        },
+        {
+          "case": "forged identity rejected",
+          "headers": {
+            "X-Employee-Id": "1000001"
+          },
+          "status": 503,
+          "expected": 503,
+          "passed": true
+        },
+        {
+          "case": "forged identity rejected",
+          "headers": {
+            "Authorization": "Bearer ent-review-invalid-token"
+          },
+          "status": 503,
+          "expected": 503,
+          "passed": true
+        }
+      ],
+      "database_unchanged": true,
+      "passed": 33,
+      "total": 33
+    }
+  },
+  "dify": {
+    "graphs_snapshot_file": "runs/dify-review-graphs-2026-11-12.json",
+    "parser_review": {
+      "variants": [
+        {
+          "name": "draft",
+          "nodes": 10,
+          "edges": 10,
+          "graph_sha256": "62cb56b595d2b33c29e0c6e2ecda98011546b77188d3219cbc6af206e9b083cc",
+          "parser_cases": [
+            {
+              "id": "P01",
+              "case": "标准标记",
+              "expected": "lead_create",
+              "routed_intent": "lead_create",
+              "will_call_http": true,
+              "outputs": {
+                "skip": false,
+                "method": "post",
+                "http_url": "http://host.docker.internal:8000/api/v1/consultant/leads",
+                "http_body": "{\"customer_name\": \"验证甲\", \"owner_employee_id\": 1, \"gender\": \"U\"}",
+                "intent": "lead_create"
+              },
+              "passed": true
+            },
+            {
+              "id": "P02",
+              "case": "标记后空格",
+              "expected": "lead_create",
+              "routed_intent": "other",
+              "will_call_http": false,
+              "outputs": {
+                "skip": true,
+                "method": "get",
+                "http_url": "http://host.docker.internal:8000/health",
+                "http_body": "",
+                "intent": "other"
+              },
+              "passed": false
+            },
+            {
+              "id": "P03",
+              "case": "多行JSON",
+              "expected": "lead_create",
+              "routed_intent": "other",
+              "will_call_http": false,
+              "outputs": {
+                "skip": true,
+                "method": "get",
+                "http_url": "http://host.docker.internal:8000/health",
+                "http_body": "",
+                "intent": "other"
+              },
+              "passed": false
+            },
+            {
+              "id": "P04",
+              "case": "缺少姓名必须追问",
+              "expected": "other",
+              "routed_intent": "other",
+              "will_call_http": false,
+              "outputs": {
+                "skip": true,
+                "method": "get",
+                "http_url": "http://host.docker.internal:8000/health",
+                "http_body": "",
+                "intent": "other"
+              },
+              "passed": true
+            },
+            {
+              "id": "P05",
+              "case": "解释能力且明确不执行",
+              "expected": "other",
+              "routed_intent": "other",
+              "will_call_http": false,
+              "outputs": {
+                "skip": true,
+                "method": "get",
+                "http_url": "http://host.docker.internal:8000/health",
+                "http_body": "",
+                "intent": "other"
+              },
+              "passed": true
+            },
+            {
+              "id": "P06",
+              "case": "未知动作不得发请求",
+              "expected": "other",
+              "routed_intent": "other",
+              "will_call_http": false,
+              "outputs": {
+                "skip": true,
+                "method": "get",
+                "http_url": "http://host.docker.internal:8000/health",
+                "http_body": "",
+                "intent": "score_create"
+              },
+              "passed": true
+            },
+            {
+              "id": "P07",
+              "case": "缺姓名的动作不得发请求",
+              "expected": "other",
+              "routed_intent": "other",
+              "will_call_http": false,
+              "outputs": {
+                "skip": true,
+                "method": "get",
+                "http_url": "http://host.docker.internal:8000/health",
+                "http_body": "",
+                "intent": "lead_create"
+              },
+              "passed": true
+            },
+            {
+              "id": "P08",
+              "case": "紧凑姓名查询",
+              "expected": "clarify_or_exact",
+              "routed_intent": "other",
+              "will_call_http": false,
+              "outputs": {
+                "skip": true,
+                "method": "get",
+                "http_url": "http://host.docker.internal:8000/health",
+                "http_body": "",
+                "intent": "other"
+              },
+              "passed": true
+            }
+          ],
+          "http_nodes": [
+            {
+              "id": "health_http",
+              "method": "get",
+              "error_strategy": "fail",
+              "retry_enabled": true,
+              "url": "http://host.docker.internal:8000/health"
+            },
+            {
+              "id": "http_post",
+              "method": "post",
+              "error_strategy": "fail",
+              "retry_enabled": true,
+              "url": "{{#code1.http_url#}}"
+            },
+            {
+              "id": "http_get",
+              "method": "get",
+              "error_strategy": "fail",
+              "retry_enabled": true,
+              "url": "{{#code1.http_url#}}"
+            }
+          ],
+          "supported_business_http_paths": [
+            "/api/v1/consultant/leads"
+          ],
+          "conversation_confirmation_state_nodes": []
+        },
+        {
+          "name": "2026-11-11 16:15:39.545089",
+          "nodes": 10,
+          "edges": 10,
+          "graph_sha256": "8bd144dbb282b3588a8e4e306a09f8d5fec6311283e24cf5be6df67c5dfabdcf",
+          "parser_cases": [
+            {
+              "id": "P01",
+              "case": "标准标记",
+              "expected": "lead_create",
+              "routed_intent": "lead_create",
+              "will_call_http": true,
+              "outputs": {
+                "skip": false,
+                "method": "post",
+                "http_url": "http://host.docker.internal:8000/api/v1/consultant/leads",
+                "http_body": "{\"customer_name\": \"验证甲\", \"owner_employee_id\": 1, \"gender\": \"U\"}",
+                "intent": "lead_create"
+              },
+              "passed": true
+            },
+            {
+              "id": "P02",
+              "case": "标记后空格",
+              "expected": "lead_create",
+              "routed_intent": "other",
+              "will_call_http": false,
+              "outputs": {
+                "skip": true,
+                "method": "get",
+                "http_url": "http://host.docker.internal:8000/health",
+                "http_body": "",
+                "intent": "other"
+              },
+              "passed": false
+            },
+            {
+              "id": "P03",
+              "case": "多行JSON",
+              "expected": "lead_create",
+              "routed_intent": "other",
+              "will_call_http": false,
+              "outputs": {
+                "skip": true,
+                "method": "get",
+                "http_url": "http://host.docker.internal:8000/health",
+                "http_body": "",
+                "intent": "other"
+              },
+              "passed": false
+            },
+            {
+              "id": "P04",
+              "case": "缺少姓名必须追问",
+              "expected": "other",
+              "routed_intent": "other",
+              "will_call_http": false,
+              "outputs": {
+                "skip": true,
+                "method": "get",
+                "http_url": "http://host.docker.internal:8000/health",
+                "http_body": "",
+                "intent": "other"
+              },
+              "passed": true
+            },
+            {
+              "id": "P05",
+              "case": "解释能力且明确不执行",
+              "expected": "other",
+              "routed_intent": "other",
+              "will_call_http": false,
+              "outputs": {
+                "skip": true,
+                "method": "get",
+                "http_url": "http://host.docker.internal:8000/health",
+                "http_body": "",
+                "intent": "other"
+              },
+              "passed": true
+            },
+            {
+              "id": "P06",
+              "case": "未知动作不得发请求",
+              "expected": "other",
+              "routed_intent": "other",
+              "will_call_http": false,
+              "outputs": {
+                "skip": true,
+                "method": "get",
+                "http_url": "http://host.docker.internal:8000/health",
+                "http_body": "",
+                "intent": "score_create"
+              },
+              "passed": true
+            },
+            {
+              "id": "P07",
+              "case": "缺姓名的动作不得发请求",
+              "expected": "other",
+              "routed_intent": "other",
+              "will_call_http": false,
+              "outputs": {
+                "skip": true,
+                "method": "get",
+                "http_url": "http://host.docker.internal:8000/health",
+                "http_body": "",
+                "intent": "lead_create"
+              },
+              "passed": true
+            },
+            {
+              "id": "P08",
+              "case": "紧凑姓名查询",
+              "expected": "clarify_or_exact",
+              "routed_intent": "other",
+              "will_call_http": false,
+              "outputs": {
+                "skip": true,
+                "method": "get",
+                "http_url": "http://host.docker.internal:8000/health",
+                "http_body": "",
+                "intent": "other"
+              },
+              "passed": true
+            }
+          ],
+          "http_nodes": [
+            {
+              "id": "health_http",
+              "method": "get",
+              "error_strategy": "fail",
+              "retry_enabled": true,
+              "url": "http://host.docker.internal:8000/health"
+            },
+            {
+              "id": "http_post",
+              "method": "post",
+              "error_strategy": "fail",
+              "retry_enabled": true,
+              "url": "{{#code1.http_url#}}"
+            },
+            {
+              "id": "http_get",
+              "method": "get",
+              "error_strategy": "fail",
+              "retry_enabled": true,
+              "url": "{{#code1.http_url#}}"
+            }
+          ],
+          "supported_business_http_paths": [
+            "/api/v1/consultant/leads"
+          ],
+          "conversation_confirmation_state_nodes": []
+        },
+        {
+          "name": "repository_v2",
+          "nodes": 10,
+          "edges": 10,
+          "graph_sha256": "ad6ef276ece79a965252d6b4e57a6530ffa339c9d302b1ab9d3f21f0f1c5ad9e",
+          "parser_cases": [
+            {
+              "id": "P01",
+              "case": "标准标记",
+              "expected": "lead_create",
+              "routed_intent": "lead_create",
+              "will_call_http": true,
+              "outputs": {
+                "skip": false,
+                "method": "post",
+                "http_url": "http://host.docker.internal:8000/api/v1/consultant/leads",
+                "http_body": "{\"customer_name\": \"验证甲\", \"owner_employee_id\": 1, \"gender\": \"U\"}",
+                "intent": "lead_create"
+              },
+              "passed": true
+            },
+            {
+              "id": "P02",
+              "case": "标记后空格",
+              "expected": "lead_create",
+              "routed_intent": "lead_create",
+              "will_call_http": true,
+              "outputs": {
+                "skip": false,
+                "method": "post",
+                "http_url": "http://host.docker.internal:8000/api/v1/consultant/leads",
+                "http_body": "{\"customer_name\": \"验证甲\", \"owner_employee_id\": 1, \"gender\": \"U\"}",
+                "intent": "lead_create"
+              },
+              "passed": true
+            },
+            {
+              "id": "P03",
+              "case": "多行JSON",
+              "expected": "lead_create",
+              "routed_intent": "lead_create",
+              "will_call_http": true,
+              "outputs": {
+                "skip": false,
+                "method": "post",
+                "http_url": "http://host.docker.internal:8000/api/v1/consultant/leads",
+                "http_body": "{\"customer_name\": \"验证甲\", \"owner_employee_id\": 1, \"gender\": \"U\"}",
+                "intent": "lead_create"
+              },
+              "passed": true
+            },
+            {
+              "id": "P04",
+              "case": "缺少姓名必须追问",
+              "expected": "other",
+              "routed_intent": "lead_create",
+              "will_call_http": true,
+              "outputs": {
+                "skip": false,
+                "method": "post",
+                "http_url": "http://host.docker.internal:8000/api/v1/consultant/leads",
+                "http_body": "{\"customer_name\": \"未解析姓名\", \"owner_employee_id\": 1, \"gender\": \"U\", \"source_channel\": \"dify\"}",
+                "intent": "lead_create"
+              },
+              "passed": false
+            },
+            {
+              "id": "P05",
+              "case": "解释能力且明确不执行",
+              "expected": "other",
+              "routed_intent": "lead_create",
+              "will_call_http": true,
+              "outputs": {
+                "skip": false,
+                "method": "post",
+                "http_url": "http://host.docker.internal:8000/api/v1/consultant/leads",
+                "http_body": "{\"customer_name\": \"未解析姓名\", \"owner_employee_id\": 1, \"gender\": \"U\", \"source_channel\": \"dify\"}",
+                "intent": "lead_create"
+              },
+              "passed": false
+            },
+            {
+              "id": "P06",
+              "case": "未知动作不得发请求",
+              "expected": "other",
+              "routed_intent": "score_create",
+              "will_call_http": true,
+              "outputs": {
+                "skip": true,
+                "method": "get",
+                "http_url": "http://host.docker.internal:8000/health",
+                "http_body": "",
+                "intent": "score_create"
+              },
+              "passed": false
+            },
+            {
+              "id": "P07",
+              "case": "缺姓名的动作不得发请求",
+              "expected": "other",
+              "routed_intent": "lead_create",
+              "will_call_http": true,
+              "outputs": {
+                "skip": true,
+                "method": "get",
+                "http_url": "http://host.docker.internal:8000/health",
+                "http_body": "",
+                "intent": "lead_create"
+              },
+              "passed": false
+            },
+            {
+              "id": "P08",
+              "case": "紧凑姓名查询",
+              "expected": "clarify_or_exact",
+              "routed_intent": "lead_query",
+              "will_call_http": true,
+              "outputs": {
+                "skip": false,
+                "method": "get",
+                "http_url": "http://host.docker.internal:8000/api/v1/consultant/leads?keyword=&page=1&page_size=10",
+                "http_body": "",
+                "intent": "lead_query"
+              },
+              "passed": false
+            }
+          ],
+          "http_nodes": [
+            {
+              "id": "health_http",
+              "method": "get",
+              "error_strategy": "fail",
+              "retry_enabled": true,
+              "url": "http://host.docker.internal:8000/health"
+            },
+            {
+              "id": "http_post",
+              "method": "post",
+              "error_strategy": "default-value",
+              "retry_enabled": false,
+              "url": "{{#code1.http_url#}}"
+            },
+            {
+              "id": "http_get",
+              "method": "get",
+              "error_strategy": "default-value",
+              "retry_enabled": false,
+              "url": "{{#code1.http_url#}}"
+            }
+          ],
+          "supported_business_http_paths": [
+            "/api/v1/consultant/leads"
+          ],
+          "conversation_confirmation_state_nodes": []
+        }
+      ]
+    },
+    "published_webapp_review": [
+      {
+        "id": "D01",
+        "query": "后端健康检查，请根据实际HTTP探活结果回答，不要操作客户数据。",
+        "transport": "Dify existing public WebApp HTTP/SSE, inside Docker",
+        "events": [
+          {
+            "event": "workflow_started",
+            "conversation_id": "cad8bac5-b70e-41f6-bb56-b1c61a4ef0c0",
+            "message_id": "7b2bd19b-99bd-4b0b-9ca7-deaa5a2a53a6",
+            "created_at": 1794448251,
+            "task_id": "ffb247d2-07f3-4515-b4ff-05e802f596a5",
+            "workflow_run_id": "9e926da0-4413-463e-9fd5-9ab1c6922f41",
+            "data": {
+              "id": "9e926da0-4413-463e-9fd5-9ab1c6922f41",
+              "workflow_id": "b1fa9a00-e642-47c7-ad29-dee0dc7b1b93",
+              "inputs": {
+                "sys.query": "后端健康检查，请根据实际HTTP探活结果回答，不要操作客户数据。",
+                "sys.files": [],
+                "sys.user_id": "ent-review-af229816089c4083859ddbe8c7953337",
+                "sys.dialogue_count": 1,
+                "sys.app_id": "ac18cfb8-3f60-406f-99dd-d9cc635dc71f",
+                "sys.workflow_id": "b1fa9a00-e642-47c7-ad29-dee0dc7b1b93",
+                "sys.workflow_run_id": "9e926da0-4413-463e-9fd5-9ab1c6922f41"
+              },
+              "created_at": 1794448251,
+              "reason": "initial"
+            }
+          },
+          {
+            "event": "node_started",
+            "conversation_id": "cad8bac5-b70e-41f6-bb56-b1c61a4ef0c0",
+            "message_id": "7b2bd19b-99bd-4b0b-9ca7-deaa5a2a53a6",
+            "created_at": 1794448251,
+            "task_id": "ffb247d2-07f3-4515-b4ff-05e802f596a5",
+            "workflow_run_id": "9e926da0-4413-463e-9fd5-9ab1c6922f41",
+            "data": {
+              "id": "cb07acc4-1f9e-4add-8e33-65e5b0cdf907",
+              "node_id": "start1",
+              "node_type": "start",
+              "title": "用户输入",
+              "index": 1,
+              "predecessor_node_id": null,
+              "inputs": null,
+              "created_at": 1794448251,
+              "extras": {},
+              "iteration_id": null,
+              "loop_id": null
+            }
+          },
+          {
+            "event": "node_finished",
+            "conversation_id": "cad8bac5-b70e-41f6-bb56-b1c61a4ef0c0",
+            "message_id": "7b2bd19b-99bd-4b0b-9ca7-deaa5a2a53a6",
+            "created_at": 1794448251,
+            "task_id": "ffb247d2-07f3-4515-b4ff-05e802f596a5",
+            "workflow_run_id": "9e926da0-4413-463e-9fd5-9ab1c6922f41",
+            "data": {
+              "id": "cb07acc4-1f9e-4add-8e33-65e5b0cdf907",
+              "node_id": "start1",
+              "node_type": "start",
+              "title": "用户输入",
+              "index": 1,
+              "predecessor_node_id": null,
+              "inputs": null,
+              "process_data": null,
+              "outputs": null,
+              "status": "succeeded",
+              "error": null,
+              "elapsed_time": 0.000142,
+              "execution_metadata": null,
+              "created_at": 1794448251,
+              "finished_at": 1794448251,
+              "files": [],
+              "iteration_id": null,
+              "loop_id": null
+            }
+          },
+          {
+            "event": "node_started",
+            "conversation_id": "cad8bac5-b70e-41f6-bb56-b1c61a4ef0c0",
+            "message_id": "7b2bd19b-99bd-4b0b-9ca7-deaa5a2a53a6",
+            "created_at": 1794448251,
+            "task_id": "ffb247d2-07f3-4515-b4ff-05e802f596a5",
+            "workflow_run_id": "9e926da0-4413-463e-9fd5-9ab1c6922f41",
+            "data": {
+              "id": "33f7e6c7-6a79-499e-9b8a-25865a3b712c",
+              "node_id": "health_http",
+              "node_type": "http-request",
+              "title": "API探活",
+              "index": 1,
+              "predecessor_node_id": null,
+              "inputs": null,
+              "created_at": 1794448251,
+              "extras": {},
+              "iteration_id": null,
+              "loop_id": null
+            }
+          }
+        ],
+        "http_status": 200,
+        "error_type": "TimeoutError",
+        "error": "Review case exceeded 100 seconds",
+        "elapsed": 100.61
+      }
+    ],
+    "testing_limit": "One actual published WebApp case timed out before LLM; further live dialogue cases blocked, not counted as passed. Two earlier internal blocking-run attempts were aborted and excluded.",
+    "timeout_task_stop_response": {
+      "code": 0,
+      "output": "{\"status\": 200, \"result\": {\"result\": \"success\"}}\n"
+    },
+    "published_version_unchanged": true,
+    "draft_updated_at_unchanged": "2026-11-11T16:16:02.821647"
+  },
+  "concurrency": {
+    "first": {
+      "status": "failed",
+      "error_type": "AssertionError",
+      "error": "[{'pid': 40004, 'connection_id': 206, 'operation': 'scan', 'status': 200, 'data': {'todos_created': 12, 'system_notifications_created': 12}}, {'pid': 35940, 'operation': 'scan', 'status': 500, 'error': 'OperationalError(\"(pymysql.err.OperationalError) (1213, \\'Deadlock found when trying to get lock; try restarting transaction\\')\")'}, {'pid': 19772, 'operation': 'scan', 'status': 500, 'error': 'OperationalError(\"(pymysql.err.OperationalError) (1213, \\'Deadlock found when trying to get lock; try restarting transaction\\')\")'}, {'pid': 44464, 'connection_id': 207, 'operation': 'scan', 'status': 200, 'data': {'todos_created': 13, 'system_notifications_created': 13}}]"
+    },
+    "second": {
+      "database": "ent_verify_reliability_0b51bb12",
+      "start_method": "spawn",
+      "workers_per_race": 4,
+      "rounds": [
+        {
+          "create": [
+            {
+              "pid": 24652,
+              "connection_id": 216,
+              "operation": "create",
+              "status": 200,
+              "data": {
+                "id": 30,
+                "version": 1,
+                "replayed": false
+              }
+            },
+            {
+              "pid": 12280,
+              "connection_id": 217,
+              "operation": "create",
+              "status": 200,
+              "data": {
+                "id": 30,
+                "version": 1,
+                "replayed": true
+              }
+            },
+            {
+              "pid": 28724,
+              "connection_id": 214,
+              "operation": "create",
+              "status": 200,
+              "data": {
+                "id": 30,
+                "version": 1,
+                "replayed": true
+              }
+            },
+            {
+              "pid": 20188,
+              "connection_id": 215,
+              "operation": "create",
+              "status": 200,
+              "data": {
+                "id": 30,
+                "version": 1,
+                "replayed": true
+              }
+            }
+          ],
+          "correction": [
+            {
+              "pid": 43416,
+              "connection_id": 219,
+              "operation": "correct",
+              "status": 200,
+              "data": {
+                "id": 30,
+                "version": 2
+              }
+            },
+            {
+              "pid": 19656,
+              "operation": "correct",
+              "status": 409,
+              "error": "成绩版本已变化，请刷新后重试"
+            },
+            {
+              "pid": 42476,
+              "operation": "correct",
+              "status": 409,
+              "error": "成绩版本已变化，请刷新后重试"
+            },
+            {
+              "pid": 43012,
+              "operation": "correct",
+              "status": 409,
+              "error": "成绩版本已变化，请刷新后重试"
+            }
+          ],
+          "score_id": 30,
+          "history_versions": [
+            1,
+            2
+          ]
+        },
+        {
+          "create": [
+            {
+              "pid": 44356,
+              "connection_id": 223,
+              "operation": "create",
+              "status": 200,
+              "data": {
+                "id": 33,
+                "version": 1,
+                "replayed": false
+              }
+            },
+            {
+              "pid": 16572,
+              "connection_id": 222,
+              "operation": "create",
+              "status": 200,
+              "data": {
+                "id": 33,
+                "version": 1,
+                "replayed": true
+              }
+            },
+            {
+              "pid": 22880,
+              "connection_id": 225,
+              "operation": "create",
+              "status": 200,
+              "data": {
+                "id": 33,
+                "version": 1,
+                "replayed": true
+              }
+            },
+            {
+              "pid": 29324,
+              "connection_id": 224,
+              "operation": "create",
+              "status": 200,
+              "data": {
+                "id": 33,
+                "version": 1,
+                "replayed": true
+              }
+            }
+          ],
+          "correction": [
+            {
+              "pid": 2832,
+              "connection_id": 229,
+              "operation": "correct",
+              "status": 200,
+              "data": {
+                "id": 33,
+                "version": 2
+              }
+            },
+            {
+              "pid": 39356,
+              "operation": "correct",
+              "status": 409,
+              "error": "成绩版本已变化，请刷新后重试"
+            },
+            {
+              "pid": 18628,
+              "operation": "correct",
+              "status": 409,
+              "error": "成绩版本已变化，请刷新后重试"
+            },
+            {
+              "pid": 3064,
+              "operation": "correct",
+              "status": 409,
+              "error": "成绩版本已变化，请刷新后重试"
+            }
+          ],
+          "score_id": 33,
+          "history_versions": [
+            1,
+            2
+          ]
+        },
+        {
+          "create": [
+            {
+              "pid": 24324,
+              "connection_id": 230,
+              "operation": "create",
+              "status": 200,
+              "data": {
+                "id": 37,
+                "version": 1,
+                "replayed": false
+              }
+            },
+            {
+              "pid": 41308,
+              "connection_id": 231,
+              "operation": "create",
+              "status": 200,
+              "data": {
+                "id": 37,
+                "version": 1,
+                "replayed": true
+              }
+            },
+            {
+              "pid": 15048,
+              "connection_id": 232,
+              "operation": "create",
+              "status": 200,
+              "data": {
+                "id": 37,
+                "version": 1,
+                "replayed": true
+              }
+            },
+            {
+              "pid": 16080,
+              "connection_id": 233,
+              "operation": "create",
+              "status": 200,
+              "data": {
+                "id": 37,
+                "version": 1,
+                "replayed": true
+              }
+            }
+          ],
+          "correction": [
+            {
+              "pid": 32220,
+              "connection_id": 236,
+              "operation": "correct",
+              "status": 200,
+              "data": {
+                "id": 37,
+                "version": 2
+              }
+            },
+            {
+              "pid": 43816,
+              "operation": "correct",
+              "status": 409,
+              "error": "成绩版本已变化，请刷新后重试"
+            },
+            {
+              "pid": 16984,
+              "operation": "correct",
+              "status": 409,
+              "error": "成绩版本已变化，请刷新后重试"
+            },
+            {
+              "pid": 38016,
+              "operation": "correct",
+              "status": 409,
+              "error": "成绩版本已变化，请刷新后重试"
+            }
+          ],
+          "score_id": 37,
+          "history_versions": [
+            1,
+            2
+          ]
+        }
+      ],
+      "parallel_scans": [
+        {
+          "pid": 38040,
+          "connection_id": 212,
+          "operation": "scan",
+          "status": 200,
+          "data": {
+            "todos_created": 0,
+            "system_notifications_created": 0
+          }
+        },
+        {
+          "pid": 11664,
+          "connection_id": 213,
+          "operation": "scan",
+          "status": 200,
+          "data": {
+            "todos_created": 0,
+            "system_notifications_created": 0
+          }
+        },
+        {
+          "pid": 40420,
+          "connection_id": 211,
+          "operation": "scan",
+          "status": 200,
+          "data": {
+            "todos_created": 21,
+            "system_notifications_created": 10
+          }
+        },
+        {
+          "pid": 29424,
+          "connection_id": 210,
+          "operation": "scan",
+          "status": 200,
+          "data": {
+            "todos_created": 34,
+            "system_notifications_created": 45
+          }
+        }
+      ],
+      "parallel_approval": [
+        {
+          "pid": 42184,
+          "operation": "approve",
+          "status": 409,
+          "error": "请假单已处理或审批范围已变化，请刷新后重试"
+        },
+        {
+          "pid": 25144,
+          "operation": "approve",
+          "status": 409,
+          "error": "请假单已处理或审批范围已变化，请刷新后重试"
+        },
+        {
+          "pid": 44848,
+          "operation": "approve",
+          "status": 409,
+          "error": "请假单已处理或审批范围已变化，请刷新后重试"
+        },
+        {
+          "pid": 24584,
+          "connection_id": 238,
+          "operation": "approve",
+          "status": 200,
+          "data": {
+            "id": 9,
+            "status": "approved"
+          }
+        }
+      ],
+      "reassignment_race": [
+        {
+          "pid": 15292,
+          "connection_id": 244,
+          "operation": "reassign",
+          "status": 200,
+          "data": {
+            "assignee_id": 1000002
+          }
+        },
+        {
+          "pid": 34636,
+          "connection_id": 243,
+          "operation": "scan",
+          "status": 200,
+          "data": {
+            "todos_created": 0,
+            "system_notifications_created": 0
+          }
+        },
+        {
+          "pid": 43680,
+          "connection_id": 245,
+          "operation": "scan",
+          "status": 200,
+          "data": {
+            "todos_created": 0,
+            "system_notifications_created": 0
+          }
+        },
+        {
+          "pid": 13336,
+          "connection_id": 242,
+          "operation": "scan",
+          "status": 200,
+          "data": {
+            "todos_created": 0,
+            "system_notifications_created": 1
+          }
+        }
+      ],
+      "invariants": {
+        "one_score_per_exam": true,
+        "one_winning_correction": true,
+        "history_atomic": true,
+        "one_winning_approval": true,
+        "todo_reassignment_synchronized": true,
+        "duplicate_source_todos": 0,
+        "duplicate_notification_keys": 0
+      },
+      "status": "passed"
+    },
+    "verdict": "intermittent failure; not stable acceptance"
+  },
+  "findings": [
+    {
+      "id": "F01",
+      "priority": "P0",
+      "title": "已发布WebApp停在API探活，不能完成对话",
+      "evidence": "HTTP/SSE接受200，超过100秒仍无workflow_finished，最后事件health_http node_started；直连health正常，经ssrf_proxy:3128转发TCP连接后0字节超时",
+      "state": "runtime_reproduced",
+      "fix": "先恢复SSRF代理转发链路，保持防护开启；再复测健康、LLM、业务HTTP与回复整链路"
+    },
+    {
+      "id": "F02",
+      "priority": "P1",
+      "title": "仓库v2在缺姓名或明确不执行时仍组装POST",
+      "evidence": "P04/P05输出customer_name=未解析姓名，method=post，skip=false",
+      "state": "deterministic_parser_reproduced",
+      "fix": "删除关键词写操作兜底；缺字段追问；显式验证动作白名单、姓名和确认状态"
+    },
+    {
+      "id": "F03",
+      "priority": "P1",
+      "title": "v2分支忽略skip，未知动作和缺字段可进入HTTP",
+      "evidence": "P06/P07 skip=true但intent非other，分支仍发GET /health",
+      "state": "deterministic_parser_reproduced",
+      "fix": "分支同时要求skip=false、受支持动作及参数验证通过"
+    },
+    {
+      "id": "F04",
+      "priority": "P1",
+      "title": "当前v1漏解析空格和多行ENT_ACTION JSON",
+      "evidence": "已发布图与草稿P02/P03均未路由请求",
+      "state": "deterministic_parser_reproduced",
+      "fix": "采用受限结构化输出和严格解析，不用贪婪正则或自然语言关键词推断写操作"
+    },
+    {
+      "id": "F05",
+      "priority": "P1",
+      "title": "当前四进程扫描存在间歇性死锁失败",
+      "evidence": "第一次两个进程返回500/1213，第二次相同脚本通过；测试仅在ent_verify_隔离库提交",
+      "state": "runtime_reproduced_intermittent",
+      "fix": "检查来源/待办/通知锁顺序和RR范围锁；优化批次分配与带抖动重试，稳定重复压测后再签收"
+    },
+    {
+      "id": "F06",
+      "priority": "P1",
+      "title": "业务HTTP错误处理尚未在已发布图生效",
+      "evidence": "发布/草稿health_http/http_post/http_get无error_strategy；仓库v2默认把所有HTTP失败改为503",
+      "state": "graph_verified; current downstream replay blocked_by_F01",
+      "fix": "分别处理HTTP非2xx、业务code非0、网络异常；保留实际状态码与响应，不在失败后显示写入成功"
+    },
+    {
+      "id": "F07",
+      "priority": "P2",
+      "title": "v2紧凑姓名查询可能退化为查询全部客户",
+      "evidence": "P08 查询客户验证甲 -> keyword为空",
+      "state": "deterministic_parser_reproduced",
+      "fix": "保留姓名抽取和ID选择；缺关键词追问，禁止悄悄扩大查询范围"
+    },
+    {
+      "id": "F08",
+      "priority": "P2",
+      "title": "工作流仅实现录入和列表查询探路",
+      "evidence": "10节点，只存在GET/POST客户路径，没有成绩/历史/请假/投诉/日报/组织/指南/待办等API分支",
+      "state": "published_and_repository_graph_verified",
+      "fix": "按ENT-01至13逐项接线和验收，后端已实现不能当作Dify完成"
+    },
+    {
+      "id": "F09",
+      "priority": "P2",
+      "title": "员工编号写死、无可信身份和确认状态接入",
+      "evidence": "prompt和code默认owner_employee_id=1，HTTP no-auth，无确认状态节点；正常后端仍503",
+      "state": "graph_verified_and_live_rejection_verified",
+      "fix": "使用BASE可信身份；不让模型或访客选择身份；敏感写入由明确的确认状态驱动"
+    },
+    {
+      "id": "F10",
+      "priority": "P2",
+      "title": "验收辅助脚本退出码不能代表Dify全量通过",
+      "evidence": "run_ent_dify_acceptance只依据pytest退出码和容器curl退出码，没有执行对话，未检查业务状态语义",
+      "state": "source_review",
+      "fix": "将对话终态、实际HTTP状态、数据不变/入库断言和未覆盖项纳入独立验收结果"
+    }
+  ],
+  "source_sha256": {
+    "app/modules/score/identity.py": "a307b5924caea2201e849f9a973b7a14a600f9428d2907641f96bc5ae71e3696",
+    "app/modules/score/models.py": "9304217721b09cd8cb8cdcb03158c212c9ab5d3a40e4407b3543f940089bdacb",
+    "app/modules/score/schemas.py": "179168e0d606b8d4fb478255a27b6e639ad5d9ae7e011d8f7c13e86288209d60",
+    "app/modules/score/repository.py": "bd69bcd232d4062e2b4240ac3415cedd55d6a0d2e708bae7026b861b4464252e",
+    "app/modules/score/service.py": "f6d70a6c8fb43447f4fee55f2924bf364b3a4064aa3b0cf3e17d9924e56776b5",
+    "app/modules/score/router.py": "435aa5bb3b622216576eb04a903fffc077008b3207dc7931999a2bffd087a205",
+    "app/modules/todo/models.py": "5e5d9a6e6f6b5b047ceb28e5ecdefddf6670d4560d297fb5e47f22abd8fd0b7a",
+    "app/modules/todo/sync_repository.py": "320763ea046160c86898871902f10edd573381c1bf2e803b8c6857915e82e679",
+    "app/modules/todo/synchronization.py": "b8bd14e289c4c92f18693bc49c8d77675fc8ea5a78b283d35dc1afe79fc3286b",
+    "app/modules/todo/reminder_repository.py": "7eebf842ae607f47927b7e4f9dc50ecc603060b6e57b9e1b4d3966273a130d9f",
+    "app/modules/todo/reminders.py": "c8b7869652ea33727c8fbcc61d75d774e61a0d8425284f2acf8a8ef8b2974bd4",
+    "app/modules/student_admin/repository.py": "1749fd2baeed928f4f8fa4ba67ccff94da171389717fa968692183c7f850f067",
+    "app/modules/student_admin/service.py": "ac41785357091a2595b5a3068bb147fd903b7433bf221324b6ead7bb79988586",
+    "app/modules/feedback/service.py": "bb79da851585ad6df21fc1b38c179dd02ad16a470353f80af4ca9faa7bf4cff3",
+    "app/shared/utils/serialization.py": "f4a62b61cd209095799e598d6b1a14927638ab4f751fcfe0cc2cef9b0def4517",
+    "scripts/migrate_ent_reliability.py": "6ea1cfc27ba67f907313a2b1f6737f4eb24def4877a85c5bc0c9050a3e76a8e3",
+    "scripts/verify_ent_concurrency.py": "66d19fdf7e08864c2a1409188c1272a771036d79fb88b50a54d9b3777ac534c1",
+    "scripts/local_ent_validation.py": "25fcf102f24eed72a8eb33f8957511329502889ae17863b46514949518c937d7",
+    "migrations/001_ent_reliability_expected.sql": "771235b71ae25afe888a4997a27f6f8028dab3cffb30fc664fdc26f0a10061f0",
+    "tests/integration/test_ent_support.py": "793747d1271ad05b00f5984476b8081a4376bc3be0a573277f3fc48b17b0a2a0"
+  }
+}

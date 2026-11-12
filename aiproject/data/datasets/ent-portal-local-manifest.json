@@ -1,0 +1,59 @@
+{
+  "accounts": [
+    {
+      "id": 1000007,
+      "username": "ent_admin",
+      "role": "admin",
+      "name": "联调管理员"
+    },
+    {
+      "id": 1000008,
+      "username": "ent_employee",
+      "role": "employee",
+      "name": "联调员工"
+    },
+    {
+      "id": 1000009,
+      "username": "ent_manager",
+      "role": "manager",
+      "name": "联调经理"
+    },
+    {
+      "id": 1000010,
+      "username": "ent_teacher",
+      "role": "team_leader",
+      "name": "联调班主任"
+    }
+  ],
+  "student_ids": [
+    1000011,
+    1000012
+  ],
+  "demo": {
+    "admin": {
+      "lead_id": 28,
+      "ticket_id": 7,
+      "leave_id": 7,
+      "todo_id": 66
+    },
+    "employee": {
+      "lead_id": 29,
+      "ticket_id": 8,
+      "leave_id": 8,
+      "todo_id": 67
+    },
+    "manager": {
+      "lead_id": 30,
+      "ticket_id": 9,
+      "leave_id": 9,
+      "todo_id": 68
+    },
+    "team_leader": {
+      "lead_id": 31,
+      "ticket_id": 10,
+      "leave_id": 10,
+      "todo_id": 69
+    }
+  },
+  "credential_file": "D:\\Project course\\group_wuweiwen_yujiao\\aiproject\\logs\\ent-portal-local-credentials.json"
+}

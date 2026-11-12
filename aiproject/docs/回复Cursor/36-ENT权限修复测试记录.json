@@ -1,0 +1,23 @@
+{
+  "at": "2026-11-11T14:20:54.304Z",
+  "scope": "Isolated SQLite ASGI tests; no production JWT, MySQL concurrency or cloud deployment verified",
+  "result": {
+    "code": 0,
+    "stdout": "........................                                                 [100%]\r\n============================== warnings summary ===============================\r\n.venv313\\Lib\\site-packages\\fastapi\\testclient.py:1\r\n  D:\\Project course\\group_wuweiwen_yujiao\\aiproject\\.venv313\\Lib\\site-packages\\fastapi\\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\r\n    from starlette.testclient import TestClient as TestClient  # noqa\r\n\r\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\r\n24 passed, 1 warning in 4.31s\r\n",
+    "stderr": ""
+  },
+  "sha256": {
+    "app/core/responses.py": "73c60b0d4f5b36098bdcdb95a9d9d4ef70abd06446c16966fed27b0f833ab55c",
+    "app/modules/employee_report/router.py": "5c6159b1880172bbc2461f80ba28df50965b422291f8c4205c9aa9762731c571",
+    "app/modules/student_admin/router.py": "369956dcc1dc5f5fe5fc8418c30b1ed6e153be0f0485d80e0ec7a0f69b1ef44c",
+    "app/modules/student_admin/service.py": "e37820bacd5e9968548b4ab10c272137c0aaaba7119cbf0f1ce13f5b62d021c0",
+    "app/modules/student_admin/repository.py": "9eb40c76901826a0f793043ce527ef89cf68ee00ff6ba5d50d84f766a492d92c",
+    "app/modules/consultant/repository.py": "d294c6a4d253080b8f8e38201dbadf42e7197893cb0956ef7a3f4a95a01f2fa4",
+    "app/ai/nl2sql/security.py": "dc7f4e4faae077447e25d84a9f2d279c31d12fb7bdb2269491b71f0ffa0adc61",
+    "app/ai/nl2sql/executor.py": "a9332045f3e64c1cba4a7b9edf87af86cbef2f4c87fd114fe74aa37fda27454b",
+    "app/ai/nl2sql/router.py": "0fd13d2e6038824ddcc9adabea9b53c2b259e542168dcd3a2b39230282a2711a",
+    "app/modules/enterprise_ops/router.py": "6bfc23aa93350d5ba6eabebd22e919af353472caaa9a31199735eb8a40a0b39f",
+    "app/ai/nl2sql/schemas.py": "f4a89fe7eb92dce95f7ea38123a0fec0145d69e5280f45691520fbfb631caec7",
+    "tests/test_ent_access_boundaries.py": "ff36396b5f438054f099565764bfc5dc744b1b7c54cda2c0db86302349d661eb"
+  }
+}

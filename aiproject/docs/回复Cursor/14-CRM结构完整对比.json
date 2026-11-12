@@ -1,0 +1,471 @@
+{
+  "standard_sql": "D:\\Project course\\group_wuweiwen_yujiao\\教育服务_0914\\2222通过表可以实现curd\\db_init.sql",
+  "standard_sql_sha256_prefix": "2f21633a2667d088",
+  "database": "education_service",
+  "scope_note": "31表仅做存在性；CRM两表做下列维度对比",
+  "tables": {
+    "crm_lead": {
+      "columns_db": [
+        {
+          "COLUMN_NAME": "id",
+          "COLUMN_TYPE": "bigint unsigned",
+          "IS_NULLABLE": "NO",
+          "COLUMN_DEFAULT": null,
+          "COLUMN_KEY": "PRI",
+          "EXTRA": "auto_increment",
+          "CHARACTER_SET_NAME": null,
+          "COLLATION_NAME": null
+        },
+        {
+          "COLUMN_NAME": "customer_name",
+          "COLUMN_TYPE": "varchar(64)",
+          "IS_NULLABLE": "NO",
+          "COLUMN_DEFAULT": null,
+          "COLUMN_KEY": "",
+          "EXTRA": "",
+          "CHARACTER_SET_NAME": "utf8mb4",
+          "COLLATION_NAME": "utf8mb4_unicode_ci"
+        },
+        {
+          "COLUMN_NAME": "contact_info",
+          "COLUMN_TYPE": "varchar(128)",
+          "IS_NULLABLE": "YES",
+          "COLUMN_DEFAULT": null,
+          "COLUMN_KEY": "",
+          "EXTRA": "",
+          "CHARACTER_SET_NAME": "utf8mb4",
+          "COLLATION_NAME": "utf8mb4_unicode_ci"
+        },
+        {
+          "COLUMN_NAME": "gender",
+          "COLUMN_TYPE": "enum('M','F','U')",
+          "IS_NULLABLE": "YES",
+          "COLUMN_DEFAULT": "U",
+          "COLUMN_KEY": "",
+          "EXTRA": "",
+          "CHARACTER_SET_NAME": "utf8mb4",
+          "COLLATION_NAME": "utf8mb4_unicode_ci"
+        },
+        {
+          "COLUMN_NAME": "age",
+          "COLUMN_TYPE": "int",
+          "IS_NULLABLE": "YES",
+          "COLUMN_DEFAULT": null,
+          "COLUMN_KEY": "",
+          "EXTRA": "",
+          "CHARACTER_SET_NAME": null,
+          "COLLATION_NAME": null
+        },
+        {
+          "COLUMN_NAME": "education_level",
+          "COLUMN_TYPE": "varchar(64)",
+          "IS_NULLABLE": "YES",
+          "COLUMN_DEFAULT": null,
+          "COLUMN_KEY": "",
+          "EXTRA": "",
+          "CHARACTER_SET_NAME": "utf8mb4",
+          "COLLATION_NAME": "utf8mb4_unicode_ci"
+        },
+        {
+          "COLUMN_NAME": "intended_country",
+          "COLUMN_TYPE": "varchar(128)",
+          "IS_NULLABLE": "YES",
+          "COLUMN_DEFAULT": null,
+          "COLUMN_KEY": "",
+          "EXTRA": "",
+          "CHARACTER_SET_NAME": "utf8mb4",
+          "COLLATION_NAME": "utf8mb4_unicode_ci"
+        },
+        {
+          "COLUMN_NAME": "intended_major",
+          "COLUMN_TYPE": "varchar(128)",
+          "IS_NULLABLE": "YES",
+          "COLUMN_DEFAULT": null,
+          "COLUMN_KEY": "",
+          "EXTRA": "",
+          "CHARACTER_SET_NAME": "utf8mb4",
+          "COLLATION_NAME": "utf8mb4_unicode_ci"
+        },
+        {
+          "COLUMN_NAME": "background_info",
+          "COLUMN_TYPE": "text",
+          "IS_NULLABLE": "YES",
+          "COLUMN_DEFAULT": null,
+          "COLUMN_KEY": "",
+          "EXTRA": "",
+          "CHARACTER_SET_NAME": "utf8mb4",
+          "COLLATION_NAME": "utf8mb4_unicode_ci"
+        },
+        {
+          "COLUMN_NAME": "customer_profile_id",
+          "COLUMN_TYPE": "bigint unsigned",
+          "IS_NULLABLE": "YES",
+          "COLUMN_DEFAULT": null,
+          "COLUMN_KEY": "MUL",
+          "EXTRA": "",
+          "CHARACTER_SET_NAME": null,
+          "COLLATION_NAME": null
+        },
+        {
+          "COLUMN_NAME": "source_channel",
+          "COLUMN_TYPE": "varchar(64)",
+          "IS_NULLABLE": "YES",
+          "COLUMN_DEFAULT": null,
+          "COLUMN_KEY": "",
+          "EXTRA": "",
+          "CHARACTER_SET_NAME": "utf8mb4",
+          "COLLATION_NAME": "utf8mb4_unicode_ci"
+        },
+        {
+          "COLUMN_NAME": "status",
+          "COLUMN_TYPE": "enum('new','contacting','qualified','signed','lost')",
+          "IS_NULLABLE": "NO",
+          "COLUMN_DEFAULT": "new",
+          "COLUMN_KEY": "MUL",
+          "EXTRA": "",
+          "CHARACTER_SET_NAME": "utf8mb4",
+          "COLLATION_NAME": "utf8mb4_unicode_ci"
+        },
+        {
+          "COLUMN_NAME": "owner_employee_id",
+          "COLUMN_TYPE": "bigint unsigned",
+          "IS_NULLABLE": "NO",
+          "COLUMN_DEFAULT": null,
+          "COLUMN_KEY": "MUL",
+          "EXTRA": "",
+          "CHARACTER_SET_NAME": null,
+          "COLLATION_NAME": null
+        },
+        {
+          "COLUMN_NAME": "last_contact_time",
+          "COLUMN_TYPE": "datetime",
+          "IS_NULLABLE": "YES",
+          "COLUMN_DEFAULT": null,
+          "COLUMN_KEY": "",
+          "EXTRA": "",
+          "CHARACTER_SET_NAME": null,
+          "COLLATION_NAME": null
+        },
+        {
+          "COLUMN_NAME": "lost_reason",
+          "COLUMN_TYPE": "varchar(255)",
+          "IS_NULLABLE": "YES",
+          "COLUMN_DEFAULT": null,
+          "COLUMN_KEY": "",
+          "EXTRA": "",
+          "CHARACTER_SET_NAME": "utf8mb4",
+          "COLLATION_NAME": "utf8mb4_unicode_ci"
+        },
+        {
+          "COLUMN_NAME": "remark",
+          "COLUMN_TYPE": "text",
+          "IS_NULLABLE": "YES",
+          "COLUMN_DEFAULT": null,
+          "COLUMN_KEY": "",
+          "EXTRA": "",
+          "CHARACTER_SET_NAME": "utf8mb4",
+          "COLLATION_NAME": "utf8mb4_unicode_ci"
+        },
+        {
+          "COLUMN_NAME": "create_time",
+          "COLUMN_TYPE": "datetime",
+          "IS_NULLABLE": "NO",
+          "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+          "COLUMN_KEY": "",
+          "EXTRA": "DEFAULT_GENERATED",
+          "CHARACTER_SET_NAME": null,
+          "COLLATION_NAME": null
+        },
+        {
+          "COLUMN_NAME": "update_time",
+          "COLUMN_TYPE": "datetime",
+          "IS_NULLABLE": "NO",
+          "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+          "COLUMN_KEY": "",
+          "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP",
+          "CHARACTER_SET_NAME": null,
+          "COLLATION_NAME": null
+        }
+      ],
+      "indexes_db": [
+        {
+          "Table": "crm_lead",
+          "Non_unique": 0,
+          "Key_name": "PRIMARY",
+          "Seq_in_index": 1,
+          "Column_name": "id",
+          "Collation": "A",
+          "Cardinality": 4,
+          "Sub_part": null,
+          "Packed": null,
+          "Null": "",
+          "Index_type": "BTREE",
+          "Comment": "",
+          "Index_comment": "",
+          "Visible": "YES",
+          "Expression": null
+        },
+        {
+          "Table": "crm_lead",
+          "Non_unique": 1,
+          "Key_name": "idx_status",
+          "Seq_in_index": 1,
+          "Column_name": "status",
+          "Collation": "A",
+          "Cardinality": 3,
+          "Sub_part": null,
+          "Packed": null,
+          "Null": "",
+          "Index_type": "BTREE",
+          "Comment": "",
+          "Index_comment": "",
+          "Visible": "YES",
+          "Expression": null
+        },
+        {
+          "Table": "crm_lead",
+          "Non_unique": 1,
+          "Key_name": "idx_owner",
+          "Seq_in_index": 1,
+          "Column_name": "owner_employee_id",
+          "Collation": "A",
+          "Cardinality": 1,
+          "Sub_part": null,
+          "Packed": null,
+          "Null": "",
+          "Index_type": "BTREE",
+          "Comment": "",
+          "Index_comment": "",
+          "Visible": "YES",
+          "Expression": null
+        },
+        {
+          "Table": "crm_lead",
+          "Non_unique": 1,
+          "Key_name": "idx_customer_profile",
+          "Seq_in_index": 1,
+          "Column_name": "customer_profile_id",
+          "Collation": "A",
+          "Cardinality": 1,
+          "Sub_part": null,
+          "Packed": null,
+          "Null": "YES",
+          "Index_type": "BTREE",
+          "Comment": "",
+          "Index_comment": "",
+          "Visible": "YES",
+          "Expression": null
+        }
+      ],
+      "columns_std_raw": {
+        "id": {
+          "raw": "`id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键'"
+        },
+        "customer_name": {
+          "raw": "`customer_name`     VARCHAR(64)     NOT NULL                COMMENT '客户姓名'"
+        },
+        "contact_info": {
+          "raw": "`contact_info`      VARCHAR(128)    DEFAULT NULL            COMMENT '联系方式（手机/邮箱）'"
+        },
+        "gender": {
+          "raw": "`gender`            ENUM('M','F','U') DEFAULT 'U'           COMMENT '性别'"
+        },
+        "age": {
+          "raw": "`age`               INT             DEFAULT NULL            COMMENT '年龄'"
+        },
+        "education_level": {
+          "raw": "`education_level`   VARCHAR(64)     DEFAULT NULL            COMMENT '学历层次'"
+        },
+        "intended_country": {
+          "raw": "`intended_country`  VARCHAR(128)    DEFAULT NULL            COMMENT '意向国家（多值逗号分隔）'"
+        },
+        "intended_major": {
+          "raw": "`intended_major`    VARCHAR(128)    DEFAULT NULL            COMMENT '意向专业'"
+        },
+        "background_info": {
+          "raw": "`background_info`   TEXT            DEFAULT NULL            COMMENT '客户背景与档案'"
+        },
+        "customer_profile_id": {
+          "raw": "`customer_profile_id` BIGINT UNSIGNED DEFAULT NULL          COMMENT '关联客户画像ID'"
+        },
+        "source_channel": {
+          "raw": "`source_channel`    VARCHAR(64)     DEFAULT NULL            COMMENT '来源渠道（线上/线下/转介绍等）'"
+        },
+        "status": {
+          "raw": "`status`            ENUM('new','contacting','qualified','signed','lost') NOT NULL DEFAULT 'new' COMMENT '流转状态'"
+        },
+        "owner_employee_id": {
+          "raw": "`owner_employee_id` BIGINT UNSIGNED NOT NULL                COMMENT '负责员工ID'"
+        },
+        "last_contact_time": {
+          "raw": "`last_contact_time` DATETIME        DEFAULT NULL            COMMENT '最后联系时间'"
+        },
+        "lost_reason": {
+          "raw": "`lost_reason`       VARCHAR(255)    DEFAULT NULL            COMMENT '流失原因'"
+        },
+        "remark": {
+          "raw": "`remark`            TEXT            DEFAULT NULL            COMMENT '备注'"
+        },
+        "create_time": {
+          "raw": "`create_time`       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP"
+        },
+        "update_time": {
+          "raw": "`update_time`       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+        }
+      },
+      "show_create": "CREATE TABLE `crm_lead` (\n  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键',\n  `customer_name` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '客户姓名',\n  `contact_info` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '联系方式（手机/邮箱）',\n  `gender` enum('M','F','U') COLLATE utf8mb4_unicode_ci DEFAULT 'U' COMMENT '性别',\n  `age` int DEFAULT NULL COMMENT '年龄',\n  `education_level` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '学历层次',\n  `intended_country` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '意向国家（多值逗号分隔）',\n  `intended_major` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '意向专业',\n  `background_info` text COLLATE utf8mb4_unicode_ci COMMENT '客户背景与档案',\n  `customer_profile_id` bigint unsigned DEFAULT NULL COMMENT '关联客户画像ID',\n  `source_channel` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '来源渠道（线上/线下/转介绍等）',\n  `status` enum('new','contacting','qualified','signed','lost') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'new' COMMENT '流转状态',\n  `owner_employee_id` bigint unsigned NOT NULL COMMENT '负责员工ID',\n  `last_contact_time` datetime DEFAULT NULL COMMENT '最后联系时间',\n  `lost_reason` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '流失原因',\n  `remark` text COLLATE utf8mb4_unicode_ci COMMENT '备注',\n  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  KEY `idx_status` (`status`),\n  KEY `idx_owner` (`owner_employee_id`),\n  KEY `idx_customer_profile` (`customer_profile_id`)\n) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='意向客户表'"
+    },
+    "crm_follow_up": {
+      "columns_db": [
+        {
+          "COLUMN_NAME": "id",
+          "COLUMN_TYPE": "bigint unsigned",
+          "IS_NULLABLE": "NO",
+          "COLUMN_DEFAULT": null,
+          "COLUMN_KEY": "PRI",
+          "EXTRA": "auto_increment",
+          "CHARACTER_SET_NAME": null,
+          "COLLATION_NAME": null
+        },
+        {
+          "COLUMN_NAME": "lead_id",
+          "COLUMN_TYPE": "bigint unsigned",
+          "IS_NULLABLE": "NO",
+          "COLUMN_DEFAULT": null,
+          "COLUMN_KEY": "MUL",
+          "EXTRA": "",
+          "CHARACTER_SET_NAME": null,
+          "COLLATION_NAME": null
+        },
+        {
+          "COLUMN_NAME": "employee_id",
+          "COLUMN_TYPE": "bigint unsigned",
+          "IS_NULLABLE": "NO",
+          "COLUMN_DEFAULT": null,
+          "COLUMN_KEY": "MUL",
+          "EXTRA": "",
+          "CHARACTER_SET_NAME": null,
+          "COLLATION_NAME": null
+        },
+        {
+          "COLUMN_NAME": "follow_type",
+          "COLUMN_TYPE": "enum('phone','wechat','meeting','email','other')",
+          "IS_NULLABLE": "YES",
+          "COLUMN_DEFAULT": null,
+          "COLUMN_KEY": "",
+          "EXTRA": "",
+          "CHARACTER_SET_NAME": "utf8mb4",
+          "COLLATION_NAME": "utf8mb4_unicode_ci"
+        },
+        {
+          "COLUMN_NAME": "content",
+          "COLUMN_TYPE": "text",
+          "IS_NULLABLE": "NO",
+          "COLUMN_DEFAULT": null,
+          "COLUMN_KEY": "",
+          "EXTRA": "",
+          "CHARACTER_SET_NAME": "utf8mb4",
+          "COLLATION_NAME": "utf8mb4_unicode_ci"
+        },
+        {
+          "COLUMN_NAME": "next_plan",
+          "COLUMN_TYPE": "varchar(255)",
+          "IS_NULLABLE": "YES",
+          "COLUMN_DEFAULT": null,
+          "COLUMN_KEY": "",
+          "EXTRA": "",
+          "CHARACTER_SET_NAME": "utf8mb4",
+          "COLLATION_NAME": "utf8mb4_unicode_ci"
+        },
+        {
+          "COLUMN_NAME": "create_time",
+          "COLUMN_TYPE": "datetime",
+          "IS_NULLABLE": "NO",
+          "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+          "COLUMN_KEY": "",
+          "EXTRA": "DEFAULT_GENERATED",
+          "CHARACTER_SET_NAME": null,
+          "COLLATION_NAME": null
+        }
+      ],
+      "indexes_db": [
+        {
+          "Table": "crm_follow_up",
+          "Non_unique": 0,
+          "Key_name": "PRIMARY",
+          "Seq_in_index": 1,
+          "Column_name": "id",
+          "Collation": "A",
+          "Cardinality": 2,
+          "Sub_part": null,
+          "Packed": null,
+          "Null": "",
+          "Index_type": "BTREE",
+          "Comment": "",
+          "Index_comment": "",
+          "Visible": "YES",
+          "Expression": null
+        },
+        {
+          "Table": "crm_follow_up",
+          "Non_unique": 1,
+          "Key_name": "idx_lead_id",
+          "Seq_in_index": 1,
+          "Column_name": "lead_id",
+          "Collation": "A",
+          "Cardinality": 2,
+          "Sub_part": null,
+          "Packed": null,
+          "Null": "",
+          "Index_type": "BTREE",
+          "Comment": "",
+          "Index_comment": "",
+          "Visible": "YES",
+          "Expression": null
+        },
+        {
+          "Table": "crm_follow_up",
+          "Non_unique": 1,
+          "Key_name": "idx_employee_id",
+          "Seq_in_index": 1,
+          "Column_name": "employee_id",
+          "Collation": "A",
+          "Cardinality": 1,
+          "Sub_part": null,
+          "Packed": null,
+          "Null": "",
+          "Index_type": "BTREE",
+          "Comment": "",
+          "Index_comment": "",
+          "Visible": "YES",
+          "Expression": null
+        }
+      ],
+      "columns_std_raw": {
+        "id": {
+          "raw": "`id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键'"
+        },
+        "lead_id": {
+          "raw": "`lead_id`           BIGINT UNSIGNED NOT NULL                COMMENT '关联意向客户ID'"
+        },
+        "employee_id": {
+          "raw": "`employee_id`       BIGINT UNSIGNED NOT NULL                COMMENT '跟进人ID'"
+        },
+        "follow_type": {
+          "raw": "`follow_type`       ENUM('phone','wechat','meeting','email','other') DEFAULT NULL COMMENT '跟进方式'"
+        },
+        "content": {
+          "raw": "`content`           TEXT            NOT NULL                COMMENT '跟进记录内容'"
+        },
+        "next_plan": {
+          "raw": "`next_plan`         VARCHAR(255)    DEFAULT NULL            COMMENT '下次跟进计划'"
+        },
+        "create_time": {
+          "raw": "`create_time`       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP"
+        }
+      },
+      "show_create": "CREATE TABLE `crm_follow_up` (\n  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键',\n  `lead_id` bigint unsigned NOT NULL COMMENT '关联意向客户ID',\n  `employee_id` bigint unsigned NOT NULL COMMENT '跟进人ID',\n  `follow_type` enum('phone','wechat','meeting','email','other') COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '跟进方式',\n  `content` text COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '跟进记录内容',\n  `next_plan` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '下次跟进计划',\n  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  KEY `idx_lead_id` (`lead_id`),\n  KEY `idx_employee_id` (`employee_id`)\n) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='客户跟进记录表'"
+    }
+  },
+  "table_count": 31
+}

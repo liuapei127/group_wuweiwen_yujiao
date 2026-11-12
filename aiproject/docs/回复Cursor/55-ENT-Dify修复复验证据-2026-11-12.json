@@ -1,0 +1,252 @@
+{
+  "at": "2026-11-12T03:09:11.516Z",
+  "scope": "Local defect repairs; isolated trusted-principal tests plus ordinary published WebApp calls with production employee auth intentionally blocked",
+  "dify": {
+    "app_id": "ac18cfb8-3f60-406f-99dd-d9cc635dc71f",
+    "published": {
+      "id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+      "nodes": 32,
+      "edges": 31,
+      "graph_sha256": "7181c44ee0619eb719b6e67212a061f69193e058a1174210d5241e3743b1f8bd",
+      "environment_variable_names": [
+        "base_url"
+      ],
+      "conversation_variable_names": [
+        "pending_action"
+      ]
+    },
+    "draft": {
+      "id": "ee5e2fe7-5d1f-4c34-bb01-dfb0afcd3780",
+      "nodes": 32,
+      "edges": 31,
+      "graph_sha256": "7181c44ee0619eb719b6e67212a061f69193e058a1174210d5241e3743b1f8bd",
+      "environment_variable_names": [
+        "base_url"
+      ],
+      "conversation_variable_names": [
+        "pending_action"
+      ]
+    },
+    "old_published_retained": true,
+    "published_draft_graph_equal": true
+  },
+  "checks": {
+    "pytest": {
+      "passed": 91,
+      "total": 91,
+      "output": "logs/ent-repair-final-pytest.log"
+    },
+    "mysql_business": {
+      "passed": 31,
+      "total": 31,
+      "expected_tables": 32,
+      "actual_tables": 32,
+      "schema_differences": 0,
+      "data_gaps": 0,
+      "rolled_back": true,
+      "report": "docs/回复Cursor/runs/ent-local-repair-verification.json"
+    },
+    "normal_http": {
+      "passed": 33,
+      "total": 33,
+      "openapi_operations": 30,
+      "forged_identity_cases": 3,
+      "database_unchanged": true,
+      "report": "docs/回复Cursor/runs/ent-http-repair-verification.json"
+    },
+    "concurrency": {
+      "consecutive_passed": 5,
+      "consecutive_total": 5,
+      "processes": 4,
+      "operations_per_round": 36,
+      "additional_final_round_passed": true,
+      "consecutive_report": "docs/回复Cursor/runs/ent-repair-concurrency-consecutive.json",
+      "final_report": "docs/回复Cursor/runs/ent-repair-concurrency-final.json"
+    },
+    "draft": {
+      "passed": 46,
+      "total": 46,
+      "reports": [
+        "docs/回复Cursor/runs/ent-repair-draft-rechecked.json",
+        "docs/回复Cursor/runs/ent-repair-draft-extra-rechecked.json"
+      ]
+    },
+    "published_webapp": {
+      "passed": 46,
+      "total": 46,
+      "status_counts": {
+        "succeeded": 19,
+        "partial-succeeded": 27
+      },
+      "actual_business_intents": [
+        "colleague_contact",
+        "colleagues",
+        "daily_list",
+        "daily_submit",
+        "guide_create",
+        "guides",
+        "lead_create",
+        "lead_detail",
+        "lead_follow_up",
+        "lead_list",
+        "lead_status",
+        "lead_update",
+        "leave_approve",
+        "leaves",
+        "nl_query",
+        "notifications",
+        "organizations",
+        "score_correct",
+        "score_create",
+        "score_history",
+        "scores",
+        "ticket_detail",
+        "ticket_update",
+        "tickets",
+        "todo_create",
+        "todo_update",
+        "todos"
+      ],
+      "actual_business_calls": 27,
+      "public_stream_report": "docs/回复Cursor/runs/ent-public-repair-full.json",
+      "persisted_trace_report": "docs/回复Cursor/runs/ent-public-repair-verified.json",
+      "interpretation": "19 normal success runs and 27 handled HTTP503 runs; partial-succeeded retained. No authenticated employee writes accepted."
+    },
+    "parser_regressions": {
+      "passed": 8,
+      "total": 8,
+      "report": "docs/回复Cursor/runs/dify-graph-repair-review-2026-11-12.json"
+    },
+    "basic_infrastructure": {
+      "passed": true,
+      "report": "docs/回复Cursor/runs/ent-repair-basic-acceptance.json"
+    }
+  },
+  "environment": {
+    "compose_project": "dify",
+    "duplicate_project": "docker",
+    "duplicate_containers_stopped_and_restart_disabled": true,
+    "external_compose_project_name_pinned": true,
+    "redis": {
+      "old_snapshot_valid": false,
+      "original_snapshot_retained": true,
+      "corrupt_snapshot_backup": "logs/dify-redis-corrupt-before-repair-20261112.rdb",
+      "recovered_snapshot": "ent-recovered-20261112.rdb",
+      "old_cache_and_login_sessions_restored": false
+    },
+    "postgres_backup": {
+      "file": "logs/dify-before-repair-20261112-102615/dify.pgdump",
+      "bytes": 1679219,
+      "sha256": "681fe7327f7828aba55e275a6ef448d5b680ac8317e325a82dfd91129d75c2a3"
+    },
+    "business_volumes_deleted": false,
+    "new_api_credentials_created": false
+  },
+  "remaining": [
+    "Trusted employee JWT/BASE integration and actual authenticated end-to-end persistence acceptance",
+    "Voice input/output configuration",
+    "Supervisor data access rules requiring confirmed business authorization"
+  ],
+  "source_hashes": [
+    {
+      "file": "app/ai/workflows/ent_contracts.py",
+      "sha256": "7017f46328ac7c2fdd393c9fd00c526e26fe2b48f2215fd73604282b0b65a9b5"
+    },
+    {
+      "file": "app/modules/todo/reminders.py",
+      "sha256": "df150b6266da7d9390da70234ae08fe00d2e4632a5d1276b500b65c024890a0f"
+    },
+    {
+      "file": "app/modules/todo/reminder_repository.py",
+      "sha256": "6e647bea8c4b3c3650604654351a4c2444629b6ee2708f235f3f84d2d4bdd1a1"
+    },
+    {
+      "file": "app/modules/consultant/router.py",
+      "sha256": "295f47d928bcbbd289da32cfdfb560b35a787072500dc7f854f924996ee79023"
+    },
+    {
+      "file": "app/modules/consultant/schemas.py",
+      "sha256": "c6c9eb7c3438567f5bc6b028c094aeb25d2cec4447732e35fa18669a6eb96dcd"
+    },
+    {
+      "file": "app/modules/consultant/models.py",
+      "sha256": "d26eee44d4b2863c6d1e51fd99c4f8ae5c79e5f8aee62dbba6d20c54df71763f"
+    },
+    {
+      "file": "app/modules/consultant/service.py",
+      "sha256": "7207de5c2700f490e6140d445ce1b1379fe7f90cb097a4df283c1592fade5848"
+    },
+    {
+      "file": "app/modules/employee_report/router.py",
+      "sha256": "9b03d970ed7371298cf84ca094d134bb61834afcadbd5071caba3f39413ecba1"
+    },
+    {
+      "file": "app/modules/employee_report/schemas.py",
+      "sha256": "106692b8c7d64ccb7673e150fc4cffb55db96682d1d56f23b733f81509788438"
+    },
+    {
+      "file": "app/modules/student_admin/router.py",
+      "sha256": "99f0dff63e757e792b71c30a2bd0b6a5ed1edb23cd57f0a7b08414d146f026e7"
+    },
+    {
+      "file": "app/modules/student_admin/schemas.py",
+      "sha256": "1d2444d06419f467e1ec5c3494a4d80f37a0c63c14a7eb0825d68896aae498da"
+    },
+    {
+      "file": "scripts/build_ent_chatflow.py",
+      "sha256": "deb5123bf58aa82127f549aef26b992d5cf37c1d1d89729f817f2059177c683c"
+    },
+    {
+      "file": "scripts/dify_runtime_review.py",
+      "sha256": "1cd263d9a7e44aa282792f8bb21792cd24708f847367ebe759be1cdcf8df9569"
+    },
+    {
+      "file": "scripts/dify_published_review.py",
+      "sha256": "de6bcfec6cece8b01f1b479419c568c3fdb74dec818315e4f1c39eb73d5dbb70"
+    },
+    {
+      "file": "scripts/sync_ent_chatflow_native.py",
+      "sha256": "82a066dee9042f9dbb5c4cf9fed311abba934a3c9b8f982c2770cd16d57224da"
+    },
+    {
+      "file": "scripts/review_dify_graphs.py",
+      "sha256": "45a1305f4f79089bb56aca2fe8aa727443a8c32712ebdfd3fec10cb376f0260f"
+    },
+    {
+      "file": "scripts/run_ent_dify_acceptance.py",
+      "sha256": "b3d812dce4ccc8666548194683a0a46154120e99786650cc493342ed0349ec87"
+    },
+    {
+      "file": "docs/dify/ent-workflow-graph.json",
+      "sha256": "1771aa171f042ecd17a7c2f2ee170d54d03bfaee3d90ba489f218ee195cabb29"
+    },
+    {
+      "file": "docs/dify/ent-workflow-v3-fixed.yml",
+      "sha256": "7bc6b94d12e49f42ef32486f2784a5e222da5e755b849863baced49bb6d3f6c8"
+    },
+    {
+      "file": "tests/ai/test_ent_contracts.py",
+      "sha256": "261e8fedf400da11a7229fb364b3c38feae6795ba0d93431399f64551115921f"
+    },
+    {
+      "file": "tests/ai/test_ent_graph.py",
+      "sha256": "933834689c9c3229d82be276007a59085961d60c76be1c4bed48230197cf0785"
+    },
+    {
+      "file": "tests/modules/test_dify_acceptance.py",
+      "sha256": "446774738466507fe40b80721a4cf4dddad7cce08544a1330f7bb7b83919919a"
+    },
+    {
+      "file": "tests/integration/test_ent_access_boundaries.py",
+      "sha256": "38cdad75378ac57aafe93ba1943b3c0827fb89ec5a62b80806451b280e2bc9c7"
+    },
+    {
+      "file": "docs/architecture.md",
+      "sha256": "59e9c78cb950eb224804f0b3087df85de61d8f6adf76c5492bee7ebc5a9d7f7e"
+    },
+    {
+      "file": "scripts/inspect_ent_dify_state.py",
+      "sha256": "2eeb2a39211967d63f1b6abe56e2b236212697fb37ef832a6f960d2b145cecd7"
+    }
+  ]
+}

@@ -1,0 +1,682 @@
+[
+  {
+    "case_id": "M40",
+    "query": "修改客户20，备注为本地验证修复流程",
+    "workflow_id": "ee5e2fe7-5d1f-4c34-bb01-dfb0afcd3780",
+    "execution": "Dify AppGenerateService, blocking, owner workspace context",
+    "response": {
+      "event": "message",
+      "task_id": "bf32680d-8d76-4390-a2f9-fbc097aa2c19",
+      "id": "1837c8b8-7cbd-4ab4-9b07-62ec1e844d3f",
+      "message_id": "1837c8b8-7cbd-4ab4-9b07-62ec1e844d3f",
+      "conversation_id": "96d42651-4203-4a11-a28e-6783c8a8dbac",
+      "mode": "advanced-chat",
+      "answer": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nlead_update\n{\"lead_id\": 20, \"remark\": \"本地验证修复流程\"}",
+      "metadata": {
+        "annotation_reply": null,
+        "retriever_resources": [],
+        "usage": {
+          "prompt_tokens": 1039,
+          "prompt_unit_price": "0.012",
+          "prompt_price_unit": "0.001",
+          "prompt_price": "0.012468",
+          "completion_tokens": 221,
+          "completion_unit_price": "0.036",
+          "completion_price_unit": "0.001",
+          "completion_price": "0.007956",
+          "total_tokens": 1260,
+          "total_price": "0.020424",
+          "currency": "RMB",
+          "latency": 6.185,
+          "time_to_first_token": 7.402,
+          "time_to_generate": 0.0
+        },
+        "reasoning": {}
+      },
+      "created_at": 1794451951
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:52:30 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nlead_update\n{\"lead_id\": 20, \"remark\": \"本地验证修复流程\"}",
+          "pending": "{\"intent\": \"lead_update\", \"params\": {\"lead_id\": 20, \"remark\": \"本地验证修复流程\"}, \"state\": \"confirm\"}",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.41
+  },
+  {
+    "case_id": "M41",
+    "query": "确认",
+    "workflow_id": "ee5e2fe7-5d1f-4c34-bb01-dfb0afcd3780",
+    "execution": "Dify AppGenerateService, blocking, owner workspace context",
+    "response": {
+      "event": "message",
+      "task_id": "40bbcc1f-471f-4d29-a7df-ae117a39d1ea",
+      "id": "808e93ec-1b9b-4982-8eff-d5d20f81af3e",
+      "message_id": "808e93ec-1b9b-4982-8eff-d5d20f81af3e",
+      "conversation_id": "96d42651-4203-4a11-a28e-6783c8a8dbac",
+      "mode": "advanced-chat",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。",
+      "metadata": {
+        "annotation_reply": null,
+        "retriever_resources": [],
+        "usage": {
+          "prompt_tokens": 1062,
+          "prompt_unit_price": "0.012",
+          "prompt_price_unit": "0.001",
+          "prompt_price": "0.012744",
+          "completion_tokens": 226,
+          "completion_unit_price": "0.036",
+          "completion_price_unit": "0.001",
+          "completion_price": "0.008136",
+          "total_tokens": 1288,
+          "total_price": "0.02088",
+          "currency": "RMB",
+          "latency": 6.458,
+          "time_to_first_token": 7.208,
+          "time_to_generate": 0.0
+        },
+        "reasoning": {}
+      },
+      "created_at": 1794451958
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:52:38 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "patch",
+          "http_url": "http://host.docker.internal:8000/api/v1/consultant/leads/20",
+          "http_body": "{\"remark\": \"本地验证修复流程\"}",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "lead_update"
+        }
+      },
+      {
+        "node_id": "http_patch",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M42",
+    "query": "新增新人指南，标题本地测试说明，分类test，内容为仅用于本地功能验证",
+    "workflow_id": "ee5e2fe7-5d1f-4c34-bb01-dfb0afcd3780",
+    "execution": "Dify AppGenerateService, blocking, owner workspace context",
+    "response": {
+      "event": "message",
+      "task_id": "55219082-8cd0-4995-9214-d067c8b288aa",
+      "id": "bf220f46-eab5-45ff-b890-73ac8bf5d52a",
+      "message_id": "bf220f46-eab5-45ff-b890-73ac8bf5d52a",
+      "conversation_id": "6f3465d8-9f9d-4f7b-97a4-26b488669aef",
+      "mode": "advanced-chat",
+      "answer": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nguide_create\n{\"title\": \"本地测试说明\", \"category\": \"test\", \"content\": \"仅用于本地功能验证\"}",
+      "metadata": {
+        "annotation_reply": null,
+        "retriever_resources": [],
+        "usage": {
+          "prompt_tokens": 1046,
+          "prompt_unit_price": "0.012",
+          "prompt_price_unit": "0.001",
+          "prompt_price": "0.012552",
+          "completion_tokens": 156,
+          "completion_unit_price": "0.036",
+          "completion_price_unit": "0.001",
+          "completion_price": "0.005616",
+          "total_tokens": 1202,
+          "total_price": "0.018168",
+          "currency": "RMB",
+          "latency": 5.501,
+          "time_to_first_token": 6.058,
+          "time_to_generate": 0.0
+        },
+        "reasoning": {}
+      },
+      "created_at": 1794451966
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:52:45 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nguide_create\n{\"title\": \"本地测试说明\", \"category\": \"test\", \"content\": \"仅用于本地功能验证\"}",
+          "pending": "{\"intent\": \"guide_create\", \"params\": {\"title\": \"本地测试说明\", \"category\": \"test\", \"content\": \"仅用于本地功能验证\"}, \"state\": \"confirm\"}",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M43",
+    "query": "确认",
+    "workflow_id": "ee5e2fe7-5d1f-4c34-bb01-dfb0afcd3780",
+    "execution": "Dify AppGenerateService, blocking, owner workspace context",
+    "response": {
+      "event": "message",
+      "task_id": "f2d39955-68a5-4c9c-8bf8-ea3449e6eeb5",
+      "id": "3cb54649-5202-4d62-aac7-4cc44c24a500",
+      "message_id": "3cb54649-5202-4d62-aac7-4cc44c24a500",
+      "conversation_id": "6f3465d8-9f9d-4f7b-97a4-26b488669aef",
+      "mode": "advanced-chat",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。",
+      "metadata": {
+        "annotation_reply": null,
+        "retriever_resources": [],
+        "usage": {
+          "prompt_tokens": 1069,
+          "prompt_unit_price": "0.012",
+          "prompt_price_unit": "0.001",
+          "prompt_price": "0.012828",
+          "completion_tokens": 202,
+          "completion_unit_price": "0.036",
+          "completion_price_unit": "0.001",
+          "completion_price": "0.007272",
+          "total_tokens": 1271,
+          "total_price": "0.0201",
+          "currency": "RMB",
+          "latency": 7.179,
+          "time_to_first_token": 7.922,
+          "time_to_generate": 0.0
+        },
+        "reasoning": {}
+      },
+      "created_at": 1794451972
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:52:51 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "post",
+          "http_url": "http://host.docker.internal:8000/api/v1/enterprise/onboarding-guides",
+          "http_body": "{\"title\": \"本地测试说明\", \"category\": \"test\", \"content\": \"仅用于本地功能验证\"}",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "guide_create"
+        }
+      },
+      {
+        "node_id": "http_post",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M44",
+    "query": "新增待办，标题为本地接口测试",
+    "workflow_id": "ee5e2fe7-5d1f-4c34-bb01-dfb0afcd3780",
+    "execution": "Dify AppGenerateService, blocking, owner workspace context",
+    "response": {
+      "event": "message",
+      "task_id": "ba3948ef-9b4e-4c2f-9506-6144f6a8ace6",
+      "id": "12dde976-3440-437a-b86e-2a0ae2a72d1c",
+      "message_id": "12dde976-3440-437a-b86e-2a0ae2a72d1c",
+      "conversation_id": "fca7cd09-11a2-421a-9221-d39145f83fd5",
+      "mode": "advanced-chat",
+      "answer": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\ntodo_create\n{\"title\": \"本地接口测试\"}",
+      "metadata": {
+        "annotation_reply": null,
+        "retriever_resources": [],
+        "usage": {
+          "prompt_tokens": 1037,
+          "prompt_unit_price": "0.012",
+          "prompt_price_unit": "0.001",
+          "prompt_price": "0.012444",
+          "completion_tokens": 98,
+          "completion_unit_price": "0.036",
+          "completion_price_unit": "0.001",
+          "completion_price": "0.003528",
+          "total_tokens": 1135,
+          "total_price": "0.015972",
+          "currency": "RMB",
+          "latency": 3.684,
+          "time_to_first_token": 4.222,
+          "time_to_generate": 0.0
+        },
+        "reasoning": {}
+      },
+      "created_at": 1794451980
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:53:00 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\ntodo_create\n{\"title\": \"本地接口测试\"}",
+          "pending": "{\"intent\": \"todo_create\", \"params\": {\"title\": \"本地接口测试\"}, \"state\": \"confirm\"}",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.01
+  },
+  {
+    "case_id": "M45",
+    "query": "确认",
+    "workflow_id": "ee5e2fe7-5d1f-4c34-bb01-dfb0afcd3780",
+    "execution": "Dify AppGenerateService, blocking, owner workspace context",
+    "response": {
+      "event": "message",
+      "task_id": "af5e916b-d4fe-4f16-adb3-993ee2ab6a04",
+      "id": "c0d15456-1565-4f82-a46c-1a5a421f3a1f",
+      "message_id": "c0d15456-1565-4f82-a46c-1a5a421f3a1f",
+      "conversation_id": "fca7cd09-11a2-421a-9221-d39145f83fd5",
+      "mode": "advanced-chat",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。",
+      "metadata": {
+        "annotation_reply": null,
+        "retriever_resources": [],
+        "usage": {
+          "prompt_tokens": 1053,
+          "prompt_unit_price": "0.012",
+          "prompt_price_unit": "0.001",
+          "prompt_price": "0.012636",
+          "completion_tokens": 149,
+          "completion_unit_price": "0.036",
+          "completion_price_unit": "0.001",
+          "completion_price": "0.005364",
+          "total_tokens": 1202,
+          "total_price": "0.018",
+          "currency": "RMB",
+          "latency": 5.329,
+          "time_to_first_token": 6.765,
+          "time_to_generate": 0.0
+        },
+        "reasoning": {}
+      },
+      "created_at": 1794451984
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:53:04 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "post",
+          "http_url": "http://host.docker.internal:8000/api/v1/enterprise/todos",
+          "http_body": "{\"title\": \"本地接口测试\"}",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "todo_create"
+        }
+      },
+      {
+        "node_id": "http_post",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.01
+  },
+  {
+    "case_id": "M46",
+    "query": "使用nl_query查询，意图daily_reports_recent，参数为空对象，查询最近日报",
+    "workflow_id": "ee5e2fe7-5d1f-4c34-bb01-dfb0afcd3780",
+    "execution": "Dify AppGenerateService, blocking, owner workspace context",
+    "response": {
+      "event": "message",
+      "task_id": "91ddc112-8a21-436b-ac4b-76559c818a07",
+      "id": "e302640d-3bd0-4385-aeea-02dd9ca4448d",
+      "message_id": "e302640d-3bd0-4385-aeea-02dd9ca4448d",
+      "conversation_id": "f78ac26a-ad79-475d-9513-14ad85c11a2f",
+      "mode": "advanced-chat",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。",
+      "metadata": {
+        "annotation_reply": null,
+        "retriever_resources": [],
+        "usage": {
+          "prompt_tokens": 1045,
+          "prompt_unit_price": "0.012",
+          "prompt_price_unit": "0.001",
+          "prompt_price": "0.01254",
+          "completion_tokens": 167,
+          "completion_unit_price": "0.036",
+          "completion_price_unit": "0.001",
+          "completion_price": "0.006012",
+          "total_tokens": 1212,
+          "total_price": "0.018552",
+          "currency": "RMB",
+          "latency": 5.328,
+          "time_to_first_token": 7.171,
+          "time_to_generate": 0.0
+        },
+        "reasoning": {}
+      },
+      "created_at": 1794451991
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:53:11 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "post",
+          "http_url": "http://host.docker.internal:8000/api/v1/ai/nl2sql/query",
+          "http_body": "{\"intent\": \"daily_reports_recent\", \"params\": {}}",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "nl_query"
+        }
+      },
+      {
+        "node_id": "http_post",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.01
+  }
+]

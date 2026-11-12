@@ -1,0 +1,37 @@
+{
+  "at": "2026-11-12T02:59:14.389880+00:00",
+  "dify_app_id": "ac18cfb8-3f60-406f-99dd-d9cc635dc71f",
+  "dify_console": "http://127.0.0.1:8088/app/ac18cfb8-3f60-406f-99dd-d9cc635dc71f/workflow",
+  "pytest": {
+    "exit_code": 0,
+    "stdout": "........................................................................ [ 79%]\n...................                                                      [100%]\n91 passed in 7.89s",
+    "stderr": ""
+  },
+  "api_host": {
+    "base": "http://127.0.0.1:8000",
+    "health_status": 200,
+    "health": {
+      "status": "ok"
+    },
+    "consultant_post_status": 503,
+    "consultant_post_body": "{\"detail\":\"员工可信身份未就绪，consultant 业务不可用\"}"
+  },
+  "api_from_dify_container": {
+    "exit_code": 0,
+    "stdout": "{\"status\":\"ok\"}",
+    "stderr": ""
+  },
+  "notes": [
+    "Dify 工作流含：探活→LLM→代码→分支→HTTP POST/GET→回复",
+    "app.main 业务 POST 预期 503（blocked）",
+    "Dify 对话跑通后应在回复中看到 503 或 API 响应体，禁止谎称录入成功"
+  ],
+  "scope": "Basic infrastructure only; does not validate Dify dialogues or writes",
+  "checks": {
+    "pytest": true,
+    "host_health_status": true,
+    "host_health_body": true,
+    "business_auth_blocked": true,
+    "container_health": true
+  }
+}

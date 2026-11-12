@@ -1,0 +1,434 @@
+{
+  "date": "2026-11-11",
+  "scope": "local test reliability and confirmed score correction bug",
+  "fixes": [
+    "explicit UTF-8 child Python and subprocess decoding",
+    "httpx2 test dependency installed and declared",
+    "score correction requires existing active student",
+    "employee-scoped scanner for local validation",
+    "dedup verified by source identity, not zero work on second batch",
+    "schema default comparison preserves zero, empty, case and whitespace",
+    "invalid standard SQL and optimized interpreter refused",
+    "failed runs write failed reports; historical relation gaps explicitly reported"
+  ],
+  "reproduction": {
+    "encoding": {
+      "code": 1,
+      "output": ".F                                                                       [100%]\r\n================================== FAILURES ===================================\r\n______________ test_main_rejects_unknown_employee_identity_mode _______________\r\n\r\nmonkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001C3CC39EEA0>\r\n\r\n    def test_main_rejects_unknown_employee_identity_mode(monkeypatch):\r\n        monkeypatch.delenv(\"EMPLOYEE_IDENTITY_MODE\", raising=False)\r\n        proc = subprocess.run(\r\n            [\r\n                sys.executable,\r\n                \"-c\",\r\n                \"import os; os.environ['EMPLOYEE_IDENTITY_MODE']='unknown_xyz'; import app.main\",\r\n            ],\r\n            capture_output=True,\r\n            text=True,\r\n            cwd=str(ROOT),\r\n        )\r\n        assert proc.returncode != 0\r\n>       assert \"unknown_xyz\" in proc.stderr or \"不支持\" in proc.stderr\r\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\nE       TypeError: argument of type 'NoneType' is not iterable\r\n\r\ntests\\modules\\test_identity_settings.py:32: TypeError\r\n============================== warnings summary ===============================\r\ntests/modules/test_identity_settings.py::test_main_rejects_unknown_employee_identity_mode\r\n  D:\\Project course\\group_wuweiwen_yujiao\\aiproject\\.venv313\\Lib\\site-packages\\_pytest\\threadexception.py:54: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-2 (_readerthread)\r\n  \r\n  Traceback (most recent call last):\r\n    File \"D:\\workspace\\Python313\\Lib\\threading.py\", line 1044, in _bootstrap_inner\r\n      self.run()\r\n      ~~~~~~~~^^\r\n    File \"D:\\workspace\\Python313\\Lib\\threading.py\", line 995, in run\r\n      self._target(*self._args, **self._kwargs)\r\n      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\n    File \"D:\\workspace\\Python313\\Lib\\subprocess.py\", line 1616, in _readerthread\r\n      buffer.append(fh.read())\r\n                    ~~~~~~~^^\r\n    File \"<frozen codecs>\", line 325, in decode\r\n  UnicodeDecodeError: 'utf-8' codec can't decode byte 0xb2 in position 363: invalid start byte\r\n  \r\n  Enable tracemalloc to get traceback where the object was allocated.\r\n  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.\r\n    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))\r\n\r\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\r\n=========================== short test summary info ===========================\r\nFAILED tests/modules/test_identity_settings.py::test_main_rejects_unknown_employee_identity_mode\r\n1 failed, 1 passed, 1 warning in 2.08s\r\n"
+    },
+    "scoreCorrection": {
+      "cases": [
+        "disabled student",
+        "missing student"
+      ],
+      "expected_status": 422,
+      "observed_before_fix": 200,
+      "failing_tests_before_fix": 2
+    }
+  },
+  "validation": {
+    "standard_pytest": {
+      "code": 0,
+      "output": "....................................                                     [100%]\r\n36 passed in 7.56s\r\n"
+    },
+    "utf8_warnings_as_errors": {
+      "code": 0,
+      "output": "....................................                                     [100%]\r\n36 passed in 7.56s\r\n"
+    },
+    "pip_check": {
+      "code": 0,
+      "output": "No broken requirements found.\r\n"
+    },
+    "mysql_execution": {
+      "code": 0,
+      "output": "{\"report\": \"D:\\\\Project course\\\\group_wuweiwen_yujiao\\\\aiproject\\\\docs\\\\回复Cursor\\\\runs\\\\local-ent-validation-latest.json\", \"status\": \"passed_with_data_gaps\", \"data_gap_groups\": 3, \"schema_differences\": 0, \"created_total\": 0, \"verification_passed\": 31}\r\n"
+    },
+    "mysql_report": {
+      "date": "2026-11-11",
+      "connection": {
+        "host": "127.0.0.1",
+        "port": 3306,
+        "database": "education_service"
+      },
+      "ddl_executed": false,
+      "server": {
+        "db": "education_service",
+        "hostname": "DESKTOP-DKO2LI9",
+        "port": 3306,
+        "version": "8.0.27",
+        "server_now": "2026-11-11 23:20:34"
+      },
+      "schema": {
+        "standard_sql": "D:\\Project course\\group_wuweiwen_yujiao\\教育服务_0914\\2222通过表可以实现curd\\db_init.sql",
+        "standard_sha256": "2f21633a2667d088e9118d2d24a9ac1b668c756e605f0cc5de2fc0e5e15512c0",
+        "expected_table_count": 31,
+        "actual_table_count": 31,
+        "missing_tables": [],
+        "extra_tables": [],
+        "checked_dimensions": [
+          "columns",
+          "types",
+          "nullability",
+          "defaults",
+          "auto_increment",
+          "on_update",
+          "indexes",
+          "engine",
+          "collation"
+        ],
+        "differences": [],
+        "table_counts": {
+          "academic_deadline": 0,
+          "application_progress": 0,
+          "chat_message": 0,
+          "chat_session": 0,
+          "course_project": 0,
+          "crm_follow_up": 9,
+          "crm_lead": 27,
+          "customer_profile": 0,
+          "customer_source": 0,
+          "employee_daily_report": 4,
+          "event_lecture": 0,
+          "event_registration": 0,
+          "intent_config": 20,
+          "knowledge_base": 0,
+          "notification_log": 3,
+          "onboarding_guide": 4,
+          "overseas_life_knowledge": 0,
+          "profile_rule": 0,
+          "report_generation": 0,
+          "report_schedule": 0,
+          "student_admin_service": 6,
+          "student_feedback_ticket": 6,
+          "student_info": 3,
+          "student_psych_alert": 0,
+          "student_psych_profile": 0,
+          "student_psych_record": 0,
+          "student_score": 4,
+          "sys_organization": 4,
+          "sys_role": 5,
+          "sys_user": 6,
+          "todo_item": 5
+        }
+      },
+      "data_integrity": {
+        "checked": "ENT user, role, student and CRM references",
+        "gaps": [
+          {
+            "table": "crm_lead",
+            "column": "owner_employee_id",
+            "target": "sys_user",
+            "missing_id": 1,
+            "affected_rows": 12
+          },
+          {
+            "table": "crm_lead",
+            "column": "owner_employee_id",
+            "target": "sys_user",
+            "missing_id": 2,
+            "affected_rows": 7
+          },
+          {
+            "table": "crm_follow_up",
+            "column": "employee_id",
+            "target": "sys_user",
+            "missing_id": 1,
+            "affected_rows": 5
+          }
+        ],
+        "auto_repaired": false
+      },
+      "fixtures": {
+        "marker": "ENT_LOCAL_VERIFY_V1",
+        "date": "2026-11-11",
+        "ids": {
+          "employee_a": 1000001,
+          "employee_b": 1000002,
+          "employee_disabled": 1000003,
+          "student_a": 1000004,
+          "student_b": 1000005,
+          "student_disabled": 1000006,
+          "org_company": 1,
+          "org_a": 2,
+          "org_b": 3,
+          "org_disabled": 4,
+          "guide_entry": 1,
+          "guide_crm": 2,
+          "guide_leave": 3,
+          "guide_disabled": 4,
+          "info_student_a": 1,
+          "info_student_b": 2,
+          "info_student_disabled": 3,
+          "lead_0": 20,
+          "lead_1": 21,
+          "follow_1": 6,
+          "lead_2": 22,
+          "follow_2": 7,
+          "lead_3": 23,
+          "follow_3": 8,
+          "lead_4": 24,
+          "lead_5": 25,
+          "lead_6": 26,
+          "lead_7": 27,
+          "follow_7": 9,
+          "report_employee_a0": 1,
+          "report_employee_a1": 2,
+          "report_employee_b0": 3,
+          "report_employee_b1": 4,
+          "score_0": 1,
+          "score_1": 2,
+          "score_2": 3,
+          "score_3": 4,
+          "leave_0": 1,
+          "leave_1": 2,
+          "leave_2": 3,
+          "leave_3": 4,
+          "leave_4": 5,
+          "leave_5": 6,
+          "ticket_0": 1,
+          "ticket_1": 2,
+          "ticket_2": 3,
+          "ticket_3": 4,
+          "ticket_4": 5,
+          "ticket_5": 6,
+          "todo_0": 1,
+          "todo_1": 2,
+          "todo_2": 3,
+          "todo_3": 4,
+          "todo_4": 5,
+          "notice_0": 1,
+          "notice_1": 2,
+          "notice_2": 3
+        },
+        "created_counts": {},
+        "created_total": 0,
+        "accounts_have_no_usable_password": true
+      },
+      "existing_rows_preserved": true,
+      "verification": {
+        "transport": "isolated FastAPI TestClient/ASGI",
+        "database": "real localhost MySQL",
+        "identity": "test-only dependency override, not real JWT",
+        "mutation_policy": "all API and scanner writes rolled back by outer transaction",
+        "checks": [
+          {
+            "case": "组织检索",
+            "status": 200
+          },
+          {
+            "case": "员工联系方式",
+            "status": 200
+          },
+          {
+            "case": "指南检索",
+            "status": 200
+          },
+          {
+            "case": "本人成绩查询",
+            "status": 200
+          },
+          {
+            "case": "越范围成绩拒绝",
+            "status": 403
+          },
+          {
+            "case": "成绩写入",
+            "status": 200
+          },
+          {
+            "case": "成绩更正",
+            "status": 200
+          },
+          {
+            "case": "停用学生成绩录入拒绝",
+            "status": 422
+          },
+          {
+            "case": "停用学生成绩更正拒绝",
+            "status": 422
+          },
+          {
+            "case": "客户范围",
+            "status": 200
+          },
+          {
+            "case": "他人客户拒绝",
+            "status": 403
+          },
+          {
+            "case": "同名客户冲突",
+            "status": 409
+          },
+          {
+            "case": "客户状态更新",
+            "status": 200
+          },
+          {
+            "case": "客户跟进写入",
+            "status": 200
+          },
+          {
+            "case": "本人日报查询",
+            "status": 200
+          },
+          {
+            "case": "日报写入",
+            "status": 200
+          },
+          {
+            "case": "他人日报拒绝",
+            "status": 403
+          },
+          {
+            "case": "请假审批范围",
+            "status": 200
+          },
+          {
+            "case": "他人请假拒绝",
+            "status": 403
+          },
+          {
+            "case": "未分配请假拒绝",
+            "status": 403
+          },
+          {
+            "case": "本人请假审批",
+            "status": 200
+          },
+          {
+            "case": "重复请假审批拒绝",
+            "status": 409
+          },
+          {
+            "case": "他人工单拒绝",
+            "status": 403
+          },
+          {
+            "case": "投诉流转",
+            "status": 200
+          },
+          {
+            "case": "投诉陈旧状态拒绝",
+            "status": 409
+          },
+          {
+            "case": "待办到期查询",
+            "status": 200
+          },
+          {
+            "case": "待办完成",
+            "status": 200
+          },
+          {
+            "case": "他人待办拒绝",
+            "status": 403
+          },
+          {
+            "case": "站内通知范围",
+            "status": 200
+          },
+          {
+            "case": "真实MySQL扫描与重复扫描去重",
+            "first": {
+              "todos_created": 5,
+              "system_notifications_created": 6
+            },
+            "second": {
+              "todos_created": 0,
+              "system_notifications_created": 0
+            },
+            "fixture_source_counts": {
+              "student_admin_service/2": 1,
+              "student_admin_service/6": 1,
+              "student_feedback_ticket/1": 1,
+              "student_feedback_ticket/2": 1,
+              "student_feedback_ticket/5": 1
+            }
+          },
+          {
+            "case": "正常身份仍默认拒绝",
+            "status": 503
+          }
+        ],
+        "passed": 31,
+        "rollback_confirmed": true
+      },
+      "after_table_counts": {
+        "academic_deadline": 0,
+        "application_progress": 0,
+        "chat_message": 0,
+        "chat_session": 0,
+        "course_project": 0,
+        "crm_follow_up": 9,
+        "crm_lead": 27,
+        "customer_profile": 0,
+        "customer_source": 0,
+        "employee_daily_report": 4,
+        "event_lecture": 0,
+        "event_registration": 0,
+        "intent_config": 20,
+        "knowledge_base": 0,
+        "notification_log": 3,
+        "onboarding_guide": 4,
+        "overseas_life_knowledge": 0,
+        "profile_rule": 0,
+        "report_generation": 0,
+        "report_schedule": 0,
+        "student_admin_service": 6,
+        "student_feedback_ticket": 6,
+        "student_info": 3,
+        "student_psych_alert": 0,
+        "student_psych_profile": 0,
+        "student_psych_record": 0,
+        "student_score": 4,
+        "sys_organization": 4,
+        "sys_role": 5,
+        "sys_user": 6,
+        "todo_item": 5
+      },
+      "status": "passed_with_data_gaps"
+    }
+  },
+  "source_sha256": {
+    "tests/modules/test_identity_settings.py": "6c5763a3ba3b1a089c0943d23787964e04d5b3a7a9f7898b31966c27d182a649",
+    "scripts/run_unit_auth_tests.py": "d5056cf55a64ba72e1084f6fe818ec0230c117bdb6d9f3737fe1c232553a6aee",
+    "pyproject.toml": "9bd018198540b48b73782ae35f201f12c06789357ec0982d358456c9d466215d",
+    "app/modules/score/service.py": "90efde6eecabe67a89ac2b7573468be7d91b474d9baf725913dec712e28f0627",
+    "app/modules/todo/reminder_repository.py": "9efd1f821c1267213f8e9341fb7331f34e2391aa855d8903e8e8690bfffc20a8",
+    "app/modules/todo/reminders.py": "46f968658cdce44d13048deba9c494817a69918bd00dfd46c1dad42dd2420337",
+    "scripts/local_ent_validation.py": "cb3e39acfa03888c1f4721c23c1a4a86625f79c4ee5f58a9720960064abe16db",
+    "tests/integration/test_ent_support.py": "db31d933cab9046ad238d67a9bdd68a0b4cda310522427d0c50ee1a069e3fe06",
+    "tests/modules/test_local_validation_guards.py": "9248a45ae91aef760772d9d689a429630446560f0ae0e4df009f55d6bc923bce"
+  },
+  "remaining": {
+    "legacy_data_gaps": [
+      {
+        "table": "crm_lead",
+        "column": "owner_employee_id",
+        "target": "sys_user",
+        "missing_id": 1,
+        "affected_rows": 12
+      },
+      {
+        "table": "crm_lead",
+        "column": "owner_employee_id",
+        "target": "sys_user",
+        "missing_id": 2,
+        "affected_rows": 7
+      },
+      {
+        "table": "crm_follow_up",
+        "column": "employee_id",
+        "target": "sys_user",
+        "missing_id": 1,
+        "affected_rows": 5
+      }
+    ],
+    "reason": "No trustworthy sys_user mapping for historical employee IDs 1 and 2; no invented identities or reassignment",
+    "not_tested": [
+      "production JWT",
+      "Dify/TCP end-to-end",
+      "MySQL multi-worker concurrency"
+    ]
+  }
+}

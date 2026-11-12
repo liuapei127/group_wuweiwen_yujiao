@@ -1,0 +1,1666 @@
+{
+  "app": {
+    "name": "企业智能助手-ENT",
+    "mode": "advanced-chat",
+    "icon": "🤖",
+    "icon_background": "#FFEAD5",
+    "description": "修复解析、确认、身份字段和错误处理；实际业务仍受可信身份保护。",
+    "use_icon_as_answer_icon": false
+  },
+  "dependencies": [],
+  "kind": "app",
+  "version": "0.3.1",
+  "workflow": {
+    "graph": {
+      "nodes": [
+        {
+          "id": "start",
+          "type": "custom",
+          "data": {
+            "type": "start",
+            "title": "用户输入",
+            "variables": []
+          },
+          "position": {
+            "x": 0,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "health",
+          "type": "custom",
+          "data": {
+            "type": "http-request",
+            "title": "后端探活（短超时，不重试）",
+            "method": "get",
+            "url": "http://host.docker.internal:8000/health",
+            "variables": [],
+            "authorization": {
+              "type": "no-auth",
+              "config": null
+            },
+            "headers": "",
+            "params": "",
+            "body": {
+              "type": "none",
+              "data": []
+            },
+            "ssl_verify": true,
+            "timeout": {
+              "max_connect_timeout": 5,
+              "max_read_timeout": 10,
+              "max_write_timeout": 5
+            },
+            "retry_config": {
+              "retry_enabled": false,
+              "max_retries": 0,
+              "retry_interval": 100
+            },
+            "error_strategy": "default-value",
+            "default_value": [
+              {
+                "key": "status_code",
+                "type": "number",
+                "value": 0
+              },
+              {
+                "key": "body",
+                "type": "string",
+                "value": "{}"
+              }
+            ]
+          },
+          "position": {
+            "x": 300,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "gate",
+          "type": "custom",
+          "data": {
+            "type": "code",
+            "title": "核对实际健康响应",
+            "code": "import json,re\n\ndef main(query: str, status_code: int, body: str):\n    try:healthy=int(status_code)==200 and json.loads(body).get('status')=='ok'\n    except Exception:healthy=False\n    if not healthy:return {'needs_llm':False,'reply':'后端探活未通过（网络或服务故障），没有执行业务操作。请检查API和SSRF代理。'}\n    if re.search(r'健康检查|后端.*正常|探活|health',query,re.I):\n        return {'needs_llm':False,'reply':'后端探活成功。员工可信身份尚未接入时，业务API仍会返回503；探活成功不代表业务已保存。'}\n    if re.search(r'什么是.*503|503.*什么意思',query):\n        return {'needs_llm':False,'reply':'HTTP 503表示服务暂不可用；本项目也用于员工可信身份未就绪。不能据此声称保存成功。'}\n    return {'needs_llm':True,'reply':''}",
+            "code_language": "python3",
+            "variables": [
+              {
+                "variable": "query",
+                "value_selector": [
+                  "sys",
+                  "query"
+                ],
+                "value_type": "string"
+              },
+              {
+                "variable": "status_code",
+                "value_selector": [
+                  "health",
+                  "status_code"
+                ],
+                "value_type": "number"
+              },
+              {
+                "variable": "body",
+                "value_selector": [
+                  "health",
+                  "body"
+                ],
+                "value_type": "string"
+              }
+            ],
+            "outputs": {
+              "needs_llm": {
+                "type": "boolean",
+                "children": null
+              },
+              "reply": {
+                "type": "string",
+                "children": null
+              }
+            }
+          },
+          "position": {
+            "x": 600,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "gate_if",
+          "type": "custom",
+          "data": {
+            "type": "if-else",
+            "title": "是否需要理解业务输入",
+            "cases": [
+              {
+                "case_id": "true",
+                "logical_operator": "and",
+                "conditions": [
+                  {
+                    "id": "true-condition",
+                    "varType": "boolean",
+                    "variable_selector": [
+                      "gate",
+                      "needs_llm"
+                    ],
+                    "comparison_operator": "is",
+                    "value": true
+                  }
+                ]
+              }
+            ]
+          },
+          "position": {
+            "x": 900,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "health_answer",
+          "type": "custom",
+          "data": {
+            "type": "answer",
+            "title": "探活或故障说明",
+            "variables": [],
+            "answer": "{{#gate.reply#}}"
+          },
+          "position": {
+            "x": 1200,
+            "y": 0
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "llm",
+          "type": "custom",
+          "data": {
+            "type": "llm",
+            "title": "只抽取动作与字段",
+            "model": {
+              "provider": "langgenius/tongyi/tongyi",
+              "name": "qwen3.8-max",
+              "mode": "chat",
+              "completion_params": {
+                "temperature": 0.3
+              }
+            },
+            "prompt_template": [
+              {
+                "id": "ent-v3-system",
+                "role": "system",
+                "text": "你是ENT参数抽取器。只输出单个JSON对象：{\"intent\":\"动作名\",\"params\":{...}}，不输出解释或成功话术。缺字段留空，不编造姓名、联系方式、ID、状态、版本或考试标识。不要输出员工身份参数。无法理解、功能咨询、删除数据或不支持的动作使用intent=other。用户说不要执行时不得构造写操作。\n动作目录（method/path/required/allowed）：\n{\"lead_create\": [\"post\", \"/api/v1/consultant/leads\", \"customer_name\", \"customer_name contact_info gender age education_level intended_country intended_major background_info source_channel remark\"], \"lead_list\": [\"get\", \"/api/v1/consultant/leads\", \"\", \"keyword status page page_size\"], \"lead_detail\": [\"get\", \"/api/v1/consultant/leads/{lead_id}\", \"lead_id\", \"lead_id customer_name\"], \"lead_update\": [\"patch\", \"/api/v1/consultant/leads/{lead_id}\", \"lead_id\", \"lead_id customer_name contact_info intended_country intended_major background_info remark\"], \"lead_status\": [\"patch\", \"/api/v1/consultant/leads/{lead_id}/status\", \"lead_id status\", \"lead_id customer_name status lost_reason\"], \"lead_follow_up\": [\"post\", \"/api/v1/consultant/leads/{lead_id}/follow-ups\", \"lead_id content\", \"lead_id customer_name content follow_type next_plan\"], \"daily_submit\": [\"post\", \"/api/v1/employee-reports\", \"content\", \"content report_date raw_content key_progress risks next_plan\"], \"daily_list\": [\"get\", \"/api/v1/employee-reports\", \"\", \"date_from date_to\"], \"organizations\": [\"get\", \"/api/v1/enterprise/organizations\", \"\", \"keyword limit\"], \"colleagues\": [\"get\", \"/api/v1/enterprise/organizations/colleagues\", \"name\", \"name\"], \"colleague_contact\": [\"get\", \"/api/v1/enterprise/colleagues/{employee_id}/contact\", \"employee_id\", \"employee_id\"], \"guides\": [\"get\", \"/api/v1/enterprise/onboarding-guides\", \"\", \"keyword category page page_size\"], \"guide_create\": [\"post\", \"/api/v1/enterprise/onboarding-guides\", \"title category content\", \"title category content\"], \"score_create\": [\"post\", \"/api/v1/enterprise/scores\", \"student_id course_name score\", \"student_id course_name score semester credit exam_key submission_key\"], \"scores\": [\"get\", \"/api/v1/enterprise/scores\", \"student_id\", \"student_id semester limit\"], \"score_correct\": [\"put\", \"/api/v1/enterprise/scores/{score_id}\", \"score_id student_id course_name score expected_version\", \"score_id student_id course_name score semester credit expected_version correction_reason\"], \"score_history\": [\"get\", \"/api/v1/enterprise/scores/{score_id}/history\", \"score_id\", \"score_id limit\"], \"leaves\": [\"get\", \"/api/v1/student-admin/leaves/pending\", \"\", \"\"], \"leave_approve\": [\"post\", \"/api/v1/student-admin/leaves/{leave_id}/approve\", \"leave_id decision\", \"leave_id decision approval_comment\"], \"tickets\": [\"get\", \"/api/v1/enterprise/tickets\", \"\", \"status limit\"], \"ticket_detail\": [\"get\", \"/api/v1/enterprise/tickets/{ticket_id}\", \"ticket_id\", \"ticket_id\"], \"ticket_update\": [\"patch\", \"/api/v1/enterprise/tickets/{ticket_id}\", \"ticket_id expected_status status\", \"ticket_id expected_status status solution\"], \"todos\": [\"get\", \"/api/v1/enterprise/todos\", \"\", \"due_only limit\"], \"todo_create\": [\"post\", \"/api/v1/enterprise/todos\", \"title\", \"title description due_time priority\"], \"todo_update\": [\"patch\", \"/api/v1/enterprise/todos/{todo_id}\", \"todo_id expected_status status\", \"todo_id expected_status status\"], \"notifications\": [\"get\", \"/api/v1/enterprise/notifications\", \"\", \"limit\"], \"nl_query\": [\"post\", \"/api/v1/ai/nl2sql/query\", \"intent params\", \"intent params\"]}\n待处理的会话状态：{{#conversation.pending_action#}}\n当用户补充字段时，合并同一待处理动作的已知字段。客户只有姓名而没有lead_id时，保留customer_name用于授权范围内候选查询，不能猜ID。成绩更正必须带expected_version；需要先查询最新成绩。正常员工日报只查本人，不提供主管越权能力。确认只由后续代码核对，模型不能自行确认。"
+              }
+            ],
+            "context": {
+              "enabled": false,
+              "variable_selector": []
+            },
+            "vision": {
+              "enabled": false
+            },
+            "memory": {
+              "window": {
+                "enabled": true,
+                "size": 10
+              },
+              "query_prompt_template": "{{#sys.query#}}",
+              "role_prefix": {
+                "user": "",
+                "assistant": ""
+              }
+            },
+            "error_strategy": "fail-branch"
+          },
+          "position": {
+            "x": 1200,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "model_failure",
+          "type": "custom",
+          "data": {
+            "type": "answer",
+            "title": "模型故障不执行",
+            "variables": [],
+            "answer": "模型暂不可用，未执行业务请求。请稍后重试。"
+          },
+          "position": {
+            "x": 1500,
+            "y": 700
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "plan",
+          "type": "custom",
+          "data": {
+            "type": "code",
+            "title": "验证动作、参数、确认与编号",
+            "code": "\"\"\"Pure contracts shared by Dify sandbox nodes and local regression tests.\"\"\"\nimport json\nimport re\nfrom urllib.parse import urlencode\n\nACTIONS = {\n 'lead_create': ('post','/api/v1/consultant/leads','customer_name','customer_name contact_info gender age education_level intended_country intended_major background_info source_channel remark'),\n 'lead_list': ('get','/api/v1/consultant/leads','','keyword status page page_size'),\n 'lead_detail': ('get','/api/v1/consultant/leads/{lead_id}','lead_id','lead_id customer_name'),\n 'lead_update': ('patch','/api/v1/consultant/leads/{lead_id}','lead_id','lead_id customer_name contact_info intended_country intended_major background_info remark'),\n 'lead_status': ('patch','/api/v1/consultant/leads/{lead_id}/status','lead_id status','lead_id customer_name status lost_reason'),\n 'lead_follow_up': ('post','/api/v1/consultant/leads/{lead_id}/follow-ups','lead_id content','lead_id customer_name content follow_type next_plan'),\n 'daily_submit': ('post','/api/v1/employee-reports','content','content report_date raw_content key_progress risks next_plan'),\n 'daily_list': ('get','/api/v1/employee-reports','','date_from date_to'),\n 'organizations': ('get','/api/v1/enterprise/organizations','','keyword limit'),\n 'colleagues': ('get','/api/v1/enterprise/organizations/colleagues','name','name'),\n 'colleague_contact': ('get','/api/v1/enterprise/colleagues/{employee_id}/contact','employee_id','employee_id'),\n 'guides': ('get','/api/v1/enterprise/onboarding-guides','','keyword category page page_size'),\n 'guide_create': ('post','/api/v1/enterprise/onboarding-guides','title category content','title category content'),\n 'score_create': ('post','/api/v1/enterprise/scores','student_id course_name score','student_id course_name score semester credit exam_key submission_key'),\n 'scores': ('get','/api/v1/enterprise/scores','student_id','student_id semester limit'),\n 'score_correct': ('put','/api/v1/enterprise/scores/{score_id}','score_id student_id course_name score expected_version','score_id student_id course_name score semester credit expected_version correction_reason'),\n 'score_history': ('get','/api/v1/enterprise/scores/{score_id}/history','score_id','score_id limit'),\n 'leaves': ('get','/api/v1/student-admin/leaves/pending','',''),\n 'leave_approve': ('post','/api/v1/student-admin/leaves/{leave_id}/approve','leave_id decision','leave_id decision approval_comment'),\n 'tickets': ('get','/api/v1/enterprise/tickets','','status limit'),\n 'ticket_detail': ('get','/api/v1/enterprise/tickets/{ticket_id}','ticket_id','ticket_id'),\n 'ticket_update': ('patch','/api/v1/enterprise/tickets/{ticket_id}','ticket_id expected_status status','ticket_id expected_status status solution'),\n 'todos': ('get','/api/v1/enterprise/todos','','due_only limit'),\n 'todo_create': ('post','/api/v1/enterprise/todos','title','title description due_time priority'),\n 'todo_update': ('patch','/api/v1/enterprise/todos/{todo_id}','todo_id expected_status status','todo_id expected_status status'),\n 'notifications': ('get','/api/v1/enterprise/notifications','','limit'),\n 'nl_query': ('post','/api/v1/ai/nl2sql/query','intent params','intent params'),\n}\nREAD_POST = {'nl_query'}\nCONFIRM = {'确认','确认提交','确认执行','确认保存'}\nCANCEL = {'取消','取消操作','不执行','不要执行','算了'}\n\n\ndef parse_action(text):\n    value = re.sub(r'<think>.*?</think>', '', text or '', flags=re.DOTALL).strip()\n    if value.startswith(chr(96)*3):\n        value = re.sub(r'^\\x60{3}(?:json)?\\s*|\\s*\\x60{3}$', '', value)\n    if value.startswith('ENT_ACTION:'):\n        value = value.split(':',1)[1].strip()\n    obj = json.loads(value)\n    if not isinstance(obj,dict):raise ValueError('not an object')\n    if 'params' not in obj:\n        obj = {'intent':obj.get('intent'),'params':{k:v for k,v in obj.items() if k!='intent'}}\n    if not isinstance(obj.get('params'),dict):raise ValueError('params not an object')\n    return obj\n\n\ndef plan(text, query, pending=''):\n    out={'call_api':False,'method':'get','http_url':'','http_body':'','reply':'未识别到可执行的操作，没有修改数据。','pending':'','intent':'other'}\n    try:old=json.loads(pending) if pending else {}\n    except ValueError:old={}\n    normalized=re.sub(r'[。！!\\s]+$','',(query or '').strip())\n    if normalized in CANCEL:\n        out['reply']='已取消待确认操作，没有提交请求。';return out\n    if normalized in CONFIRM:\n        if old.get('state')!='confirm':\n            out['reply']='没有待确认的操作，请先说明要处理的数据。';return out\n        action=old;confirmed=True\n    elif old.get('state')=='id' and re.fullmatch(r'(?:选择|编号)?\\s*\\d+',normalized):\n        action={'intent':old['intent'],'params':dict(old['params'])}\n        action['params']['lead_id']=int(re.search(r'\\d+',normalized).group());confirmed=False\n    else:\n        try:action=parse_action(text)\n        except (ValueError,TypeError):\n            out['reply']='请补充具体操作和必要字段；未执行任何写入。';out['pending']=pending;return out\n        confirmed=False\n    intent=action.get('intent')\n    if intent not in ACTIONS:\n        out['reply']='这是功能咨询或暂不支持的操作，没有调用业务接口。可查询客户、日报、组织、指南、成绩、请假、工单、待办及通知；写操作需要确认。';return out\n    method,template,required,allowed=ACTIONS[intent]\n    params={k:v for k,v in action.get('params',{}).items() if v is not None}\n    if set(params)-set(allowed.split()):\n        out['reply']='包含不支持的字段或身份参数；员工身份只能由后端可信认证提供。未执行。';return out\n    if not confirmed and method!='get' and intent not in READ_POST and re.search(r'不要|别执行|先不|暂不|是否支持|能否|如何|怎么|只是咨询',query or ''):\n        out['reply']='按你的要求仅作说明，没有执行或排队写入。';return out\n    if intent.startswith('lead_') and intent not in ('lead_create','lead_list') and not params.get('lead_id') and params.get('customer_name'):\n        target=dict(params);name=target.pop('customer_name')\n        out['pending']=json.dumps({'intent':intent,'params':target,'state':'id'},ensure_ascii=False)\n        return dict(out,call_api=True,intent='lead_list',http_url='http://host.docker.internal:8000/api/v1/consultant/leads?'+urlencode({'keyword':name,'page_size':10}),reply='先列出候选，请选择客户编号；不会自动选第一条。')\n    params.pop('customer_name',None) if intent not in ('lead_create','lead_list') else None\n    if intent=='lead_create':\n        name=params.get('customer_name','')\n        if not isinstance(name,str) or not name.strip() or name in ('未解析姓名','未知','待补充'):\n            params.pop('customer_name',None)\n        elif not confirmed and name not in (query or ''):\n            params.pop('customer_name',None)\n    missing=[k for k in required.split() if k not in params or params[k]=='']\n    if missing:\n        out['reply']='请补充：'+', '.join(missing)+'。未调用接口。'\n        out['pending']=json.dumps({'intent':intent,'params':params,'state':'collect'},ensure_ascii=False);return out\n    for k in list(params):\n        if k.endswith('_id') or k in ('expected_version','page','page_size','limit'):\n            if isinstance(params[k],bool) or not re.fullmatch(r'[1-9]\\d*',str(params[k])):\n                out['reply']='编号、版本和分页参数必须为正整数。未执行。';return out\n            params[k]=int(params[k])\n    if intent=='nl_query':\n        if params['intent'] not in ('leads_by_status','lead_detail_by_name','lead_follow_ups_by_name','pending_leaves','daily_reports_recent') or not isinstance(params['params'],dict):\n            out['reply']='仅允许白名单查询意图，不接受SQL。';return out\n        if {'sql','employee_id','owner_employee_id','approver_id'} & set(params['params']):\n            out['reply']='不能通过查询参数覆盖身份范围或提交SQL。';return out\n    if method!='get' and intent not in READ_POST and not confirmed:\n        out['reply']='请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\\n'+intent+'\\n'+json.dumps(params,ensure_ascii=False)\n        out['pending']=json.dumps({'intent':intent,'params':params,'state':'confirm'},ensure_ascii=False);return out\n    path_fields={k:params[k] for k in re.findall(r'\\{(\\w+)\\}',template)}\n    payload={k:v for k,v in params.items() if k not in path_fields}\n    out.update(call_api=True,intent=intent,method=method,http_url='http://host.docker.internal:8000'+template.format(**path_fields))\n    if method=='get':\n        if payload:out['http_url']+='?'+urlencode(payload)\n    else:out['http_body']=json.dumps(payload,ensure_ascii=False)\n    out['reply']='请求处理中，结果以实际后端响应为准。';return out\n\n\ndef format_result(status_code, body, intent):\n    try:data=json.loads(body or '{}')\n    except (ValueError,TypeError):data={}\n    status=int(status_code or 0)\n    if status==503:return {'reply':'员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。'}\n    if status==403:return {'reply':'无权操作或数据不在授权范围（HTTP 403），未确认任何修改。'}\n    if status==409:return {'reply':'数据状态或版本冲突（HTTP 409），请重新查询并选择编号/最新版本，不自动重试。'}\n    if status==422:return {'reply':'字段校验未通过（HTTP 422），请核对必填字段、编号和格式。'}\n    if status==404:return {'reply':'未找到记录（HTTP 404），请核对编号。'}\n    if status<200 or status>=300:return {'reply':'请求失败或网络异常，未确认操作成功；如涉及写入请先查询核对，不自动重试。'}\n    if not isinstance(data,dict) or data.get('code')!=0:return {'reply':'后端返回业务失败或非预期格式，未确认操作成功。请查询核对。'}\n    result=data.get('data')\n    if ACTIONS[intent][0]!='get' and intent not in READ_POST:\n        rid=result.get('id') if isinstance(result,dict) else None\n        if not isinstance(rid,int) or isinstance(rid,bool) or rid<1:\n            return {'reply':'后端响应缺少可核对的记录编号，未确认操作成功，请查询核对。'}\n        return {'reply':'后端已确认操作成功。结果：'+json.dumps(result,ensure_ascii=False)}\n    return {'reply':'后端查询结果（仅来自实际响应）：\\n'+json.dumps(result,ensure_ascii=False)}\n\n\ndef failure_reply(error_message, error_type):\n    match=re.search(r'(?:status(?:\\s+code)?)[^0-9]*(\\d{3})',error_message or '',re.I)\n    if match:return format_result(int(match.group(1)),'{}','lead_list')\n    return {'reply':'请求未完成（网络或节点错误），没有确认保存成功。请先查询核对；不会自动重试写入。'}\n\n\ndef main(text: str, query: str, pending: str):\n    return plan(text, query, pending)\n",
+            "code_language": "python3",
+            "variables": [
+              {
+                "variable": "text",
+                "value_selector": [
+                  "llm",
+                  "text"
+                ],
+                "value_type": "string"
+              },
+              {
+                "variable": "query",
+                "value_selector": [
+                  "sys",
+                  "query"
+                ],
+                "value_type": "string"
+              },
+              {
+                "variable": "pending",
+                "value_selector": [
+                  "conversation",
+                  "pending_action"
+                ],
+                "value_type": "string"
+              }
+            ],
+            "outputs": {
+              "call_api": {
+                "type": "boolean",
+                "children": null
+              },
+              "method": {
+                "type": "string",
+                "children": null
+              },
+              "http_url": {
+                "type": "string",
+                "children": null
+              },
+              "http_body": {
+                "type": "string",
+                "children": null
+              },
+              "reply": {
+                "type": "string",
+                "children": null
+              },
+              "pending": {
+                "type": "string",
+                "children": null
+              },
+              "intent": {
+                "type": "string",
+                "children": null
+              }
+            }
+          },
+          "position": {
+            "x": 1500,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "remember",
+          "type": "custom",
+          "data": {
+            "type": "assigner",
+            "title": "保存或清除待确认动作",
+            "version": "2",
+            "items": [
+              {
+                "input_type": "variable",
+                "operation": "over-write",
+                "value": [
+                  "plan",
+                  "pending"
+                ],
+                "variable_selector": [
+                  "conversation",
+                  "pending_action"
+                ],
+                "write_mode": "over-write"
+              }
+            ]
+          },
+          "position": {
+            "x": 1800,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "execute",
+          "type": "custom",
+          "data": {
+            "type": "if-else",
+            "title": "只执行验证通过的请求",
+            "cases": [
+              {
+                "case_id": "true",
+                "logical_operator": "and",
+                "conditions": [
+                  {
+                    "id": "true-condition",
+                    "varType": "boolean",
+                    "variable_selector": [
+                      "plan",
+                      "call_api"
+                    ],
+                    "comparison_operator": "is",
+                    "value": true
+                  }
+                ]
+              }
+            ]
+          },
+          "position": {
+            "x": 2100,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "clarify",
+          "type": "custom",
+          "data": {
+            "type": "answer",
+            "title": "追问、确认或取消",
+            "variables": [],
+            "answer": "{{#plan.reply#}}"
+          },
+          "position": {
+            "x": 2400,
+            "y": 0
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "method",
+          "type": "custom",
+          "data": {
+            "type": "if-else",
+            "title": "固定HTTP方法路由",
+            "cases": [
+              {
+                "case_id": "post",
+                "logical_operator": "and",
+                "conditions": [
+                  {
+                    "id": "post-condition",
+                    "varType": "string",
+                    "variable_selector": [
+                      "plan",
+                      "method"
+                    ],
+                    "comparison_operator": "is",
+                    "value": "post"
+                  }
+                ]
+              },
+              {
+                "case_id": "put",
+                "logical_operator": "and",
+                "conditions": [
+                  {
+                    "id": "put-condition",
+                    "varType": "string",
+                    "variable_selector": [
+                      "plan",
+                      "method"
+                    ],
+                    "comparison_operator": "is",
+                    "value": "put"
+                  }
+                ]
+              },
+              {
+                "case_id": "patch",
+                "logical_operator": "and",
+                "conditions": [
+                  {
+                    "id": "patch-condition",
+                    "varType": "string",
+                    "variable_selector": [
+                      "plan",
+                      "method"
+                    ],
+                    "comparison_operator": "is",
+                    "value": "patch"
+                  }
+                ]
+              }
+            ]
+          },
+          "position": {
+            "x": 2400,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "http_get",
+          "type": "custom",
+          "data": {
+            "type": "http-request",
+            "title": "GET调用业务API",
+            "method": "get",
+            "url": "{{#plan.http_url#}}",
+            "variables": [],
+            "authorization": {
+              "type": "no-auth",
+              "config": null
+            },
+            "headers": "",
+            "params": "",
+            "body": {
+              "type": "none",
+              "data": []
+            },
+            "ssl_verify": true,
+            "timeout": {
+              "max_connect_timeout": 5,
+              "max_read_timeout": 10,
+              "max_write_timeout": 5
+            },
+            "retry_config": {
+              "retry_enabled": false,
+              "max_retries": 0,
+              "retry_interval": 100
+            },
+            "error_strategy": "fail-branch"
+          },
+          "position": {
+            "x": 2700,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "format_get",
+          "type": "custom",
+          "data": {
+            "type": "code",
+            "title": "依据真实响应生成结果",
+            "code": "import json,re\nACTIONS={'lead_create': ('post', '/api/v1/consultant/leads', 'customer_name', 'customer_name contact_info gender age education_level intended_country intended_major background_info source_channel remark'), 'lead_list': ('get', '/api/v1/consultant/leads', '', 'keyword status page page_size'), 'lead_detail': ('get', '/api/v1/consultant/leads/{lead_id}', 'lead_id', 'lead_id customer_name'), 'lead_update': ('patch', '/api/v1/consultant/leads/{lead_id}', 'lead_id', 'lead_id customer_name contact_info intended_country intended_major background_info remark'), 'lead_status': ('patch', '/api/v1/consultant/leads/{lead_id}/status', 'lead_id status', 'lead_id customer_name status lost_reason'), 'lead_follow_up': ('post', '/api/v1/consultant/leads/{lead_id}/follow-ups', 'lead_id content', 'lead_id customer_name content follow_type next_plan'), 'daily_submit': ('post', '/api/v1/employee-reports', 'content', 'content report_date raw_content key_progress risks next_plan'), 'daily_list': ('get', '/api/v1/employee-reports', '', 'date_from date_to'), 'organizations': ('get', '/api/v1/enterprise/organizations', '', 'keyword limit'), 'colleagues': ('get', '/api/v1/enterprise/organizations/colleagues', 'name', 'name'), 'colleague_contact': ('get', '/api/v1/enterprise/colleagues/{employee_id}/contact', 'employee_id', 'employee_id'), 'guides': ('get', '/api/v1/enterprise/onboarding-guides', '', 'keyword category page page_size'), 'guide_create': ('post', '/api/v1/enterprise/onboarding-guides', 'title category content', 'title category content'), 'score_create': ('post', '/api/v1/enterprise/scores', 'student_id course_name score', 'student_id course_name score semester credit exam_key submission_key'), 'scores': ('get', '/api/v1/enterprise/scores', 'student_id', 'student_id semester limit'), 'score_correct': ('put', '/api/v1/enterprise/scores/{score_id}', 'score_id student_id course_name score expected_version', 'score_id student_id course_name score semester credit expected_version correction_reason'), 'score_history': ('get', '/api/v1/enterprise/scores/{score_id}/history', 'score_id', 'score_id limit'), 'leaves': ('get', '/api/v1/student-admin/leaves/pending', '', ''), 'leave_approve': ('post', '/api/v1/student-admin/leaves/{leave_id}/approve', 'leave_id decision', 'leave_id decision approval_comment'), 'tickets': ('get', '/api/v1/enterprise/tickets', '', 'status limit'), 'ticket_detail': ('get', '/api/v1/enterprise/tickets/{ticket_id}', 'ticket_id', 'ticket_id'), 'ticket_update': ('patch', '/api/v1/enterprise/tickets/{ticket_id}', 'ticket_id expected_status status', 'ticket_id expected_status status solution'), 'todos': ('get', '/api/v1/enterprise/todos', '', 'due_only limit'), 'todo_create': ('post', '/api/v1/enterprise/todos', 'title', 'title description due_time priority'), 'todo_update': ('patch', '/api/v1/enterprise/todos/{todo_id}', 'todo_id expected_status status', 'todo_id expected_status status'), 'notifications': ('get', '/api/v1/enterprise/notifications', '', 'limit'), 'nl_query': ('post', '/api/v1/ai/nl2sql/query', 'intent params', 'intent params')}\nREAD_POST={'nl_query'}\ndef format_result(status_code, body, intent):\n    try:data=json.loads(body or '{}')\n    except (ValueError,TypeError):data={}\n    status=int(status_code or 0)\n    if status==503:return {'reply':'员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。'}\n    if status==403:return {'reply':'无权操作或数据不在授权范围（HTTP 403），未确认任何修改。'}\n    if status==409:return {'reply':'数据状态或版本冲突（HTTP 409），请重新查询并选择编号/最新版本，不自动重试。'}\n    if status==422:return {'reply':'字段校验未通过（HTTP 422），请核对必填字段、编号和格式。'}\n    if status==404:return {'reply':'未找到记录（HTTP 404），请核对编号。'}\n    if status<200 or status>=300:return {'reply':'请求失败或网络异常，未确认操作成功；如涉及写入请先查询核对，不自动重试。'}\n    if not isinstance(data,dict) or data.get('code')!=0:return {'reply':'后端返回业务失败或非预期格式，未确认操作成功。请查询核对。'}\n    result=data.get('data')\n    if ACTIONS[intent][0]!='get' and intent not in READ_POST:\n        rid=result.get('id') if isinstance(result,dict) else None\n        if not isinstance(rid,int) or isinstance(rid,bool) or rid<1:\n            return {'reply':'后端响应缺少可核对的记录编号，未确认操作成功，请查询核对。'}\n        return {'reply':'后端已确认操作成功。结果：'+json.dumps(result,ensure_ascii=False)}\n    return {'reply':'后端查询结果（仅来自实际响应）：\\n'+json.dumps(result,ensure_ascii=False)}\n\ndef failure_reply(error_message, error_type):\n    match=re.search(r'(?:status(?:\\s+code)?)[^0-9]*(\\d{3})',error_message or '',re.I)\n    if match:return format_result(int(match.group(1)),'{}','lead_list')\n    return {'reply':'请求未完成（网络或节点错误），没有确认保存成功。请先查询核对；不会自动重试写入。'}\n\ndef main(status_code: int, body: str, intent: str):\n    return format_result(status_code,body,intent)\n",
+            "code_language": "python3",
+            "variables": [
+              {
+                "variable": "status_code",
+                "value_selector": [
+                  "http_get",
+                  "status_code"
+                ],
+                "value_type": "number"
+              },
+              {
+                "variable": "body",
+                "value_selector": [
+                  "http_get",
+                  "body"
+                ],
+                "value_type": "string"
+              },
+              {
+                "variable": "intent",
+                "value_selector": [
+                  "plan",
+                  "intent"
+                ],
+                "value_type": "string"
+              }
+            ],
+            "outputs": {
+              "reply": {
+                "type": "string",
+                "children": null
+              }
+            }
+          },
+          "position": {
+            "x": 3000,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "error_get",
+          "type": "custom",
+          "data": {
+            "type": "code",
+            "title": "保留实际错误类型",
+            "code": "import json,re\nACTIONS={'lead_create': ('post', '/api/v1/consultant/leads', 'customer_name', 'customer_name contact_info gender age education_level intended_country intended_major background_info source_channel remark'), 'lead_list': ('get', '/api/v1/consultant/leads', '', 'keyword status page page_size'), 'lead_detail': ('get', '/api/v1/consultant/leads/{lead_id}', 'lead_id', 'lead_id customer_name'), 'lead_update': ('patch', '/api/v1/consultant/leads/{lead_id}', 'lead_id', 'lead_id customer_name contact_info intended_country intended_major background_info remark'), 'lead_status': ('patch', '/api/v1/consultant/leads/{lead_id}/status', 'lead_id status', 'lead_id customer_name status lost_reason'), 'lead_follow_up': ('post', '/api/v1/consultant/leads/{lead_id}/follow-ups', 'lead_id content', 'lead_id customer_name content follow_type next_plan'), 'daily_submit': ('post', '/api/v1/employee-reports', 'content', 'content report_date raw_content key_progress risks next_plan'), 'daily_list': ('get', '/api/v1/employee-reports', '', 'date_from date_to'), 'organizations': ('get', '/api/v1/enterprise/organizations', '', 'keyword limit'), 'colleagues': ('get', '/api/v1/enterprise/organizations/colleagues', 'name', 'name'), 'colleague_contact': ('get', '/api/v1/enterprise/colleagues/{employee_id}/contact', 'employee_id', 'employee_id'), 'guides': ('get', '/api/v1/enterprise/onboarding-guides', '', 'keyword category page page_size'), 'guide_create': ('post', '/api/v1/enterprise/onboarding-guides', 'title category content', 'title category content'), 'score_create': ('post', '/api/v1/enterprise/scores', 'student_id course_name score', 'student_id course_name score semester credit exam_key submission_key'), 'scores': ('get', '/api/v1/enterprise/scores', 'student_id', 'student_id semester limit'), 'score_correct': ('put', '/api/v1/enterprise/scores/{score_id}', 'score_id student_id course_name score expected_version', 'score_id student_id course_name score semester credit expected_version correction_reason'), 'score_history': ('get', '/api/v1/enterprise/scores/{score_id}/history', 'score_id', 'score_id limit'), 'leaves': ('get', '/api/v1/student-admin/leaves/pending', '', ''), 'leave_approve': ('post', '/api/v1/student-admin/leaves/{leave_id}/approve', 'leave_id decision', 'leave_id decision approval_comment'), 'tickets': ('get', '/api/v1/enterprise/tickets', '', 'status limit'), 'ticket_detail': ('get', '/api/v1/enterprise/tickets/{ticket_id}', 'ticket_id', 'ticket_id'), 'ticket_update': ('patch', '/api/v1/enterprise/tickets/{ticket_id}', 'ticket_id expected_status status', 'ticket_id expected_status status solution'), 'todos': ('get', '/api/v1/enterprise/todos', '', 'due_only limit'), 'todo_create': ('post', '/api/v1/enterprise/todos', 'title', 'title description due_time priority'), 'todo_update': ('patch', '/api/v1/enterprise/todos/{todo_id}', 'todo_id expected_status status', 'todo_id expected_status status'), 'notifications': ('get', '/api/v1/enterprise/notifications', '', 'limit'), 'nl_query': ('post', '/api/v1/ai/nl2sql/query', 'intent params', 'intent params')}\nREAD_POST={'nl_query'}\ndef format_result(status_code, body, intent):\n    try:data=json.loads(body or '{}')\n    except (ValueError,TypeError):data={}\n    status=int(status_code or 0)\n    if status==503:return {'reply':'员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。'}\n    if status==403:return {'reply':'无权操作或数据不在授权范围（HTTP 403），未确认任何修改。'}\n    if status==409:return {'reply':'数据状态或版本冲突（HTTP 409），请重新查询并选择编号/最新版本，不自动重试。'}\n    if status==422:return {'reply':'字段校验未通过（HTTP 422），请核对必填字段、编号和格式。'}\n    if status==404:return {'reply':'未找到记录（HTTP 404），请核对编号。'}\n    if status<200 or status>=300:return {'reply':'请求失败或网络异常，未确认操作成功；如涉及写入请先查询核对，不自动重试。'}\n    if not isinstance(data,dict) or data.get('code')!=0:return {'reply':'后端返回业务失败或非预期格式，未确认操作成功。请查询核对。'}\n    result=data.get('data')\n    if ACTIONS[intent][0]!='get' and intent not in READ_POST:\n        rid=result.get('id') if isinstance(result,dict) else None\n        if not isinstance(rid,int) or isinstance(rid,bool) or rid<1:\n            return {'reply':'后端响应缺少可核对的记录编号，未确认操作成功，请查询核对。'}\n        return {'reply':'后端已确认操作成功。结果：'+json.dumps(result,ensure_ascii=False)}\n    return {'reply':'后端查询结果（仅来自实际响应）：\\n'+json.dumps(result,ensure_ascii=False)}\n\ndef failure_reply(error_message, error_type):\n    match=re.search(r'(?:status(?:\\s+code)?)[^0-9]*(\\d{3})',error_message or '',re.I)\n    if match:return format_result(int(match.group(1)),'{}','lead_list')\n    return {'reply':'请求未完成（网络或节点错误），没有确认保存成功。请先查询核对；不会自动重试写入。'}\n\ndef main(error_message: str, error_type: str):\n    return failure_reply(error_message,error_type)\n",
+            "code_language": "python3",
+            "variables": [
+              {
+                "variable": "error_message",
+                "value_selector": [
+                  "http_get",
+                  "error_message"
+                ],
+                "value_type": "string"
+              },
+              {
+                "variable": "error_type",
+                "value_selector": [
+                  "http_get",
+                  "error_type"
+                ],
+                "value_type": "string"
+              }
+            ],
+            "outputs": {
+              "reply": {
+                "type": "string",
+                "children": null
+              }
+            }
+          },
+          "position": {
+            "x": 3000,
+            "y": 480
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "answer_get",
+          "type": "custom",
+          "data": {
+            "type": "answer",
+            "title": "实际业务结果",
+            "variables": [],
+            "answer": "{{#format_get.reply#}}"
+          },
+          "position": {
+            "x": 3300,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "fail_get",
+          "type": "custom",
+          "data": {
+            "type": "answer",
+            "title": "失败不虚报成功",
+            "variables": [],
+            "answer": "{{#error_get.reply#}}"
+          },
+          "position": {
+            "x": 3300,
+            "y": 480
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "http_post",
+          "type": "custom",
+          "data": {
+            "type": "http-request",
+            "title": "POST调用业务API",
+            "method": "post",
+            "url": "{{#plan.http_url#}}",
+            "variables": [],
+            "authorization": {
+              "type": "no-auth",
+              "config": null
+            },
+            "headers": "Content-Type: application/json",
+            "params": "",
+            "body": {
+              "type": "json",
+              "data": [
+                {
+                  "id": "body",
+                  "type": "text",
+                  "key": "",
+                  "value": "{{#plan.http_body#}}"
+                }
+              ]
+            },
+            "ssl_verify": true,
+            "timeout": {
+              "max_connect_timeout": 5,
+              "max_read_timeout": 10,
+              "max_write_timeout": 5
+            },
+            "retry_config": {
+              "retry_enabled": false,
+              "max_retries": 0,
+              "retry_interval": 100
+            },
+            "error_strategy": "fail-branch"
+          },
+          "position": {
+            "x": 2700,
+            "y": 750
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "format_post",
+          "type": "custom",
+          "data": {
+            "type": "code",
+            "title": "依据真实响应生成结果",
+            "code": "import json,re\nACTIONS={'lead_create': ('post', '/api/v1/consultant/leads', 'customer_name', 'customer_name contact_info gender age education_level intended_country intended_major background_info source_channel remark'), 'lead_list': ('get', '/api/v1/consultant/leads', '', 'keyword status page page_size'), 'lead_detail': ('get', '/api/v1/consultant/leads/{lead_id}', 'lead_id', 'lead_id customer_name'), 'lead_update': ('patch', '/api/v1/consultant/leads/{lead_id}', 'lead_id', 'lead_id customer_name contact_info intended_country intended_major background_info remark'), 'lead_status': ('patch', '/api/v1/consultant/leads/{lead_id}/status', 'lead_id status', 'lead_id customer_name status lost_reason'), 'lead_follow_up': ('post', '/api/v1/consultant/leads/{lead_id}/follow-ups', 'lead_id content', 'lead_id customer_name content follow_type next_plan'), 'daily_submit': ('post', '/api/v1/employee-reports', 'content', 'content report_date raw_content key_progress risks next_plan'), 'daily_list': ('get', '/api/v1/employee-reports', '', 'date_from date_to'), 'organizations': ('get', '/api/v1/enterprise/organizations', '', 'keyword limit'), 'colleagues': ('get', '/api/v1/enterprise/organizations/colleagues', 'name', 'name'), 'colleague_contact': ('get', '/api/v1/enterprise/colleagues/{employee_id}/contact', 'employee_id', 'employee_id'), 'guides': ('get', '/api/v1/enterprise/onboarding-guides', '', 'keyword category page page_size'), 'guide_create': ('post', '/api/v1/enterprise/onboarding-guides', 'title category content', 'title category content'), 'score_create': ('post', '/api/v1/enterprise/scores', 'student_id course_name score', 'student_id course_name score semester credit exam_key submission_key'), 'scores': ('get', '/api/v1/enterprise/scores', 'student_id', 'student_id semester limit'), 'score_correct': ('put', '/api/v1/enterprise/scores/{score_id}', 'score_id student_id course_name score expected_version', 'score_id student_id course_name score semester credit expected_version correction_reason'), 'score_history': ('get', '/api/v1/enterprise/scores/{score_id}/history', 'score_id', 'score_id limit'), 'leaves': ('get', '/api/v1/student-admin/leaves/pending', '', ''), 'leave_approve': ('post', '/api/v1/student-admin/leaves/{leave_id}/approve', 'leave_id decision', 'leave_id decision approval_comment'), 'tickets': ('get', '/api/v1/enterprise/tickets', '', 'status limit'), 'ticket_detail': ('get', '/api/v1/enterprise/tickets/{ticket_id}', 'ticket_id', 'ticket_id'), 'ticket_update': ('patch', '/api/v1/enterprise/tickets/{ticket_id}', 'ticket_id expected_status status', 'ticket_id expected_status status solution'), 'todos': ('get', '/api/v1/enterprise/todos', '', 'due_only limit'), 'todo_create': ('post', '/api/v1/enterprise/todos', 'title', 'title description due_time priority'), 'todo_update': ('patch', '/api/v1/enterprise/todos/{todo_id}', 'todo_id expected_status status', 'todo_id expected_status status'), 'notifications': ('get', '/api/v1/enterprise/notifications', '', 'limit'), 'nl_query': ('post', '/api/v1/ai/nl2sql/query', 'intent params', 'intent params')}\nREAD_POST={'nl_query'}\ndef format_result(status_code, body, intent):\n    try:data=json.loads(body or '{}')\n    except (ValueError,TypeError):data={}\n    status=int(status_code or 0)\n    if status==503:return {'reply':'员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。'}\n    if status==403:return {'reply':'无权操作或数据不在授权范围（HTTP 403），未确认任何修改。'}\n    if status==409:return {'reply':'数据状态或版本冲突（HTTP 409），请重新查询并选择编号/最新版本，不自动重试。'}\n    if status==422:return {'reply':'字段校验未通过（HTTP 422），请核对必填字段、编号和格式。'}\n    if status==404:return {'reply':'未找到记录（HTTP 404），请核对编号。'}\n    if status<200 or status>=300:return {'reply':'请求失败或网络异常，未确认操作成功；如涉及写入请先查询核对，不自动重试。'}\n    if not isinstance(data,dict) or data.get('code')!=0:return {'reply':'后端返回业务失败或非预期格式，未确认操作成功。请查询核对。'}\n    result=data.get('data')\n    if ACTIONS[intent][0]!='get' and intent not in READ_POST:\n        rid=result.get('id') if isinstance(result,dict) else None\n        if not isinstance(rid,int) or isinstance(rid,bool) or rid<1:\n            return {'reply':'后端响应缺少可核对的记录编号，未确认操作成功，请查询核对。'}\n        return {'reply':'后端已确认操作成功。结果：'+json.dumps(result,ensure_ascii=False)}\n    return {'reply':'后端查询结果（仅来自实际响应）：\\n'+json.dumps(result,ensure_ascii=False)}\n\ndef failure_reply(error_message, error_type):\n    match=re.search(r'(?:status(?:\\s+code)?)[^0-9]*(\\d{3})',error_message or '',re.I)\n    if match:return format_result(int(match.group(1)),'{}','lead_list')\n    return {'reply':'请求未完成（网络或节点错误），没有确认保存成功。请先查询核对；不会自动重试写入。'}\n\ndef main(status_code: int, body: str, intent: str):\n    return format_result(status_code,body,intent)\n",
+            "code_language": "python3",
+            "variables": [
+              {
+                "variable": "status_code",
+                "value_selector": [
+                  "http_post",
+                  "status_code"
+                ],
+                "value_type": "number"
+              },
+              {
+                "variable": "body",
+                "value_selector": [
+                  "http_post",
+                  "body"
+                ],
+                "value_type": "string"
+              },
+              {
+                "variable": "intent",
+                "value_selector": [
+                  "plan",
+                  "intent"
+                ],
+                "value_type": "string"
+              }
+            ],
+            "outputs": {
+              "reply": {
+                "type": "string",
+                "children": null
+              }
+            }
+          },
+          "position": {
+            "x": 3000,
+            "y": 750
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "error_post",
+          "type": "custom",
+          "data": {
+            "type": "code",
+            "title": "保留实际错误类型",
+            "code": "import json,re\nACTIONS={'lead_create': ('post', '/api/v1/consultant/leads', 'customer_name', 'customer_name contact_info gender age education_level intended_country intended_major background_info source_channel remark'), 'lead_list': ('get', '/api/v1/consultant/leads', '', 'keyword status page page_size'), 'lead_detail': ('get', '/api/v1/consultant/leads/{lead_id}', 'lead_id', 'lead_id customer_name'), 'lead_update': ('patch', '/api/v1/consultant/leads/{lead_id}', 'lead_id', 'lead_id customer_name contact_info intended_country intended_major background_info remark'), 'lead_status': ('patch', '/api/v1/consultant/leads/{lead_id}/status', 'lead_id status', 'lead_id customer_name status lost_reason'), 'lead_follow_up': ('post', '/api/v1/consultant/leads/{lead_id}/follow-ups', 'lead_id content', 'lead_id customer_name content follow_type next_plan'), 'daily_submit': ('post', '/api/v1/employee-reports', 'content', 'content report_date raw_content key_progress risks next_plan'), 'daily_list': ('get', '/api/v1/employee-reports', '', 'date_from date_to'), 'organizations': ('get', '/api/v1/enterprise/organizations', '', 'keyword limit'), 'colleagues': ('get', '/api/v1/enterprise/organizations/colleagues', 'name', 'name'), 'colleague_contact': ('get', '/api/v1/enterprise/colleagues/{employee_id}/contact', 'employee_id', 'employee_id'), 'guides': ('get', '/api/v1/enterprise/onboarding-guides', '', 'keyword category page page_size'), 'guide_create': ('post', '/api/v1/enterprise/onboarding-guides', 'title category content', 'title category content'), 'score_create': ('post', '/api/v1/enterprise/scores', 'student_id course_name score', 'student_id course_name score semester credit exam_key submission_key'), 'scores': ('get', '/api/v1/enterprise/scores', 'student_id', 'student_id semester limit'), 'score_correct': ('put', '/api/v1/enterprise/scores/{score_id}', 'score_id student_id course_name score expected_version', 'score_id student_id course_name score semester credit expected_version correction_reason'), 'score_history': ('get', '/api/v1/enterprise/scores/{score_id}/history', 'score_id', 'score_id limit'), 'leaves': ('get', '/api/v1/student-admin/leaves/pending', '', ''), 'leave_approve': ('post', '/api/v1/student-admin/leaves/{leave_id}/approve', 'leave_id decision', 'leave_id decision approval_comment'), 'tickets': ('get', '/api/v1/enterprise/tickets', '', 'status limit'), 'ticket_detail': ('get', '/api/v1/enterprise/tickets/{ticket_id}', 'ticket_id', 'ticket_id'), 'ticket_update': ('patch', '/api/v1/enterprise/tickets/{ticket_id}', 'ticket_id expected_status status', 'ticket_id expected_status status solution'), 'todos': ('get', '/api/v1/enterprise/todos', '', 'due_only limit'), 'todo_create': ('post', '/api/v1/enterprise/todos', 'title', 'title description due_time priority'), 'todo_update': ('patch', '/api/v1/enterprise/todos/{todo_id}', 'todo_id expected_status status', 'todo_id expected_status status'), 'notifications': ('get', '/api/v1/enterprise/notifications', '', 'limit'), 'nl_query': ('post', '/api/v1/ai/nl2sql/query', 'intent params', 'intent params')}\nREAD_POST={'nl_query'}\ndef format_result(status_code, body, intent):\n    try:data=json.loads(body or '{}')\n    except (ValueError,TypeError):data={}\n    status=int(status_code or 0)\n    if status==503:return {'reply':'员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。'}\n    if status==403:return {'reply':'无权操作或数据不在授权范围（HTTP 403），未确认任何修改。'}\n    if status==409:return {'reply':'数据状态或版本冲突（HTTP 409），请重新查询并选择编号/最新版本，不自动重试。'}\n    if status==422:return {'reply':'字段校验未通过（HTTP 422），请核对必填字段、编号和格式。'}\n    if status==404:return {'reply':'未找到记录（HTTP 404），请核对编号。'}\n    if status<200 or status>=300:return {'reply':'请求失败或网络异常，未确认操作成功；如涉及写入请先查询核对，不自动重试。'}\n    if not isinstance(data,dict) or data.get('code')!=0:return {'reply':'后端返回业务失败或非预期格式，未确认操作成功。请查询核对。'}\n    result=data.get('data')\n    if ACTIONS[intent][0]!='get' and intent not in READ_POST:\n        rid=result.get('id') if isinstance(result,dict) else None\n        if not isinstance(rid,int) or isinstance(rid,bool) or rid<1:\n            return {'reply':'后端响应缺少可核对的记录编号，未确认操作成功，请查询核对。'}\n        return {'reply':'后端已确认操作成功。结果：'+json.dumps(result,ensure_ascii=False)}\n    return {'reply':'后端查询结果（仅来自实际响应）：\\n'+json.dumps(result,ensure_ascii=False)}\n\ndef failure_reply(error_message, error_type):\n    match=re.search(r'(?:status(?:\\s+code)?)[^0-9]*(\\d{3})',error_message or '',re.I)\n    if match:return format_result(int(match.group(1)),'{}','lead_list')\n    return {'reply':'请求未完成（网络或节点错误），没有确认保存成功。请先查询核对；不会自动重试写入。'}\n\ndef main(error_message: str, error_type: str):\n    return failure_reply(error_message,error_type)\n",
+            "code_language": "python3",
+            "variables": [
+              {
+                "variable": "error_message",
+                "value_selector": [
+                  "http_post",
+                  "error_message"
+                ],
+                "value_type": "string"
+              },
+              {
+                "variable": "error_type",
+                "value_selector": [
+                  "http_post",
+                  "error_type"
+                ],
+                "value_type": "string"
+              }
+            ],
+            "outputs": {
+              "reply": {
+                "type": "string",
+                "children": null
+              }
+            }
+          },
+          "position": {
+            "x": 3000,
+            "y": 930
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "answer_post",
+          "type": "custom",
+          "data": {
+            "type": "answer",
+            "title": "实际业务结果",
+            "variables": [],
+            "answer": "{{#format_post.reply#}}"
+          },
+          "position": {
+            "x": 3300,
+            "y": 750
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "fail_post",
+          "type": "custom",
+          "data": {
+            "type": "answer",
+            "title": "失败不虚报成功",
+            "variables": [],
+            "answer": "{{#error_post.reply#}}"
+          },
+          "position": {
+            "x": 3300,
+            "y": 930
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "http_put",
+          "type": "custom",
+          "data": {
+            "type": "http-request",
+            "title": "PUT调用业务API",
+            "method": "put",
+            "url": "{{#plan.http_url#}}",
+            "variables": [],
+            "authorization": {
+              "type": "no-auth",
+              "config": null
+            },
+            "headers": "Content-Type: application/json",
+            "params": "",
+            "body": {
+              "type": "json",
+              "data": [
+                {
+                  "id": "body",
+                  "type": "text",
+                  "key": "",
+                  "value": "{{#plan.http_body#}}"
+                }
+              ]
+            },
+            "ssl_verify": true,
+            "timeout": {
+              "max_connect_timeout": 5,
+              "max_read_timeout": 10,
+              "max_write_timeout": 5
+            },
+            "retry_config": {
+              "retry_enabled": false,
+              "max_retries": 0,
+              "retry_interval": 100
+            },
+            "error_strategy": "fail-branch"
+          },
+          "position": {
+            "x": 2700,
+            "y": 1200
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "format_put",
+          "type": "custom",
+          "data": {
+            "type": "code",
+            "title": "依据真实响应生成结果",
+            "code": "import json,re\nACTIONS={'lead_create': ('post', '/api/v1/consultant/leads', 'customer_name', 'customer_name contact_info gender age education_level intended_country intended_major background_info source_channel remark'), 'lead_list': ('get', '/api/v1/consultant/leads', '', 'keyword status page page_size'), 'lead_detail': ('get', '/api/v1/consultant/leads/{lead_id}', 'lead_id', 'lead_id customer_name'), 'lead_update': ('patch', '/api/v1/consultant/leads/{lead_id}', 'lead_id', 'lead_id customer_name contact_info intended_country intended_major background_info remark'), 'lead_status': ('patch', '/api/v1/consultant/leads/{lead_id}/status', 'lead_id status', 'lead_id customer_name status lost_reason'), 'lead_follow_up': ('post', '/api/v1/consultant/leads/{lead_id}/follow-ups', 'lead_id content', 'lead_id customer_name content follow_type next_plan'), 'daily_submit': ('post', '/api/v1/employee-reports', 'content', 'content report_date raw_content key_progress risks next_plan'), 'daily_list': ('get', '/api/v1/employee-reports', '', 'date_from date_to'), 'organizations': ('get', '/api/v1/enterprise/organizations', '', 'keyword limit'), 'colleagues': ('get', '/api/v1/enterprise/organizations/colleagues', 'name', 'name'), 'colleague_contact': ('get', '/api/v1/enterprise/colleagues/{employee_id}/contact', 'employee_id', 'employee_id'), 'guides': ('get', '/api/v1/enterprise/onboarding-guides', '', 'keyword category page page_size'), 'guide_create': ('post', '/api/v1/enterprise/onboarding-guides', 'title category content', 'title category content'), 'score_create': ('post', '/api/v1/enterprise/scores', 'student_id course_name score', 'student_id course_name score semester credit exam_key submission_key'), 'scores': ('get', '/api/v1/enterprise/scores', 'student_id', 'student_id semester limit'), 'score_correct': ('put', '/api/v1/enterprise/scores/{score_id}', 'score_id student_id course_name score expected_version', 'score_id student_id course_name score semester credit expected_version correction_reason'), 'score_history': ('get', '/api/v1/enterprise/scores/{score_id}/history', 'score_id', 'score_id limit'), 'leaves': ('get', '/api/v1/student-admin/leaves/pending', '', ''), 'leave_approve': ('post', '/api/v1/student-admin/leaves/{leave_id}/approve', 'leave_id decision', 'leave_id decision approval_comment'), 'tickets': ('get', '/api/v1/enterprise/tickets', '', 'status limit'), 'ticket_detail': ('get', '/api/v1/enterprise/tickets/{ticket_id}', 'ticket_id', 'ticket_id'), 'ticket_update': ('patch', '/api/v1/enterprise/tickets/{ticket_id}', 'ticket_id expected_status status', 'ticket_id expected_status status solution'), 'todos': ('get', '/api/v1/enterprise/todos', '', 'due_only limit'), 'todo_create': ('post', '/api/v1/enterprise/todos', 'title', 'title description due_time priority'), 'todo_update': ('patch', '/api/v1/enterprise/todos/{todo_id}', 'todo_id expected_status status', 'todo_id expected_status status'), 'notifications': ('get', '/api/v1/enterprise/notifications', '', 'limit'), 'nl_query': ('post', '/api/v1/ai/nl2sql/query', 'intent params', 'intent params')}\nREAD_POST={'nl_query'}\ndef format_result(status_code, body, intent):\n    try:data=json.loads(body or '{}')\n    except (ValueError,TypeError):data={}\n    status=int(status_code or 0)\n    if status==503:return {'reply':'员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。'}\n    if status==403:return {'reply':'无权操作或数据不在授权范围（HTTP 403），未确认任何修改。'}\n    if status==409:return {'reply':'数据状态或版本冲突（HTTP 409），请重新查询并选择编号/最新版本，不自动重试。'}\n    if status==422:return {'reply':'字段校验未通过（HTTP 422），请核对必填字段、编号和格式。'}\n    if status==404:return {'reply':'未找到记录（HTTP 404），请核对编号。'}\n    if status<200 or status>=300:return {'reply':'请求失败或网络异常，未确认操作成功；如涉及写入请先查询核对，不自动重试。'}\n    if not isinstance(data,dict) or data.get('code')!=0:return {'reply':'后端返回业务失败或非预期格式，未确认操作成功。请查询核对。'}\n    result=data.get('data')\n    if ACTIONS[intent][0]!='get' and intent not in READ_POST:\n        rid=result.get('id') if isinstance(result,dict) else None\n        if not isinstance(rid,int) or isinstance(rid,bool) or rid<1:\n            return {'reply':'后端响应缺少可核对的记录编号，未确认操作成功，请查询核对。'}\n        return {'reply':'后端已确认操作成功。结果：'+json.dumps(result,ensure_ascii=False)}\n    return {'reply':'后端查询结果（仅来自实际响应）：\\n'+json.dumps(result,ensure_ascii=False)}\n\ndef failure_reply(error_message, error_type):\n    match=re.search(r'(?:status(?:\\s+code)?)[^0-9]*(\\d{3})',error_message or '',re.I)\n    if match:return format_result(int(match.group(1)),'{}','lead_list')\n    return {'reply':'请求未完成（网络或节点错误），没有确认保存成功。请先查询核对；不会自动重试写入。'}\n\ndef main(status_code: int, body: str, intent: str):\n    return format_result(status_code,body,intent)\n",
+            "code_language": "python3",
+            "variables": [
+              {
+                "variable": "status_code",
+                "value_selector": [
+                  "http_put",
+                  "status_code"
+                ],
+                "value_type": "number"
+              },
+              {
+                "variable": "body",
+                "value_selector": [
+                  "http_put",
+                  "body"
+                ],
+                "value_type": "string"
+              },
+              {
+                "variable": "intent",
+                "value_selector": [
+                  "plan",
+                  "intent"
+                ],
+                "value_type": "string"
+              }
+            ],
+            "outputs": {
+              "reply": {
+                "type": "string",
+                "children": null
+              }
+            }
+          },
+          "position": {
+            "x": 3000,
+            "y": 1200
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "error_put",
+          "type": "custom",
+          "data": {
+            "type": "code",
+            "title": "保留实际错误类型",
+            "code": "import json,re\nACTIONS={'lead_create': ('post', '/api/v1/consultant/leads', 'customer_name', 'customer_name contact_info gender age education_level intended_country intended_major background_info source_channel remark'), 'lead_list': ('get', '/api/v1/consultant/leads', '', 'keyword status page page_size'), 'lead_detail': ('get', '/api/v1/consultant/leads/{lead_id}', 'lead_id', 'lead_id customer_name'), 'lead_update': ('patch', '/api/v1/consultant/leads/{lead_id}', 'lead_id', 'lead_id customer_name contact_info intended_country intended_major background_info remark'), 'lead_status': ('patch', '/api/v1/consultant/leads/{lead_id}/status', 'lead_id status', 'lead_id customer_name status lost_reason'), 'lead_follow_up': ('post', '/api/v1/consultant/leads/{lead_id}/follow-ups', 'lead_id content', 'lead_id customer_name content follow_type next_plan'), 'daily_submit': ('post', '/api/v1/employee-reports', 'content', 'content report_date raw_content key_progress risks next_plan'), 'daily_list': ('get', '/api/v1/employee-reports', '', 'date_from date_to'), 'organizations': ('get', '/api/v1/enterprise/organizations', '', 'keyword limit'), 'colleagues': ('get', '/api/v1/enterprise/organizations/colleagues', 'name', 'name'), 'colleague_contact': ('get', '/api/v1/enterprise/colleagues/{employee_id}/contact', 'employee_id', 'employee_id'), 'guides': ('get', '/api/v1/enterprise/onboarding-guides', '', 'keyword category page page_size'), 'guide_create': ('post', '/api/v1/enterprise/onboarding-guides', 'title category content', 'title category content'), 'score_create': ('post', '/api/v1/enterprise/scores', 'student_id course_name score', 'student_id course_name score semester credit exam_key submission_key'), 'scores': ('get', '/api/v1/enterprise/scores', 'student_id', 'student_id semester limit'), 'score_correct': ('put', '/api/v1/enterprise/scores/{score_id}', 'score_id student_id course_name score expected_version', 'score_id student_id course_name score semester credit expected_version correction_reason'), 'score_history': ('get', '/api/v1/enterprise/scores/{score_id}/history', 'score_id', 'score_id limit'), 'leaves': ('get', '/api/v1/student-admin/leaves/pending', '', ''), 'leave_approve': ('post', '/api/v1/student-admin/leaves/{leave_id}/approve', 'leave_id decision', 'leave_id decision approval_comment'), 'tickets': ('get', '/api/v1/enterprise/tickets', '', 'status limit'), 'ticket_detail': ('get', '/api/v1/enterprise/tickets/{ticket_id}', 'ticket_id', 'ticket_id'), 'ticket_update': ('patch', '/api/v1/enterprise/tickets/{ticket_id}', 'ticket_id expected_status status', 'ticket_id expected_status status solution'), 'todos': ('get', '/api/v1/enterprise/todos', '', 'due_only limit'), 'todo_create': ('post', '/api/v1/enterprise/todos', 'title', 'title description due_time priority'), 'todo_update': ('patch', '/api/v1/enterprise/todos/{todo_id}', 'todo_id expected_status status', 'todo_id expected_status status'), 'notifications': ('get', '/api/v1/enterprise/notifications', '', 'limit'), 'nl_query': ('post', '/api/v1/ai/nl2sql/query', 'intent params', 'intent params')}\nREAD_POST={'nl_query'}\ndef format_result(status_code, body, intent):\n    try:data=json.loads(body or '{}')\n    except (ValueError,TypeError):data={}\n    status=int(status_code or 0)\n    if status==503:return {'reply':'员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。'}\n    if status==403:return {'reply':'无权操作或数据不在授权范围（HTTP 403），未确认任何修改。'}\n    if status==409:return {'reply':'数据状态或版本冲突（HTTP 409），请重新查询并选择编号/最新版本，不自动重试。'}\n    if status==422:return {'reply':'字段校验未通过（HTTP 422），请核对必填字段、编号和格式。'}\n    if status==404:return {'reply':'未找到记录（HTTP 404），请核对编号。'}\n    if status<200 or status>=300:return {'reply':'请求失败或网络异常，未确认操作成功；如涉及写入请先查询核对，不自动重试。'}\n    if not isinstance(data,dict) or data.get('code')!=0:return {'reply':'后端返回业务失败或非预期格式，未确认操作成功。请查询核对。'}\n    result=data.get('data')\n    if ACTIONS[intent][0]!='get' and intent not in READ_POST:\n        rid=result.get('id') if isinstance(result,dict) else None\n        if not isinstance(rid,int) or isinstance(rid,bool) or rid<1:\n            return {'reply':'后端响应缺少可核对的记录编号，未确认操作成功，请查询核对。'}\n        return {'reply':'后端已确认操作成功。结果：'+json.dumps(result,ensure_ascii=False)}\n    return {'reply':'后端查询结果（仅来自实际响应）：\\n'+json.dumps(result,ensure_ascii=False)}\n\ndef failure_reply(error_message, error_type):\n    match=re.search(r'(?:status(?:\\s+code)?)[^0-9]*(\\d{3})',error_message or '',re.I)\n    if match:return format_result(int(match.group(1)),'{}','lead_list')\n    return {'reply':'请求未完成（网络或节点错误），没有确认保存成功。请先查询核对；不会自动重试写入。'}\n\ndef main(error_message: str, error_type: str):\n    return failure_reply(error_message,error_type)\n",
+            "code_language": "python3",
+            "variables": [
+              {
+                "variable": "error_message",
+                "value_selector": [
+                  "http_put",
+                  "error_message"
+                ],
+                "value_type": "string"
+              },
+              {
+                "variable": "error_type",
+                "value_selector": [
+                  "http_put",
+                  "error_type"
+                ],
+                "value_type": "string"
+              }
+            ],
+            "outputs": {
+              "reply": {
+                "type": "string",
+                "children": null
+              }
+            }
+          },
+          "position": {
+            "x": 3000,
+            "y": 1380
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "answer_put",
+          "type": "custom",
+          "data": {
+            "type": "answer",
+            "title": "实际业务结果",
+            "variables": [],
+            "answer": "{{#format_put.reply#}}"
+          },
+          "position": {
+            "x": 3300,
+            "y": 1200
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "fail_put",
+          "type": "custom",
+          "data": {
+            "type": "answer",
+            "title": "失败不虚报成功",
+            "variables": [],
+            "answer": "{{#error_put.reply#}}"
+          },
+          "position": {
+            "x": 3300,
+            "y": 1380
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "http_patch",
+          "type": "custom",
+          "data": {
+            "type": "http-request",
+            "title": "PATCH调用业务API",
+            "method": "patch",
+            "url": "{{#plan.http_url#}}",
+            "variables": [],
+            "authorization": {
+              "type": "no-auth",
+              "config": null
+            },
+            "headers": "Content-Type: application/json",
+            "params": "",
+            "body": {
+              "type": "json",
+              "data": [
+                {
+                  "id": "body",
+                  "type": "text",
+                  "key": "",
+                  "value": "{{#plan.http_body#}}"
+                }
+              ]
+            },
+            "ssl_verify": true,
+            "timeout": {
+              "max_connect_timeout": 5,
+              "max_read_timeout": 10,
+              "max_write_timeout": 5
+            },
+            "retry_config": {
+              "retry_enabled": false,
+              "max_retries": 0,
+              "retry_interval": 100
+            },
+            "error_strategy": "fail-branch"
+          },
+          "position": {
+            "x": 2700,
+            "y": 1650
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "format_patch",
+          "type": "custom",
+          "data": {
+            "type": "code",
+            "title": "依据真实响应生成结果",
+            "code": "import json,re\nACTIONS={'lead_create': ('post', '/api/v1/consultant/leads', 'customer_name', 'customer_name contact_info gender age education_level intended_country intended_major background_info source_channel remark'), 'lead_list': ('get', '/api/v1/consultant/leads', '', 'keyword status page page_size'), 'lead_detail': ('get', '/api/v1/consultant/leads/{lead_id}', 'lead_id', 'lead_id customer_name'), 'lead_update': ('patch', '/api/v1/consultant/leads/{lead_id}', 'lead_id', 'lead_id customer_name contact_info intended_country intended_major background_info remark'), 'lead_status': ('patch', '/api/v1/consultant/leads/{lead_id}/status', 'lead_id status', 'lead_id customer_name status lost_reason'), 'lead_follow_up': ('post', '/api/v1/consultant/leads/{lead_id}/follow-ups', 'lead_id content', 'lead_id customer_name content follow_type next_plan'), 'daily_submit': ('post', '/api/v1/employee-reports', 'content', 'content report_date raw_content key_progress risks next_plan'), 'daily_list': ('get', '/api/v1/employee-reports', '', 'date_from date_to'), 'organizations': ('get', '/api/v1/enterprise/organizations', '', 'keyword limit'), 'colleagues': ('get', '/api/v1/enterprise/organizations/colleagues', 'name', 'name'), 'colleague_contact': ('get', '/api/v1/enterprise/colleagues/{employee_id}/contact', 'employee_id', 'employee_id'), 'guides': ('get', '/api/v1/enterprise/onboarding-guides', '', 'keyword category page page_size'), 'guide_create': ('post', '/api/v1/enterprise/onboarding-guides', 'title category content', 'title category content'), 'score_create': ('post', '/api/v1/enterprise/scores', 'student_id course_name score', 'student_id course_name score semester credit exam_key submission_key'), 'scores': ('get', '/api/v1/enterprise/scores', 'student_id', 'student_id semester limit'), 'score_correct': ('put', '/api/v1/enterprise/scores/{score_id}', 'score_id student_id course_name score expected_version', 'score_id student_id course_name score semester credit expected_version correction_reason'), 'score_history': ('get', '/api/v1/enterprise/scores/{score_id}/history', 'score_id', 'score_id limit'), 'leaves': ('get', '/api/v1/student-admin/leaves/pending', '', ''), 'leave_approve': ('post', '/api/v1/student-admin/leaves/{leave_id}/approve', 'leave_id decision', 'leave_id decision approval_comment'), 'tickets': ('get', '/api/v1/enterprise/tickets', '', 'status limit'), 'ticket_detail': ('get', '/api/v1/enterprise/tickets/{ticket_id}', 'ticket_id', 'ticket_id'), 'ticket_update': ('patch', '/api/v1/enterprise/tickets/{ticket_id}', 'ticket_id expected_status status', 'ticket_id expected_status status solution'), 'todos': ('get', '/api/v1/enterprise/todos', '', 'due_only limit'), 'todo_create': ('post', '/api/v1/enterprise/todos', 'title', 'title description due_time priority'), 'todo_update': ('patch', '/api/v1/enterprise/todos/{todo_id}', 'todo_id expected_status status', 'todo_id expected_status status'), 'notifications': ('get', '/api/v1/enterprise/notifications', '', 'limit'), 'nl_query': ('post', '/api/v1/ai/nl2sql/query', 'intent params', 'intent params')}\nREAD_POST={'nl_query'}\ndef format_result(status_code, body, intent):\n    try:data=json.loads(body or '{}')\n    except (ValueError,TypeError):data={}\n    status=int(status_code or 0)\n    if status==503:return {'reply':'员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。'}\n    if status==403:return {'reply':'无权操作或数据不在授权范围（HTTP 403），未确认任何修改。'}\n    if status==409:return {'reply':'数据状态或版本冲突（HTTP 409），请重新查询并选择编号/最新版本，不自动重试。'}\n    if status==422:return {'reply':'字段校验未通过（HTTP 422），请核对必填字段、编号和格式。'}\n    if status==404:return {'reply':'未找到记录（HTTP 404），请核对编号。'}\n    if status<200 or status>=300:return {'reply':'请求失败或网络异常，未确认操作成功；如涉及写入请先查询核对，不自动重试。'}\n    if not isinstance(data,dict) or data.get('code')!=0:return {'reply':'后端返回业务失败或非预期格式，未确认操作成功。请查询核对。'}\n    result=data.get('data')\n    if ACTIONS[intent][0]!='get' and intent not in READ_POST:\n        rid=result.get('id') if isinstance(result,dict) else None\n        if not isinstance(rid,int) or isinstance(rid,bool) or rid<1:\n            return {'reply':'后端响应缺少可核对的记录编号，未确认操作成功，请查询核对。'}\n        return {'reply':'后端已确认操作成功。结果：'+json.dumps(result,ensure_ascii=False)}\n    return {'reply':'后端查询结果（仅来自实际响应）：\\n'+json.dumps(result,ensure_ascii=False)}\n\ndef failure_reply(error_message, error_type):\n    match=re.search(r'(?:status(?:\\s+code)?)[^0-9]*(\\d{3})',error_message or '',re.I)\n    if match:return format_result(int(match.group(1)),'{}','lead_list')\n    return {'reply':'请求未完成（网络或节点错误），没有确认保存成功。请先查询核对；不会自动重试写入。'}\n\ndef main(status_code: int, body: str, intent: str):\n    return format_result(status_code,body,intent)\n",
+            "code_language": "python3",
+            "variables": [
+              {
+                "variable": "status_code",
+                "value_selector": [
+                  "http_patch",
+                  "status_code"
+                ],
+                "value_type": "number"
+              },
+              {
+                "variable": "body",
+                "value_selector": [
+                  "http_patch",
+                  "body"
+                ],
+                "value_type": "string"
+              },
+              {
+                "variable": "intent",
+                "value_selector": [
+                  "plan",
+                  "intent"
+                ],
+                "value_type": "string"
+              }
+            ],
+            "outputs": {
+              "reply": {
+                "type": "string",
+                "children": null
+              }
+            }
+          },
+          "position": {
+            "x": 3000,
+            "y": 1650
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "error_patch",
+          "type": "custom",
+          "data": {
+            "type": "code",
+            "title": "保留实际错误类型",
+            "code": "import json,re\nACTIONS={'lead_create': ('post', '/api/v1/consultant/leads', 'customer_name', 'customer_name contact_info gender age education_level intended_country intended_major background_info source_channel remark'), 'lead_list': ('get', '/api/v1/consultant/leads', '', 'keyword status page page_size'), 'lead_detail': ('get', '/api/v1/consultant/leads/{lead_id}', 'lead_id', 'lead_id customer_name'), 'lead_update': ('patch', '/api/v1/consultant/leads/{lead_id}', 'lead_id', 'lead_id customer_name contact_info intended_country intended_major background_info remark'), 'lead_status': ('patch', '/api/v1/consultant/leads/{lead_id}/status', 'lead_id status', 'lead_id customer_name status lost_reason'), 'lead_follow_up': ('post', '/api/v1/consultant/leads/{lead_id}/follow-ups', 'lead_id content', 'lead_id customer_name content follow_type next_plan'), 'daily_submit': ('post', '/api/v1/employee-reports', 'content', 'content report_date raw_content key_progress risks next_plan'), 'daily_list': ('get', '/api/v1/employee-reports', '', 'date_from date_to'), 'organizations': ('get', '/api/v1/enterprise/organizations', '', 'keyword limit'), 'colleagues': ('get', '/api/v1/enterprise/organizations/colleagues', 'name', 'name'), 'colleague_contact': ('get', '/api/v1/enterprise/colleagues/{employee_id}/contact', 'employee_id', 'employee_id'), 'guides': ('get', '/api/v1/enterprise/onboarding-guides', '', 'keyword category page page_size'), 'guide_create': ('post', '/api/v1/enterprise/onboarding-guides', 'title category content', 'title category content'), 'score_create': ('post', '/api/v1/enterprise/scores', 'student_id course_name score', 'student_id course_name score semester credit exam_key submission_key'), 'scores': ('get', '/api/v1/enterprise/scores', 'student_id', 'student_id semester limit'), 'score_correct': ('put', '/api/v1/enterprise/scores/{score_id}', 'score_id student_id course_name score expected_version', 'score_id student_id course_name score semester credit expected_version correction_reason'), 'score_history': ('get', '/api/v1/enterprise/scores/{score_id}/history', 'score_id', 'score_id limit'), 'leaves': ('get', '/api/v1/student-admin/leaves/pending', '', ''), 'leave_approve': ('post', '/api/v1/student-admin/leaves/{leave_id}/approve', 'leave_id decision', 'leave_id decision approval_comment'), 'tickets': ('get', '/api/v1/enterprise/tickets', '', 'status limit'), 'ticket_detail': ('get', '/api/v1/enterprise/tickets/{ticket_id}', 'ticket_id', 'ticket_id'), 'ticket_update': ('patch', '/api/v1/enterprise/tickets/{ticket_id}', 'ticket_id expected_status status', 'ticket_id expected_status status solution'), 'todos': ('get', '/api/v1/enterprise/todos', '', 'due_only limit'), 'todo_create': ('post', '/api/v1/enterprise/todos', 'title', 'title description due_time priority'), 'todo_update': ('patch', '/api/v1/enterprise/todos/{todo_id}', 'todo_id expected_status status', 'todo_id expected_status status'), 'notifications': ('get', '/api/v1/enterprise/notifications', '', 'limit'), 'nl_query': ('post', '/api/v1/ai/nl2sql/query', 'intent params', 'intent params')}\nREAD_POST={'nl_query'}\ndef format_result(status_code, body, intent):\n    try:data=json.loads(body or '{}')\n    except (ValueError,TypeError):data={}\n    status=int(status_code or 0)\n    if status==503:return {'reply':'员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。'}\n    if status==403:return {'reply':'无权操作或数据不在授权范围（HTTP 403），未确认任何修改。'}\n    if status==409:return {'reply':'数据状态或版本冲突（HTTP 409），请重新查询并选择编号/最新版本，不自动重试。'}\n    if status==422:return {'reply':'字段校验未通过（HTTP 422），请核对必填字段、编号和格式。'}\n    if status==404:return {'reply':'未找到记录（HTTP 404），请核对编号。'}\n    if status<200 or status>=300:return {'reply':'请求失败或网络异常，未确认操作成功；如涉及写入请先查询核对，不自动重试。'}\n    if not isinstance(data,dict) or data.get('code')!=0:return {'reply':'后端返回业务失败或非预期格式，未确认操作成功。请查询核对。'}\n    result=data.get('data')\n    if ACTIONS[intent][0]!='get' and intent not in READ_POST:\n        rid=result.get('id') if isinstance(result,dict) else None\n        if not isinstance(rid,int) or isinstance(rid,bool) or rid<1:\n            return {'reply':'后端响应缺少可核对的记录编号，未确认操作成功，请查询核对。'}\n        return {'reply':'后端已确认操作成功。结果：'+json.dumps(result,ensure_ascii=False)}\n    return {'reply':'后端查询结果（仅来自实际响应）：\\n'+json.dumps(result,ensure_ascii=False)}\n\ndef failure_reply(error_message, error_type):\n    match=re.search(r'(?:status(?:\\s+code)?)[^0-9]*(\\d{3})',error_message or '',re.I)\n    if match:return format_result(int(match.group(1)),'{}','lead_list')\n    return {'reply':'请求未完成（网络或节点错误），没有确认保存成功。请先查询核对；不会自动重试写入。'}\n\ndef main(error_message: str, error_type: str):\n    return failure_reply(error_message,error_type)\n",
+            "code_language": "python3",
+            "variables": [
+              {
+                "variable": "error_message",
+                "value_selector": [
+                  "http_patch",
+                  "error_message"
+                ],
+                "value_type": "string"
+              },
+              {
+                "variable": "error_type",
+                "value_selector": [
+                  "http_patch",
+                  "error_type"
+                ],
+                "value_type": "string"
+              }
+            ],
+            "outputs": {
+              "reply": {
+                "type": "string",
+                "children": null
+              }
+            }
+          },
+          "position": {
+            "x": 3000,
+            "y": 1830
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "answer_patch",
+          "type": "custom",
+          "data": {
+            "type": "answer",
+            "title": "实际业务结果",
+            "variables": [],
+            "answer": "{{#format_patch.reply#}}"
+          },
+          "position": {
+            "x": 3300,
+            "y": 1650
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "fail_patch",
+          "type": "custom",
+          "data": {
+            "type": "answer",
+            "title": "失败不虚报成功",
+            "variables": [],
+            "answer": "{{#error_patch.reply#}}"
+          },
+          "position": {
+            "x": 3300,
+            "y": 1830
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        }
+      ],
+      "edges": [
+        {
+          "id": "method-false-http_get",
+          "source": "method",
+          "target": "http_get",
+          "sourceHandle": "false",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "if-else",
+            "targetType": "http-request",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "http_get-source-format_get",
+          "source": "http_get",
+          "target": "format_get",
+          "sourceHandle": "source",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "http-request",
+            "targetType": "code",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "http_get-fail-branch-error_get",
+          "source": "http_get",
+          "target": "error_get",
+          "sourceHandle": "fail-branch",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "http-request",
+            "targetType": "code",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "format_get-source-answer_get",
+          "source": "format_get",
+          "target": "answer_get",
+          "sourceHandle": "source",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "code",
+            "targetType": "answer",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "error_get-source-fail_get",
+          "source": "error_get",
+          "target": "fail_get",
+          "sourceHandle": "source",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "code",
+            "targetType": "answer",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "method-post-http_post",
+          "source": "method",
+          "target": "http_post",
+          "sourceHandle": "post",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "if-else",
+            "targetType": "http-request",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "http_post-source-format_post",
+          "source": "http_post",
+          "target": "format_post",
+          "sourceHandle": "source",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "http-request",
+            "targetType": "code",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "http_post-fail-branch-error_post",
+          "source": "http_post",
+          "target": "error_post",
+          "sourceHandle": "fail-branch",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "http-request",
+            "targetType": "code",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "format_post-source-answer_post",
+          "source": "format_post",
+          "target": "answer_post",
+          "sourceHandle": "source",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "code",
+            "targetType": "answer",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "error_post-source-fail_post",
+          "source": "error_post",
+          "target": "fail_post",
+          "sourceHandle": "source",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "code",
+            "targetType": "answer",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "method-put-http_put",
+          "source": "method",
+          "target": "http_put",
+          "sourceHandle": "put",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "if-else",
+            "targetType": "http-request",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "http_put-source-format_put",
+          "source": "http_put",
+          "target": "format_put",
+          "sourceHandle": "source",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "http-request",
+            "targetType": "code",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "http_put-fail-branch-error_put",
+          "source": "http_put",
+          "target": "error_put",
+          "sourceHandle": "fail-branch",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "http-request",
+            "targetType": "code",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "format_put-source-answer_put",
+          "source": "format_put",
+          "target": "answer_put",
+          "sourceHandle": "source",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "code",
+            "targetType": "answer",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "error_put-source-fail_put",
+          "source": "error_put",
+          "target": "fail_put",
+          "sourceHandle": "source",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "code",
+            "targetType": "answer",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "method-patch-http_patch",
+          "source": "method",
+          "target": "http_patch",
+          "sourceHandle": "patch",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "if-else",
+            "targetType": "http-request",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "http_patch-source-format_patch",
+          "source": "http_patch",
+          "target": "format_patch",
+          "sourceHandle": "source",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "http-request",
+            "targetType": "code",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "http_patch-fail-branch-error_patch",
+          "source": "http_patch",
+          "target": "error_patch",
+          "sourceHandle": "fail-branch",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "http-request",
+            "targetType": "code",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "format_patch-source-answer_patch",
+          "source": "format_patch",
+          "target": "answer_patch",
+          "sourceHandle": "source",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "code",
+            "targetType": "answer",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "error_patch-source-fail_patch",
+          "source": "error_patch",
+          "target": "fail_patch",
+          "sourceHandle": "source",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "code",
+            "targetType": "answer",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "start-source-health",
+          "source": "start",
+          "target": "health",
+          "sourceHandle": "source",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "start",
+            "targetType": "http-request",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "health-source-gate",
+          "source": "health",
+          "target": "gate",
+          "sourceHandle": "source",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "http-request",
+            "targetType": "code",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "gate-source-gate_if",
+          "source": "gate",
+          "target": "gate_if",
+          "sourceHandle": "source",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "code",
+            "targetType": "if-else",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "gate_if-true-llm",
+          "source": "gate_if",
+          "target": "llm",
+          "sourceHandle": "true",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "if-else",
+            "targetType": "llm",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "gate_if-false-health_answer",
+          "source": "gate_if",
+          "target": "health_answer",
+          "sourceHandle": "false",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "if-else",
+            "targetType": "answer",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "llm-source-plan",
+          "source": "llm",
+          "target": "plan",
+          "sourceHandle": "source",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "llm",
+            "targetType": "code",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "llm-fail-branch-model_failure",
+          "source": "llm",
+          "target": "model_failure",
+          "sourceHandle": "fail-branch",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "llm",
+            "targetType": "answer",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "plan-source-remember",
+          "source": "plan",
+          "target": "remember",
+          "sourceHandle": "source",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "code",
+            "targetType": "assigner",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "remember-source-execute",
+          "source": "remember",
+          "target": "execute",
+          "sourceHandle": "source",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "assigner",
+            "targetType": "if-else",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "execute-true-method",
+          "source": "execute",
+          "target": "method",
+          "sourceHandle": "true",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "if-else",
+            "targetType": "if-else",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "id": "execute-false-clarify",
+          "source": "execute",
+          "target": "clarify",
+          "sourceHandle": "false",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "if-else",
+            "targetType": "answer",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        }
+      ],
+      "viewport": {
+        "x": 0,
+        "y": 0,
+        "zoom": 0.6
+      }
+    },
+    "features": {
+      "opening_statement": "你好，我是ENT企业助手。可处理已接入API的文字查询和操作；写入前会请求确认。员工身份未就绪时会说明503，不会假报成功。",
+      "suggested_questions": [
+        "后端健康检查",
+        "查询客户验证甲",
+        "查询学生1000004的成绩",
+        "查看我的待办"
+      ],
+      "suggested_questions_after_answer": {
+        "enabled": false
+      },
+      "text_to_speech": {
+        "enabled": false
+      },
+      "speech_to_text": {
+        "enabled": false
+      },
+      "retriever_resource": {
+        "enabled": false
+      },
+      "sensitive_word_avoidance": {
+        "enabled": false
+      },
+      "file_upload": {
+        "enabled": false
+      }
+    },
+    "environment_variables": [],
+    "conversation_variables": [
+      {
+        "id": "783f8620-5581-4cb7-9c62-f7d06b4946a0",
+        "name": "pending_action",
+        "selector": [
+          "conversation",
+          "pending_action"
+        ],
+        "description": "服务端会话内的待确认动作，模型不得自行确认",
+        "value": "",
+        "value_type": "string"
+      }
+    ]
+  }
+}

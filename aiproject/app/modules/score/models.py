@@ -1,0 +1,33 @@
+from sqlalchemy import Table, Column, BigInteger, Integer, SmallInteger, String, Text, DateTime, Numeric, Enum, LargeBinary, JSON, UniqueConstraint
+from app.core.database import Base
+
+student_score = Table("student_score", Base.metadata,
+    Column("id", BigInteger().with_variant(Integer, "sqlite"), primary_key=True),
+    Column("student_id", BigInteger, nullable=False),
+    Column("course_name", String(128), nullable=False),
+    Column("score", Numeric(5,2), nullable=False),
+    Column("semester", String(32), nullable=True),
+    Column("credit", Numeric(3,1), nullable=True),
+    Column("recorded_by", BigInteger, nullable=True),
+    Column("exam_key", String(96), nullable=True),
+    Column("submission_key", String(96), nullable=True),
+    Column("submission_hash", String(64), nullable=True),
+    Column("version", Integer, nullable=False, default=1, server_default="1"),
+    Column("update_time", DateTime, nullable=True),
+    Column("create_time", DateTime, nullable=False),
+    UniqueConstraint("student_id", "exam_key", name="uk_score_exam"),
+    UniqueConstraint("student_id", "submission_key", name="uk_score_submission"),
+)
+
+student_score_history = Table("student_score_history", Base.metadata,
+    Column("id", BigInteger().with_variant(Integer, "sqlite"), primary_key=True),
+    Column("score_id", BigInteger, nullable=False),
+    Column("version", Integer, nullable=False),
+    Column("operation", String(16), nullable=False),
+    Column("changed_by", BigInteger, nullable=True),
+    Column("change_reason", Text, nullable=True),
+    Column("before_data", JSON, nullable=True),
+    Column("after_data", JSON, nullable=False),
+    Column("create_time", DateTime, nullable=False),
+    UniqueConstraint("score_id", "version", name="uk_score_history_version"),
+)

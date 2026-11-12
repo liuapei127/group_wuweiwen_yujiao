@@ -1,0 +1,29 @@
+{
+  "app_id": "ac18cfb8-3f60-406f-99dd-d9cc635dc71f",
+  "published": {
+    "id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "nodes": 32,
+    "edges": 31,
+    "graph_sha256": "7181c44ee0619eb719b6e67212a061f69193e058a1174210d5241e3743b1f8bd",
+    "environment_variable_names": [
+      "base_url"
+    ],
+    "conversation_variable_names": [
+      "pending_action"
+    ]
+  },
+  "draft": {
+    "id": "ee5e2fe7-5d1f-4c34-bb01-dfb0afcd3780",
+    "nodes": 32,
+    "edges": 31,
+    "graph_sha256": "7181c44ee0619eb719b6e67212a061f69193e058a1174210d5241e3743b1f8bd",
+    "environment_variable_names": [
+      "base_url"
+    ],
+    "conversation_variable_names": [
+      "pending_action"
+    ]
+  },
+  "old_published_retained": true,
+  "published_draft_graph_equal": true
+}

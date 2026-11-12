@@ -1,0 +1,12 @@
+services:
+  api:
+    networks:
+      default: {}
+      dify_tools:
+        aliases:
+          - education-api
+
+networks:
+  dify_tools:
+    external: true
+    name: docker_ssrf_proxy_network

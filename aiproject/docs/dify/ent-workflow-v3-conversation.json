@@ -1,0 +1,13 @@
+[
+  {
+    "id": "783f8620-5581-4cb7-9c62-f7d06b4946a0",
+    "name": "pending_action",
+    "selector": [
+      "conversation",
+      "pending_action"
+    ],
+    "description": "服务端会话内的待确认动作，模型不得自行确认",
+    "value": "",
+    "value_type": "string"
+  }
+]

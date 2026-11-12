@@ -1,0 +1,5 @@
+# unit auth tests 2026-11-11T18:09:28.051359+08:00
+
+PASS default_blocked
+PASS independent_app_and_overrides
+PASS unknown_mode_expected_runtime_error

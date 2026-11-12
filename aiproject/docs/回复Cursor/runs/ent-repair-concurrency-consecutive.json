@@ -1,0 +1,32 @@
+[
+  {
+    "round": 1,
+    "exit_code": 0,
+    "stdout": "{\"status\": \"passed\", \"database\": \"ent_verify_reliability_0b51bb12\", \"process_operations\": 36, \"invariants\": {\"one_score_per_exam\": true, \"one_winning_correction\": true, \"history_atomic\": true, \"one_winning_approval\": true, \"todo_reassignment_synchronized\": true, \"duplicate_source_todos\": 0, \"duplicate_notification_keys\": 0}}\n",
+    "stderr": ""
+  },
+  {
+    "round": 2,
+    "exit_code": 0,
+    "stdout": "{\"status\": \"passed\", \"database\": \"ent_verify_reliability_0b51bb12\", \"process_operations\": 36, \"invariants\": {\"one_score_per_exam\": true, \"one_winning_correction\": true, \"history_atomic\": true, \"one_winning_approval\": true, \"todo_reassignment_synchronized\": true, \"duplicate_source_todos\": 0, \"duplicate_notification_keys\": 0}}\n",
+    "stderr": ""
+  },
+  {
+    "round": 3,
+    "exit_code": 0,
+    "stdout": "{\"status\": \"passed\", \"database\": \"ent_verify_reliability_0b51bb12\", \"process_operations\": 36, \"invariants\": {\"one_score_per_exam\": true, \"one_winning_correction\": true, \"history_atomic\": true, \"one_winning_approval\": true, \"todo_reassignment_synchronized\": true, \"duplicate_source_todos\": 0, \"duplicate_notification_keys\": 0}}\n",
+    "stderr": ""
+  },
+  {
+    "round": 4,
+    "exit_code": 0,
+    "stdout": "{\"status\": \"passed\", \"database\": \"ent_verify_reliability_0b51bb12\", \"process_operations\": 36, \"invariants\": {\"one_score_per_exam\": true, \"one_winning_correction\": true, \"history_atomic\": true, \"one_winning_approval\": true, \"todo_reassignment_synchronized\": true, \"duplicate_source_todos\": 0, \"duplicate_notification_keys\": 0}}\n",
+    "stderr": ""
+  },
+  {
+    "round": 5,
+    "exit_code": 0,
+    "stdout": "{\"status\": \"passed\", \"database\": \"ent_verify_reliability_0b51bb12\", \"process_operations\": 36, \"invariants\": {\"one_score_per_exam\": true, \"one_winning_correction\": true, \"history_atomic\": true, \"one_winning_approval\": true, \"todo_reassignment_synchronized\": true, \"duplicate_source_todos\": 0, \"duplicate_notification_keys\": 0}}\n",
+    "stderr": ""
+  }
+]

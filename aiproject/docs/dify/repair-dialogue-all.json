@@ -1,0 +1,346 @@
+[
+  {
+    "id": "M01",
+    "conversation_key": "create",
+    "query": "录入客户验证乙，联系方式 verify@example.invalid，意向英国",
+    "expect": "回复“确认”",
+    "expect_http": false,
+    "expect_pending_intent": "lead_create"
+  },
+  {
+    "id": "M02",
+    "conversation_key": "create",
+    "query": "确认",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "lead_create"
+  },
+  {
+    "id": "M03",
+    "conversation_key": "create",
+    "query": "确认",
+    "expect": "没有待确认",
+    "expect_http": false
+  },
+  {
+    "id": "M04",
+    "query": "查询客户验证甲",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "lead_list"
+  },
+  {
+    "id": "M05",
+    "query": "查看客户20详情",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "lead_detail"
+  },
+  {
+    "id": "M06",
+    "conversation_key": "status",
+    "query": "把客户20的状态改为contacting",
+    "expect": "回复“确认”",
+    "expect_http": false,
+    "expect_pending_intent": "lead_status"
+  },
+  {
+    "id": "M07",
+    "conversation_key": "status",
+    "query": "确认",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "lead_status"
+  },
+  {
+    "id": "M08",
+    "conversation_key": "follow",
+    "query": "给客户20追加跟进，内容是完成本地测试沟通",
+    "expect": "回复“确认”",
+    "expect_http": false,
+    "expect_pending_intent": "lead_follow_up"
+  },
+  {
+    "id": "M09",
+    "conversation_key": "follow",
+    "query": "确认",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "lead_follow_up"
+  },
+  {
+    "id": "M10",
+    "conversation_key": "daily",
+    "query": "提交日报，内容是完成本地接口测试，没有风险，明天继续联调",
+    "expect": "回复“确认”",
+    "expect_http": false,
+    "expect_pending_intent": "daily_submit"
+  },
+  {
+    "id": "M11",
+    "conversation_key": "daily",
+    "query": "确认",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "daily_submit"
+  },
+  {
+    "id": "M12",
+    "query": "查询我2026-11-12的日报",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "daily_list"
+  },
+  {
+    "id": "M13",
+    "query": "查询组织架构，关键词教学",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "organizations"
+  },
+  {
+    "id": "M14",
+    "query": "查询姓名为验证顾问甲的同事",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "colleagues"
+  },
+  {
+    "id": "M15",
+    "query": "查询员工1000001的联系方式",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "colleague_contact"
+  },
+  {
+    "id": "M16",
+    "query": "查询新人指南，关键词入职",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "guides"
+  },
+  {
+    "id": "M17",
+    "query": "查询学生1000004的成绩",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "scores"
+  },
+  {
+    "id": "M18",
+    "query": "查看成绩1的更正历史",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "score_history"
+  },
+  {
+    "id": "M19",
+    "query": "查询我的待审批请假",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "leaves"
+  },
+  {
+    "id": "M20",
+    "conversation_key": "leave",
+    "query": "同意请假单1",
+    "expect": "回复“确认”",
+    "expect_http": false,
+    "expect_pending_intent": "leave_approve"
+  },
+  {
+    "id": "M21",
+    "conversation_key": "leave",
+    "query": "确认",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "leave_approve"
+  },
+  {
+    "id": "M22",
+    "query": "查询我的投诉工单",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "tickets"
+  },
+  {
+    "id": "M23",
+    "query": "查看投诉工单1详情",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "ticket_detail"
+  },
+  {
+    "id": "M24",
+    "conversation_key": "ticket",
+    "query": "把投诉工单1从pending改为processing",
+    "expect": "回复“确认”",
+    "expect_http": false,
+    "expect_pending_intent": "ticket_update"
+  },
+  {
+    "id": "M25",
+    "conversation_key": "ticket",
+    "query": "确认",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "ticket_update"
+  },
+  {
+    "id": "M26",
+    "query": "查询我的到期待办",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "todos"
+  },
+  {
+    "id": "M27",
+    "query": "查看我的站内通知",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "notifications"
+  },
+  {
+    "id": "M28",
+    "query": "录入客户",
+    "expect": "请补充",
+    "expect_http": false
+  },
+  {
+    "id": "M29",
+    "query": "是否支持录入客户？先不要执行。",
+    "expect": "没有调用业务接口",
+    "expect_http": false
+  },
+  {
+    "id": "M30",
+    "query": "后端健康检查",
+    "expect": "探活成功",
+    "expect_http": false
+  },
+  {
+    "id": "M31",
+    "conversation_key": "score",
+    "query": "给学生1000004录入数学成绩88.50，学期2026-2027-1，考试标识repair-test-midterm",
+    "expect": "回复“确认”",
+    "expect_http": false,
+    "expect_pending_intent": "score_create"
+  },
+  {
+    "id": "M32",
+    "conversation_key": "score",
+    "query": "确认",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "score_create"
+  },
+  {
+    "id": "M33",
+    "conversation_key": "correction",
+    "query": "更正成绩1，学生1000004，课程数学，成绩90.00，学期2026-2027-1，当前版本1，原因复核",
+    "expect": "回复“确认”",
+    "expect_http": false,
+    "expect_pending_intent": "score_correct"
+  },
+  {
+    "id": "M34",
+    "conversation_key": "correction",
+    "query": "确认",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "score_correct"
+  },
+  {
+    "id": "M35",
+    "conversation_key": "cancel",
+    "query": "新增待办，标题为本地接口测试",
+    "expect": "回复“确认”",
+    "expect_http": false,
+    "expect_pending_intent": "todo_create"
+  },
+  {
+    "id": "M36",
+    "conversation_key": "cancel",
+    "query": "取消",
+    "expect": "已取消",
+    "expect_http": false
+  },
+  {
+    "id": "M37",
+    "conversation_key": "cancel",
+    "query": "确认",
+    "expect": "没有待确认",
+    "expect_http": false
+  },
+  {
+    "id": "M38",
+    "conversation_key": "todo",
+    "query": "将待办1从pending完成为done",
+    "expect": "回复“确认”",
+    "expect_http": false,
+    "expect_pending_intent": "todo_update"
+  },
+  {
+    "id": "M39",
+    "conversation_key": "todo",
+    "query": "确认",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "todo_update"
+  },
+  {
+    "id": "M40",
+    "conversation_key": "leadedit",
+    "query": "修改客户20，备注为本地验证修复流程",
+    "expect": "回复“确认”",
+    "expect_http": false,
+    "expect_pending_intent": "lead_update"
+  },
+  {
+    "id": "M41",
+    "conversation_key": "leadedit",
+    "query": "确认",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "lead_update"
+  },
+  {
+    "id": "M42",
+    "conversation_key": "guidecreate",
+    "query": "新增新人指南，标题本地测试说明，分类test，内容为仅用于本地功能验证",
+    "expect": "回复“确认”",
+    "expect_http": false,
+    "expect_pending_intent": "guide_create"
+  },
+  {
+    "id": "M43",
+    "conversation_key": "guidecreate",
+    "query": "确认",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "guide_create"
+  },
+  {
+    "id": "M44",
+    "conversation_key": "todocreate",
+    "query": "新增待办，标题为本地接口测试",
+    "expect": "回复“确认”",
+    "expect_http": false,
+    "expect_pending_intent": "todo_create"
+  },
+  {
+    "id": "M45",
+    "conversation_key": "todocreate",
+    "query": "确认",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "todo_create"
+  },
+  {
+    "id": "M46",
+    "query": "使用nl_query查询，意图daily_reports_recent，参数为空对象，查询最近日报",
+    "expect": "HTTP 503",
+    "expect_http": true,
+    "expect_intent": "nl_query"
+  }
+]

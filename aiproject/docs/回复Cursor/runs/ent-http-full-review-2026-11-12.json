@@ -1,0 +1,337 @@
+{
+  "transport": "real TCP normal app.main",
+  "openapi_operations": 30,
+  "tests": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "status": 200,
+      "expected": 200,
+      "body": {
+        "status": "ok"
+      },
+      "passed": true
+    },
+    {
+      "method": "GET",
+      "path": "/health/db",
+      "status": 200,
+      "expected": 200,
+      "body": {
+        "status": "ok",
+        "database": "connected"
+      },
+      "passed": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/enterprise/organizations",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/enterprise/organizations/colleagues",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/enterprise/colleagues/{employee_id}/contact",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/enterprise/onboarding-guides",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/enterprise/onboarding-guides",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/enterprise/scores",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/enterprise/scores",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/enterprise/scores/{score_id}",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/enterprise/scores/{score_id}/history",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/enterprise/tickets",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/enterprise/tickets/{ticket_id}",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/enterprise/tickets/{ticket_id}",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/enterprise/todos",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/enterprise/todos",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/enterprise/todos/{todo_id}",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/enterprise/notifications",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultant/leads",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consultant/leads",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/consultant/leads/{lead_id}",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/consultant/leads/{lead_id}",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/consultant/leads/{lead_id}/status",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/consultant/leads/{lead_id}/follow-ups",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/employee-reports",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/employee-reports",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/student-admin/leaves/pending",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/student-admin/leaves/{leave_id}/approve",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/enterprise/commands",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/ai/nl2sql/query",
+      "status": 503,
+      "expected": 503,
+      "body": {
+        "detail": "员工可信身份未就绪，consultant 业务不可用"
+      },
+      "passed": true
+    },
+    {
+      "case": "forged identity rejected",
+      "headers": {
+        "X-Employee-Id": "1"
+      },
+      "status": 503,
+      "expected": 503,
+      "passed": true
+    },
+    {
+      "case": "forged identity rejected",
+      "headers": {
+        "X-Employee-Id": "1000001"
+      },
+      "status": 503,
+      "expected": 503,
+      "passed": true
+    },
+    {
+      "case": "forged identity rejected",
+      "headers": {
+        "Authorization": "Bearer ent-review-invalid-token"
+      },
+      "status": 503,
+      "expected": 503,
+      "passed": true
+    }
+  ],
+  "database_unchanged": true,
+  "passed": 33,
+  "total": 33
+}

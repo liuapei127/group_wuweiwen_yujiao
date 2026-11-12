@@ -1,0 +1,1066 @@
+[
+  {
+    "id": "ee5e2fe7-5d1f-4c34-bb01-dfb0afcd3780",
+    "version": "draft",
+    "updated_at": "2026-11-11T16:16:02.821647",
+    "graph": {
+      "nodes": [
+        {
+          "id": "start1",
+          "type": "custom",
+          "data": {
+            "variables": [],
+            "type": "start",
+            "title": "用户输入"
+          },
+          "position": {
+            "x": 40,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 72,
+          "zIndex": 0,
+          "positionAbsolute": {
+            "x": 40,
+            "y": 300
+          }
+        },
+        {
+          "id": "health_http",
+          "type": "custom",
+          "data": {
+            "variables": [],
+            "method": "get",
+            "url": "http://host.docker.internal:8000/health",
+            "authorization": {
+              "type": "no-auth",
+              "config": null
+            },
+            "headers": "",
+            "params": "",
+            "body": {
+              "type": "none",
+              "data": []
+            },
+            "ssl_verify": true,
+            "timeout": {
+              "max_connect_timeout": 30,
+              "max_read_timeout": 30,
+              "max_write_timeout": 30
+            },
+            "retry_config": {
+              "retry_enabled": true,
+              "max_retries": 2,
+              "retry_interval": 100
+            },
+            "type": "http-request",
+            "title": "API探活"
+          },
+          "position": {
+            "x": 340,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90,
+          "zIndex": 0,
+          "positionAbsolute": {
+            "x": 340,
+            "y": 300
+          }
+        },
+        {
+          "id": "llm1",
+          "type": "custom",
+          "data": {
+            "model": {
+              "provider": "langgenius/tongyi/tongyi",
+              "name": "qwen3.8-max",
+              "mode": "chat",
+              "completion_params": {
+                "temperature": 0.3
+              }
+            },
+            "prompt_template": [
+              {
+                "role": "system",
+                "text": "你是教育留学机构的「企业智能助手 ENT」，面向内部顾问。\n\n【后端探活结果】\n{{#health_http.body#}}\n若不能看到 status ok，明确提示：请先在本机运行 aiproject\\\\scripts\\\\start_api_for_dify.ps1，且 Dify 容器应使用 host.docker.internal:8000。\n\n【重要】当前 app.main 员工业务 API 可能返回 HTTP 503（公共 JWT 未接入）。禁止在 503 时声称「已录入成功」。\n\n【能力】录入客户 lead_create、查列表 lead_query、看档案 lead_detail、改状态 lead_status、写跟进 lead_follow_up。\n\n【规则】\n1. 用中文回复员工。\n2. 不要编造客户；缺姓名要追问。\n3. 当且仅当意图为 lead_create 且已有 customer_name 时，在回复最后一行追加（无 markdown）：\nENT_ACTION:{\"intent\":\"lead_create\",\"customer_name\":\"张三\",\"contact_info\":\"\",\"intended_country\":\"\",\"intended_major\":\"\",\"source_channel\":\"dify\",\"owner_employee_id\":1}\n4. 当意图 lead_query 时，最后一行：\nENT_ACTION:{\"intent\":\"lead_query\",\"keyword\":\"关键词\"}\n5. 其他意图暂不调用 HTTP，只说明后续将对接 API。",
+                "id": "sys-ent-v2"
+              }
+            ],
+            "context": {
+              "enabled": false,
+              "variable_selector": []
+            },
+            "vision": {
+              "enabled": false
+            },
+            "memory": {
+              "window": {
+                "enabled": true,
+                "size": 10
+              },
+              "query_prompt_template": "{{#sys.query#}}\n\n{{#sys.files#}}",
+              "role_prefix": {
+                "user": "",
+                "assistant": ""
+              }
+            },
+            "type": "llm",
+            "title": "意图与回复"
+          },
+          "position": {
+            "x": 640,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90,
+          "zIndex": 0,
+          "positionAbsolute": {
+            "x": 640,
+            "y": 300
+          }
+        },
+        {
+          "id": "code1",
+          "type": "custom",
+          "data": {
+            "code": "import json, re\nfrom urllib.parse import quote\n\ndef main(text: str, query: str):\n    out = {\n        \"skip\": True,\n        \"method\": \"get\",\n        \"http_url\": \"http://host.docker.internal:8000/health\",\n        \"http_body\": \"\",\n        \"intent\": \"other\"\n    }\n    if not text:\n        return out\n    m = re.search(r'ENT_ACTION:(\\{.*\\})', text)\n    if not m:\n        return out\n    try:\n        data = json.loads(m.group(1))\n    except Exception:\n        return out\n    intent = data.get(\"intent\") or \"other\"\n    out[\"intent\"] = intent\n    if intent == \"lead_create\" and data.get(\"customer_name\"):\n        out[\"skip\"] = False\n        out[\"method\"] = \"post\"\n        out[\"http_url\"] = \"http://host.docker.internal:8000/api/v1/consultant/leads\"\n        payload = {k: v for k, v in data.items() if k != \"intent\" and v is not None}\n        payload.setdefault(\"owner_employee_id\", 1)\n        payload.setdefault(\"gender\", \"U\")\n        out[\"http_body\"] = json.dumps(payload, ensure_ascii=False)\n    elif intent == \"lead_query\":\n        out[\"skip\"] = False\n        out[\"method\"] = \"get\"\n        kw = str(data.get(\"keyword\") or query or \"\")\n        out[\"http_url\"] = \"http://host.docker.internal:8000/api/v1/consultant/leads?keyword=\" + quote(kw) + \"&page=1&page_size=10\"\n        out[\"http_body\"] = \"\"\n    return out",
+            "code_language": "python3",
+            "variables": [
+              {
+                "variable": "text",
+                "value_selector": [
+                  "llm1",
+                  "text"
+                ],
+                "value_type": "string"
+              },
+              {
+                "variable": "query",
+                "value_selector": [
+                  "sys",
+                  "query"
+                ],
+                "value_type": "string"
+              }
+            ],
+            "outputs": {
+              "skip": {
+                "type": "boolean",
+                "children": null
+              },
+              "method": {
+                "type": "string",
+                "children": null
+              },
+              "http_url": {
+                "type": "string",
+                "children": null
+              },
+              "http_body": {
+                "type": "string",
+                "children": null
+              },
+              "intent": {
+                "type": "string",
+                "children": null
+              }
+            },
+            "type": "code",
+            "title": "解析ENT动作",
+            "desc": ""
+          },
+          "position": {
+            "x": 940,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90,
+          "zIndex": 0,
+          "positionAbsolute": {
+            "x": 940,
+            "y": 300
+          }
+        },
+        {
+          "id": "if1",
+          "type": "custom",
+          "data": {
+            "type": "if-else",
+            "title": "需要调API?",
+            "cases": [
+              {
+                "case_id": "true",
+                "logical_operator": "and",
+                "conditions": [
+                  {
+                    "id": "cond-not-skip",
+                    "varType": "boolean",
+                    "variable_selector": [
+                      "code1",
+                      "skip"
+                    ],
+                    "comparison_operator": "is",
+                    "value": false
+                  }
+                ]
+              }
+            ]
+          },
+          "position": {
+            "x": 1240,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 120,
+          "zIndex": 0,
+          "positionAbsolute": {
+            "x": 1240,
+            "y": 300
+          }
+        },
+        {
+          "id": "http_post",
+          "type": "custom",
+          "data": {
+            "variables": [],
+            "method": "post",
+            "url": "{{#code1.http_url#}}",
+            "authorization": {
+              "type": "no-auth",
+              "config": null
+            },
+            "headers": "Content-Type: application/json",
+            "params": "",
+            "body": {
+              "type": "json",
+              "data": [
+                {
+                  "id": "kv1",
+                  "type": "text",
+                  "key": "",
+                  "value": "{{#code1.http_body#}}"
+                }
+              ]
+            },
+            "ssl_verify": true,
+            "timeout": {
+              "max_connect_timeout": 30,
+              "max_read_timeout": 30,
+              "max_write_timeout": 30
+            },
+            "retry_config": {
+              "retry_enabled": true,
+              "max_retries": 2,
+              "retry_interval": 100
+            },
+            "type": "http-request",
+            "title": "POST录入"
+          },
+          "position": {
+            "x": 1540,
+            "y": 180
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90,
+          "zIndex": 0,
+          "positionAbsolute": {
+            "x": 1540,
+            "y": 180
+          }
+        },
+        {
+          "id": "http_get",
+          "type": "custom",
+          "data": {
+            "variables": [],
+            "method": "get",
+            "url": "{{#code1.http_url#}}",
+            "authorization": {
+              "type": "no-auth",
+              "config": null
+            },
+            "headers": "",
+            "params": "",
+            "body": {
+              "type": "none",
+              "data": []
+            },
+            "ssl_verify": true,
+            "timeout": {
+              "max_connect_timeout": 30,
+              "max_read_timeout": 30,
+              "max_write_timeout": 30
+            },
+            "retry_config": {
+              "retry_enabled": true,
+              "max_retries": 2,
+              "retry_interval": 100
+            },
+            "type": "http-request",
+            "title": "GET查询"
+          },
+          "position": {
+            "x": 1540,
+            "y": 400
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90,
+          "zIndex": 0,
+          "positionAbsolute": {
+            "x": 1540,
+            "y": 400
+          }
+        },
+        {
+          "id": "if_method",
+          "type": "custom",
+          "data": {
+            "type": "if-else",
+            "title": "POST还是GET",
+            "cases": [
+              {
+                "case_id": "true",
+                "logical_operator": "and",
+                "conditions": [
+                  {
+                    "id": "cond-post",
+                    "varType": "string",
+                    "variable_selector": [
+                      "code1",
+                      "method"
+                    ],
+                    "comparison_operator": "is",
+                    "value": "post"
+                  }
+                ]
+              }
+            ]
+          },
+          "position": {
+            "x": 1540,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 120,
+          "zIndex": 0,
+          "positionAbsolute": {
+            "x": 1540,
+            "y": 300
+          }
+        },
+        {
+          "id": "answer1",
+          "type": "custom",
+          "data": {
+            "variables": [],
+            "answer": "{{#llm1.text#}}\n\n---\n【API 响应】\n{{#http_post.body#}}{{#http_get.body#}}",
+            "type": "answer",
+            "title": "直接回复"
+          },
+          "position": {
+            "x": 1840,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 102,
+          "zIndex": 0,
+          "positionAbsolute": {
+            "x": 1840,
+            "y": 300
+          }
+        },
+        {
+          "id": "answer_skip",
+          "type": "custom",
+          "data": {
+            "variables": [],
+            "answer": "{{#llm1.text#}}",
+            "type": "answer",
+            "title": "仅LLM回复"
+          },
+          "position": {
+            "x": 1540,
+            "y": 560
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 102,
+          "zIndex": 0,
+          "positionAbsolute": {
+            "x": 1540,
+            "y": 560
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "e-start-health",
+          "source": "start1",
+          "sourceHandle": "source",
+          "target": "health_http",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "start",
+            "targetType": "http-request",
+            "isInIteration": false,
+            "isInLoop": false
+          },
+          "zIndex": 0
+        },
+        {
+          "id": "e-health-llm",
+          "source": "health_http",
+          "sourceHandle": "source",
+          "target": "llm1",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "http-request",
+            "targetType": "llm",
+            "isInIteration": false,
+            "isInLoop": false
+          },
+          "zIndex": 0
+        },
+        {
+          "id": "e-llm-code",
+          "source": "llm1",
+          "sourceHandle": "source",
+          "target": "code1",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "llm",
+            "targetType": "code",
+            "isInIteration": false,
+            "isInLoop": false
+          },
+          "zIndex": 0
+        },
+        {
+          "id": "e-code-if",
+          "source": "code1",
+          "sourceHandle": "source",
+          "target": "if1",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "code",
+            "targetType": "if-else",
+            "isInIteration": false,
+            "isInLoop": false
+          },
+          "zIndex": 0
+        },
+        {
+          "id": "e-if-true-method",
+          "source": "if1",
+          "sourceHandle": "true",
+          "target": "if_method",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "if-else",
+            "targetType": "if-else",
+            "isInIteration": false,
+            "isInLoop": false
+          },
+          "zIndex": 0
+        },
+        {
+          "id": "e-if-false-skip",
+          "source": "if1",
+          "sourceHandle": "false",
+          "target": "answer_skip",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "if-else",
+            "targetType": "answer",
+            "isInIteration": false,
+            "isInLoop": false
+          },
+          "zIndex": 0
+        },
+        {
+          "id": "e-method-true-post",
+          "source": "if_method",
+          "sourceHandle": "true",
+          "target": "http_post",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "if-else",
+            "targetType": "http-request",
+            "isInIteration": false,
+            "isInLoop": false
+          },
+          "zIndex": 0
+        },
+        {
+          "id": "e-method-false-get",
+          "source": "if_method",
+          "sourceHandle": "false",
+          "target": "http_get",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "if-else",
+            "targetType": "http-request",
+            "isInIteration": false,
+            "isInLoop": false
+          },
+          "zIndex": 0
+        },
+        {
+          "id": "e-post-answer",
+          "source": "http_post",
+          "sourceHandle": "source",
+          "target": "answer1",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "http-request",
+            "targetType": "answer",
+            "isInIteration": false,
+            "isInLoop": false
+          },
+          "zIndex": 0
+        },
+        {
+          "id": "e-get-answer",
+          "source": "http_get",
+          "sourceHandle": "source",
+          "target": "answer1",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "http-request",
+            "targetType": "answer",
+            "isInIteration": false,
+            "isInLoop": false
+          },
+          "zIndex": 0
+        }
+      ],
+      "viewport": {
+        "x": 0,
+        "y": 0,
+        "zoom": 0.7
+      }
+    }
+  },
+  {
+    "id": "b1fa9a00-e642-47c7-ad29-dee0dc7b1b93",
+    "version": "2026-11-11 16:15:39.545089",
+    "updated_at": "2026-11-11T16:15:39.545883",
+    "graph": {
+      "nodes": [
+        {
+          "id": "start1",
+          "type": "custom",
+          "data": {
+            "variables": [],
+            "type": "start",
+            "title": "用户输入"
+          },
+          "position": {
+            "x": 40,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 72
+        },
+        {
+          "id": "health_http",
+          "type": "custom",
+          "data": {
+            "variables": [],
+            "method": "get",
+            "url": "http://host.docker.internal:8000/health",
+            "authorization": {
+              "type": "no-auth",
+              "config": null
+            },
+            "headers": "",
+            "params": "",
+            "body": {
+              "type": "none",
+              "data": []
+            },
+            "ssl_verify": true,
+            "timeout": {
+              "max_connect_timeout": 30,
+              "max_read_timeout": 30,
+              "max_write_timeout": 30
+            },
+            "retry_config": {
+              "retry_enabled": true,
+              "max_retries": 2,
+              "retry_interval": 100
+            },
+            "type": "http-request",
+            "title": "API探活"
+          },
+          "position": {
+            "x": 340,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "llm1",
+          "type": "custom",
+          "data": {
+            "model": {
+              "provider": "langgenius/tongyi/tongyi",
+              "name": "qwen3.8-max",
+              "mode": "chat",
+              "completion_params": {
+                "temperature": 0.3
+              }
+            },
+            "prompt_template": [
+              {
+                "role": "system",
+                "text": "你是教育留学机构的「企业智能助手 ENT」，面向内部顾问。\n\n【后端探活结果】\n{{#health_http.body#}}\n若不能看到 status ok，明确提示：请先在本机运行 aiproject\\\\scripts\\\\start_api_for_dify.ps1，且 Dify 容器应使用 host.docker.internal:8000。\n\n【重要】当前 app.main 员工业务 API 可能返回 HTTP 503（公共 JWT 未接入）。禁止在 503 时声称「已录入成功」。\n\n【能力】录入客户 lead_create、查列表 lead_query、看档案 lead_detail、改状态 lead_status、写跟进 lead_follow_up。\n\n【规则】\n1. 用中文回复员工。\n2. 不要编造客户；缺姓名要追问。\n3. 当且仅当意图为 lead_create 且已有 customer_name 时，在回复最后一行追加（无 markdown）：\nENT_ACTION:{\"intent\":\"lead_create\",\"customer_name\":\"张三\",\"contact_info\":\"\",\"intended_country\":\"\",\"intended_major\":\"\",\"source_channel\":\"dify\",\"owner_employee_id\":1}\n4. 当意图 lead_query 时，最后一行：\nENT_ACTION:{\"intent\":\"lead_query\",\"keyword\":\"关键词\"}\n5. 其他意图暂不调用 HTTP，只说明后续将对接 API。",
+                "id": "sys-ent-v2"
+              }
+            ],
+            "context": {
+              "enabled": false,
+              "variable_selector": []
+            },
+            "vision": {
+              "enabled": false
+            },
+            "memory": {
+              "window": {
+                "enabled": true,
+                "size": 10
+              },
+              "query_prompt_template": "{{#sys.query#}}\n\n{{#sys.files#}}",
+              "role_prefix": {
+                "user": "",
+                "assistant": ""
+              }
+            },
+            "type": "llm",
+            "title": "意图与回复"
+          },
+          "position": {
+            "x": 640,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "code1",
+          "type": "custom",
+          "data": {
+            "code": "import json, re\nfrom urllib.parse import quote\n\ndef main(text: str, query: str):\n    out = {\n        \"skip\": True,\n        \"method\": \"get\",\n        \"http_url\": \"http://host.docker.internal:8000/health\",\n        \"http_body\": \"\",\n        \"intent\": \"other\"\n    }\n    if not text:\n        return out\n    m = re.search(r'ENT_ACTION:(\\{.*\\})', text)\n    if not m:\n        return out\n    try:\n        data = json.loads(m.group(1))\n    except Exception:\n        return out\n    intent = data.get(\"intent\") or \"other\"\n    out[\"intent\"] = intent\n    if intent == \"lead_create\" and data.get(\"customer_name\"):\n        out[\"skip\"] = False\n        out[\"method\"] = \"post\"\n        out[\"http_url\"] = \"http://host.docker.internal:8000/api/v1/consultant/leads\"\n        payload = {k: v for k, v in data.items() if k != \"intent\" and v is not None}\n        payload.setdefault(\"owner_employee_id\", 1)\n        payload.setdefault(\"gender\", \"U\")\n        out[\"http_body\"] = json.dumps(payload, ensure_ascii=False)\n    elif intent == \"lead_query\":\n        out[\"skip\"] = False\n        out[\"method\"] = \"get\"\n        kw = str(data.get(\"keyword\") or query or \"\")\n        out[\"http_url\"] = \"http://host.docker.internal:8000/api/v1/consultant/leads?keyword=\" + quote(kw) + \"&page=1&page_size=10\"\n        out[\"http_body\"] = \"\"\n    return out",
+            "code_language": "python3",
+            "variables": [
+              {
+                "variable": "text",
+                "value_selector": [
+                  "llm1",
+                  "text"
+                ],
+                "value_type": "string"
+              },
+              {
+                "variable": "query",
+                "value_selector": [
+                  "sys",
+                  "query"
+                ],
+                "value_type": "string"
+              }
+            ],
+            "outputs": {
+              "skip": {
+                "type": "boolean",
+                "children": null
+              },
+              "method": {
+                "type": "string",
+                "children": null
+              },
+              "http_url": {
+                "type": "string",
+                "children": null
+              },
+              "http_body": {
+                "type": "string",
+                "children": null
+              },
+              "intent": {
+                "type": "string",
+                "children": null
+              }
+            },
+            "type": "code",
+            "title": "解析ENT动作",
+            "desc": ""
+          },
+          "position": {
+            "x": 940,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "if1",
+          "type": "custom",
+          "data": {
+            "type": "if-else",
+            "title": "需要调API?",
+            "cases": [
+              {
+                "case_id": "true",
+                "logical_operator": "and",
+                "conditions": [
+                  {
+                    "id": "cond-not-skip",
+                    "varType": "boolean",
+                    "variable_selector": [
+                      "code1",
+                      "skip"
+                    ],
+                    "comparison_operator": "is",
+                    "value": false
+                  }
+                ]
+              }
+            ]
+          },
+          "position": {
+            "x": 1240,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 120
+        },
+        {
+          "id": "http_post",
+          "type": "custom",
+          "data": {
+            "variables": [],
+            "method": "post",
+            "url": "{{#code1.http_url#}}",
+            "authorization": {
+              "type": "no-auth",
+              "config": null
+            },
+            "headers": "Content-Type: application/json",
+            "params": "",
+            "body": {
+              "type": "json",
+              "data": [
+                {
+                  "id": "kv1",
+                  "type": "text",
+                  "key": "",
+                  "value": "{{#code1.http_body#}}"
+                }
+              ]
+            },
+            "ssl_verify": true,
+            "timeout": {
+              "max_connect_timeout": 30,
+              "max_read_timeout": 30,
+              "max_write_timeout": 30
+            },
+            "retry_config": {
+              "retry_enabled": true,
+              "max_retries": 2,
+              "retry_interval": 100
+            },
+            "type": "http-request",
+            "title": "POST录入"
+          },
+          "position": {
+            "x": 1540,
+            "y": 180
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "http_get",
+          "type": "custom",
+          "data": {
+            "variables": [],
+            "method": "get",
+            "url": "{{#code1.http_url#}}",
+            "authorization": {
+              "type": "no-auth",
+              "config": null
+            },
+            "headers": "",
+            "params": "",
+            "body": {
+              "type": "none",
+              "data": []
+            },
+            "ssl_verify": true,
+            "timeout": {
+              "max_connect_timeout": 30,
+              "max_read_timeout": 30,
+              "max_write_timeout": 30
+            },
+            "retry_config": {
+              "retry_enabled": true,
+              "max_retries": 2,
+              "retry_interval": 100
+            },
+            "type": "http-request",
+            "title": "GET查询"
+          },
+          "position": {
+            "x": 1540,
+            "y": 400
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 90
+        },
+        {
+          "id": "if_method",
+          "type": "custom",
+          "data": {
+            "type": "if-else",
+            "title": "POST还是GET",
+            "cases": [
+              {
+                "case_id": "true",
+                "logical_operator": "and",
+                "conditions": [
+                  {
+                    "id": "cond-post",
+                    "varType": "string",
+                    "variable_selector": [
+                      "code1",
+                      "method"
+                    ],
+                    "comparison_operator": "is",
+                    "value": "post"
+                  }
+                ]
+              }
+            ]
+          },
+          "position": {
+            "x": 1540,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 120
+        },
+        {
+          "id": "answer1",
+          "type": "custom",
+          "data": {
+            "variables": [],
+            "answer": "{{#llm1.text#}}\n\n---\n【API 响应】\n{{#http_post.body#}}{{#http_get.body#}}",
+            "type": "answer",
+            "title": "直接回复"
+          },
+          "position": {
+            "x": 1840,
+            "y": 300
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 102
+        },
+        {
+          "id": "answer_skip",
+          "type": "custom",
+          "data": {
+            "variables": [],
+            "answer": "{{#llm1.text#}}",
+            "type": "answer",
+            "title": "仅LLM回复"
+          },
+          "position": {
+            "x": 1540,
+            "y": 560
+          },
+          "targetPosition": "left",
+          "sourcePosition": "right",
+          "width": 244,
+          "height": 102
+        }
+      ],
+      "edges": [
+        {
+          "id": "e-start-health",
+          "source": "start1",
+          "sourceHandle": "source",
+          "target": "health_http",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "start",
+            "targetType": "http-request"
+          }
+        },
+        {
+          "id": "e-health-llm",
+          "source": "health_http",
+          "sourceHandle": "source",
+          "target": "llm1",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "http-request",
+            "targetType": "llm"
+          }
+        },
+        {
+          "id": "e-llm-code",
+          "source": "llm1",
+          "sourceHandle": "source",
+          "target": "code1",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "llm",
+            "targetType": "code"
+          }
+        },
+        {
+          "id": "e-code-if",
+          "source": "code1",
+          "sourceHandle": "source",
+          "target": "if1",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "code",
+            "targetType": "if-else"
+          }
+        },
+        {
+          "id": "e-if-true-method",
+          "source": "if1",
+          "sourceHandle": "true",
+          "target": "if_method",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "if-else",
+            "targetType": "if-else"
+          }
+        },
+        {
+          "id": "e-if-false-skip",
+          "source": "if1",
+          "sourceHandle": "false",
+          "target": "answer_skip",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "if-else",
+            "targetType": "answer"
+          }
+        },
+        {
+          "id": "e-method-true-post",
+          "source": "if_method",
+          "sourceHandle": "true",
+          "target": "http_post",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "if-else",
+            "targetType": "http-request"
+          }
+        },
+        {
+          "id": "e-method-false-get",
+          "source": "if_method",
+          "sourceHandle": "false",
+          "target": "http_get",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "if-else",
+            "targetType": "http-request"
+          }
+        },
+        {
+          "id": "e-post-answer",
+          "source": "http_post",
+          "sourceHandle": "source",
+          "target": "answer1",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "http-request",
+            "targetType": "answer"
+          }
+        },
+        {
+          "id": "e-get-answer",
+          "source": "http_get",
+          "sourceHandle": "source",
+          "target": "answer1",
+          "targetHandle": "target",
+          "type": "custom",
+          "data": {
+            "sourceType": "http-request",
+            "targetType": "answer"
+          }
+        }
+      ],
+      "viewport": {
+        "x": 0,
+        "y": 0,
+        "zoom": 0.7
+      }
+    }
+  }
+]

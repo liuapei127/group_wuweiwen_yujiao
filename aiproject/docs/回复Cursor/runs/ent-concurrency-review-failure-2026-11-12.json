@@ -1,0 +1,5 @@
+{
+  "status": "failed",
+  "error_type": "AssertionError",
+  "error": "[{'pid': 40004, 'connection_id': 206, 'operation': 'scan', 'status': 200, 'data': {'todos_created': 12, 'system_notifications_created': 12}}, {'pid': 35940, 'operation': 'scan', 'status': 500, 'error': 'OperationalError(\"(pymysql.err.OperationalError) (1213, \\'Deadlock found when trying to get lock; try restarting transaction\\')\")'}, {'pid': 19772, 'operation': 'scan', 'status': 500, 'error': 'OperationalError(\"(pymysql.err.OperationalError) (1213, \\'Deadlock found when trying to get lock; try restarting transaction\\')\")'}, {'pid': 44464, 'connection_id': 207, 'operation': 'scan', 'status': 200, 'data': {'todos_created': 13, 'system_notifications_created': 13}}]"
+}

@@ -1,0 +1,48 @@
+﻿Looking in indexes: https://mirrors.cloud.tencent.com/pypi/simple
+Obtaining file:///D:/Project%20course/group_wuweiwen_yujiao/aiproject
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'error'
+pip :   error: subprocess-exited-with-error
+所在位置 行:1 字符: 67
++ ... aiproject"; pip install -e . -i https://mirrors.cloud.tencent.com/pyp ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (  error: subprocess-exited-with-error:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  
+  × pip subprocess to install build dependencies did not run successfully.
+  │ exit code: 1
+  ╰─> [11 lines of output]
+      Looking in indexes: https://mirrors.cloud.tencent.com/pypi/simple
+      WARNING: Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection broken b
+y 'SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol (_ssl.c:997)'))': /pypi/simple/setuptools/
+      WARNING: Retrying (Retry(total=3, connect=None, read=None, redirect=None, status=None)) after connection broken b
+y 'SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol (_ssl.c:997)'))': /pypi/simple/setuptools/
+      WARNING: Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken b
+y 'SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol (_ssl.c:997)'))': /pypi/simple/setuptools/
+      WARNING: Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken b
+y 'SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol (_ssl.c:997)'))': /pypi/simple/setuptools/
+      WARNING: Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken b
+y 'SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol (_ssl.c:997)'))': /pypi/simple/setuptools/
+      Could not fetch URL https://mirrors.cloud.tencent.com/pypi/simple/setuptools/: There was a problem confirming the
+ ssl certificate: HTTPSConnectionPool(host='mirrors.cloud.tencent.com', port=443): Max retries exceeded with url: /pypi
+/simple/setuptools/ (Caused by SSLError(SSLEOFError(8, 'EOF occurred in violation of protocol (_ssl.c:997)'))) - skippi
+ng
+      ERROR: Could not find a version that satisfies the requirement setuptools>=61 (from versions: none)
+      ERROR: No matching distribution found for setuptools>=61
+      WARNING: You are using pip version 22.0.4; however, version 26.3 is available.
+      You should consider upgrading via the 'C:\Users\Windows\AppData\Local\Programs\Python\Python310\python.exe -m pip
+ install --upgrade pip' command.
+      [end of output]
+  
+  note: This error originates from a subprocess, and is likely not a problem with pip.
+error: subprocess-exited-with-error
+
+× pip subprocess to install build dependencies did not run successfully.
+│ exit code: 1
+╰─> See above for output.
+
+note: This error originates from a subprocess, and is likely not a problem with pip.
+WARNING: You are using pip version 22.0.4; however, version 26.3 is available.
+You should consider upgrading via the 'C:\Users\Windows\AppData\Local\Programs\Python\Python310\python.exe -m pip insta
+ll --upgrade pip' command.

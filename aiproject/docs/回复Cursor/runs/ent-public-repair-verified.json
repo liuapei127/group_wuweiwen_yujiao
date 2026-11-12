@@ -1,0 +1,3359 @@
+[
+  {
+    "case_id": "M01",
+    "query": "录入客户验证乙，联系方式 verify@example.invalid，意向英国",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "0d7f9496-9c3b-41ee-a905-d2657b4e2c5e",
+      "conversation_id": "53f49fe0-63c4-410e-8517-7639f0159c06",
+      "answer": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nlead_create\n{\"customer_name\": \"验证乙\", \"contact_info\": \"verify@example.invalid\", \"intended_country\": \"英国\"}"
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:58:21 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nlead_create\n{\"customer_name\": \"验证乙\", \"contact_info\": \"verify@example.invalid\", \"intended_country\": \"英国\"}",
+          "pending": "{\"intent\": \"lead_create\", \"params\": {\"customer_name\": \"验证乙\", \"contact_info\": \"verify@example.invalid\", \"intended_country\": \"英国\"}, \"state\": \"confirm\"}",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.52
+  },
+  {
+    "case_id": "M02",
+    "query": "确认",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "91457973-7a54-4428-95cd-9510451802c8",
+      "conversation_id": "53f49fe0-63c4-410e-8517-7639f0159c06",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:58:26 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "post",
+          "http_url": "http://host.docker.internal:8000/api/v1/consultant/leads",
+          "http_body": "{\"customer_name\": \"验证乙\", \"contact_info\": \"verify@example.invalid\", \"intended_country\": \"英国\"}",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "lead_create"
+        }
+      },
+      {
+        "node_id": "http_post",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M03",
+    "query": "确认",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "abf233ac-bd6b-49e5-a107-ce4e8becf616",
+      "conversation_id": "53f49fe0-63c4-410e-8517-7639f0159c06",
+      "answer": "没有待确认的操作，请先说明要处理的数据。"
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:58:34 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "没有待确认的操作，请先说明要处理的数据。",
+          "pending": "",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M04",
+    "query": "查询客户验证甲",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "3b6d4c4c-66be-4d7b-a08f-d7c8ce16cac8",
+      "conversation_id": "34706b35-fbb6-4f9f-bd3e-fc47b96b3361",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:58:36 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "get",
+          "http_url": "http://host.docker.internal:8000/api/v1/consultant/leads?keyword=%E9%AA%8C%E8%AF%81%E7%94%B2",
+          "http_body": "",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "lead_list"
+        }
+      },
+      {
+        "node_id": "http_get",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.03
+  },
+  {
+    "case_id": "M05",
+    "query": "查看客户20详情",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "fe038ef4-e308-4bf9-ac1f-26999f950c12",
+      "conversation_id": "bdc3cb86-6b0c-4076-8e88-897df2471f2e",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:58:43 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "get",
+          "http_url": "http://host.docker.internal:8000/api/v1/consultant/leads/20",
+          "http_body": "",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "lead_detail"
+        }
+      },
+      {
+        "node_id": "http_get",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M06",
+    "query": "把客户20的状态改为contacting",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "58bdb8ed-ce6a-47d7-bebe-7bd8551beefa",
+      "conversation_id": "8036822f-eabe-4b2e-a8d3-8310c294c993",
+      "answer": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nlead_status\n{\"lead_id\": 20, \"status\": \"contacting\"}"
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:58:49 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nlead_status\n{\"lead_id\": 20, \"status\": \"contacting\"}",
+          "pending": "{\"intent\": \"lead_status\", \"params\": {\"lead_id\": 20, \"status\": \"contacting\"}, \"state\": \"confirm\"}",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M07",
+    "query": "确认",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "b4ff4ad0-7ce2-41b5-b6c9-9c644ab3d70e",
+      "conversation_id": "8036822f-eabe-4b2e-a8d3-8310c294c993",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:58:53 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "patch",
+          "http_url": "http://host.docker.internal:8000/api/v1/consultant/leads/20/status",
+          "http_body": "{\"status\": \"contacting\"}",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "lead_status"
+        }
+      },
+      {
+        "node_id": "http_patch",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M08",
+    "query": "给客户20追加跟进，内容是完成本地测试沟通",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "5ca469d6-1899-404a-88c8-f1957aafa344",
+      "conversation_id": "7cc504b4-66c5-4012-a9a7-3cae7e2bfa60",
+      "answer": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nlead_follow_up\n{\"lead_id\": 20, \"content\": \"完成本地测试沟通\"}"
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:59:00 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nlead_follow_up\n{\"lead_id\": 20, \"content\": \"完成本地测试沟通\"}",
+          "pending": "{\"intent\": \"lead_follow_up\", \"params\": {\"lead_id\": 20, \"content\": \"完成本地测试沟通\"}, \"state\": \"confirm\"}",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M09",
+    "query": "确认",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "7e6d18a5-2e86-42cf-8e26-c4e6001a0bdd",
+      "conversation_id": "7cc504b4-66c5-4012-a9a7-3cae7e2bfa60",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:59:09 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "post",
+          "http_url": "http://host.docker.internal:8000/api/v1/consultant/leads/20/follow-ups",
+          "http_body": "{\"content\": \"完成本地测试沟通\"}",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "lead_follow_up"
+        }
+      },
+      {
+        "node_id": "http_post",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M10",
+    "query": "提交日报，内容是完成本地接口测试，没有风险，明天继续联调",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "70091d70-5408-47a7-94ae-2c3d4ed5bf3e",
+      "conversation_id": "41d30c3a-b844-4dce-a84a-61fde4721761",
+      "answer": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\ndaily_submit\n{\"content\": \"完成本地接口测试，没有风险，明天继续联调\", \"key_progress\": \"完成本地接口测试\", \"risks\": \"没有风险\", \"next_plan\": \"明天继续联调\"}"
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:59:15 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\ndaily_submit\n{\"content\": \"完成本地接口测试，没有风险，明天继续联调\", \"key_progress\": \"完成本地接口测试\", \"risks\": \"没有风险\", \"next_plan\": \"明天继续联调\"}",
+          "pending": "{\"intent\": \"daily_submit\", \"params\": {\"content\": \"完成本地接口测试，没有风险，明天继续联调\", \"key_progress\": \"完成本地接口测试\", \"risks\": \"没有风险\", \"next_plan\": \"明天继续联调\"}, \"state\": \"confirm\"}",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M11",
+    "query": "确认",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "50e62876-8143-4de6-b791-4e723e48a898",
+      "conversation_id": "41d30c3a-b844-4dce-a84a-61fde4721761",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:59:28 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "post",
+          "http_url": "http://host.docker.internal:8000/api/v1/employee-reports",
+          "http_body": "{\"content\": \"完成本地接口测试，没有风险，明天继续联调\", \"key_progress\": \"完成本地接口测试\", \"risks\": \"没有风险\", \"next_plan\": \"明天继续联调\"}",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "daily_submit"
+        }
+      },
+      {
+        "node_id": "http_post",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M12",
+    "query": "查询我2026-11-12的日报",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "8847b55c-6a13-48f6-933e-e4cb9a4f8aba",
+      "conversation_id": "ca00243c-200e-4600-8b92-b820a2a06acd",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:59:35 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "get",
+          "http_url": "http://host.docker.internal:8000/api/v1/employee-reports?date_from=2026-11-12&date_to=2026-11-12",
+          "http_body": "",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "daily_list"
+        }
+      },
+      {
+        "node_id": "http_get",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M13",
+    "query": "查询组织架构，关键词教学",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "1c98d54b-e28d-46c6-afaa-2f4fbb7b3f71",
+      "conversation_id": "389a46f2-21fb-46f4-9639-56a9ff27c9fa",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:59:40 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "get",
+          "http_url": "http://host.docker.internal:8000/api/v1/enterprise/organizations?keyword=%E6%95%99%E5%AD%A6",
+          "http_body": "",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "organizations"
+        }
+      },
+      {
+        "node_id": "http_get",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M14",
+    "query": "查询姓名为验证顾问甲的同事",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "8edc7057-5c0d-434f-8f89-c27bd9325226",
+      "conversation_id": "ff3e2b73-afdc-48b8-b47d-d1c7e66c4d62",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:59:45 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "get",
+          "http_url": "http://host.docker.internal:8000/api/v1/enterprise/organizations/colleagues?name=%E9%AA%8C%E8%AF%81%E9%A1%BE%E9%97%AE%E7%94%B2",
+          "http_body": "",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "colleagues"
+        }
+      },
+      {
+        "node_id": "http_get",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.01
+  },
+  {
+    "case_id": "M15",
+    "query": "查询员工1000001的联系方式",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "e26f45e8-c3b4-4ee6-acc7-b9ed278d2534",
+      "conversation_id": "425c7017-7f77-4508-8477-000272db7a0f",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:59:50 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "get",
+          "http_url": "http://host.docker.internal:8000/api/v1/enterprise/colleagues/1000001/contact",
+          "http_body": "",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "colleague_contact"
+        }
+      },
+      {
+        "node_id": "http_get",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.01
+  },
+  {
+    "case_id": "M16",
+    "query": "查询新人指南，关键词入职",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "76916044-e9ef-4cfe-8b09-740f8933addf",
+      "conversation_id": "3eed92d0-2330-4458-8d83-48c42151fa98",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 02:59:57 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "get",
+          "http_url": "http://host.docker.internal:8000/api/v1/enterprise/onboarding-guides?keyword=%E5%85%A5%E8%81%8C",
+          "http_body": "",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "guides"
+        }
+      },
+      {
+        "node_id": "http_get",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.01
+  },
+  {
+    "case_id": "M17",
+    "query": "查询学生1000004的成绩",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "3a9161b2-719d-4423-a43d-038c9e748f5f",
+      "conversation_id": "618d5028-0c84-4eb8-a800-e46b21f81d0a",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:00:01 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "get",
+          "http_url": "http://host.docker.internal:8000/api/v1/enterprise/scores?student_id=1000004",
+          "http_body": "",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "scores"
+        }
+      },
+      {
+        "node_id": "http_get",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.01
+  },
+  {
+    "case_id": "M18",
+    "query": "查看成绩1的更正历史",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "1b7f55b6-7e99-4fe2-a7ed-3061f30bd200",
+      "conversation_id": "a7bf9f69-36ba-466e-8871-ee4cb854ed17",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:00:07 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "get",
+          "http_url": "http://host.docker.internal:8000/api/v1/enterprise/scores/1/history",
+          "http_body": "",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "score_history"
+        }
+      },
+      {
+        "node_id": "http_get",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M19",
+    "query": "查询我的待审批请假",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "d835d143-f8b5-4ea4-be79-ca85a99fe0df",
+      "conversation_id": "9f751648-c2e8-44cb-a744-5381e19c39e6",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:00:13 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "get",
+          "http_url": "http://host.docker.internal:8000/api/v1/student-admin/leaves/pending",
+          "http_body": "",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "leaves"
+        }
+      },
+      {
+        "node_id": "http_get",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M20",
+    "query": "同意请假单1",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "fc9fa9a4-2575-4696-aa2c-e7d5616bf0c7",
+      "conversation_id": "63d3e7cc-2b89-424e-b469-be633c6aa407",
+      "answer": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nleave_approve\n{\"leave_id\": 1, \"decision\": \"approved\"}"
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:00:21 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nleave_approve\n{\"leave_id\": 1, \"decision\": \"approved\"}",
+          "pending": "{\"intent\": \"leave_approve\", \"params\": {\"leave_id\": 1, \"decision\": \"approved\"}, \"state\": \"confirm\"}",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M21",
+    "query": "确认",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "f2e2fd2d-45b5-4892-8661-5c38990acbd4",
+      "conversation_id": "63d3e7cc-2b89-424e-b469-be633c6aa407",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:00:27 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "post",
+          "http_url": "http://host.docker.internal:8000/api/v1/student-admin/leaves/1/approve",
+          "http_body": "{\"decision\": \"approved\"}",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "leave_approve"
+        }
+      },
+      {
+        "node_id": "http_post",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M22",
+    "query": "查询我的投诉工单",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "ad373c1c-8598-44e5-bd32-74b8d40e9b5e",
+      "conversation_id": "d0e1c7c5-f35c-42f4-9aea-05ecac0fa84c",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:00:36 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "get",
+          "http_url": "http://host.docker.internal:8000/api/v1/enterprise/tickets",
+          "http_body": "",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "tickets"
+        }
+      },
+      {
+        "node_id": "http_get",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M23",
+    "query": "查看投诉工单1详情",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "660bb380-0e96-42b0-9ac9-0f5b5fc21f56",
+      "conversation_id": "6848dcd6-1139-4d68-9d5b-d991dfd91138",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:00:43 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "get",
+          "http_url": "http://host.docker.internal:8000/api/v1/enterprise/tickets/1",
+          "http_body": "",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "ticket_detail"
+        }
+      },
+      {
+        "node_id": "http_get",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.01
+  },
+  {
+    "case_id": "M24",
+    "query": "把投诉工单1从pending改为processing",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "64a1f7f4-195f-40bf-a215-b1b76b0a443a",
+      "conversation_id": "468edb2d-d0d5-43dc-ba1a-2185cc5f87bc",
+      "answer": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nticket_update\n{\"ticket_id\": 1, \"expected_status\": \"pending\", \"status\": \"processing\"}"
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:00:48 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nticket_update\n{\"ticket_id\": 1, \"expected_status\": \"pending\", \"status\": \"processing\"}",
+          "pending": "{\"intent\": \"ticket_update\", \"params\": {\"ticket_id\": 1, \"expected_status\": \"pending\", \"status\": \"processing\"}, \"state\": \"confirm\"}",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.01
+  },
+  {
+    "case_id": "M25",
+    "query": "确认",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "7bddd00e-8dee-46b1-b1c5-e8c8ca3b214f",
+      "conversation_id": "468edb2d-d0d5-43dc-ba1a-2185cc5f87bc",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:00:55 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "patch",
+          "http_url": "http://host.docker.internal:8000/api/v1/enterprise/tickets/1",
+          "http_body": "{\"expected_status\": \"pending\", \"status\": \"processing\"}",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "ticket_update"
+        }
+      },
+      {
+        "node_id": "http_patch",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.01
+  },
+  {
+    "case_id": "M26",
+    "query": "查询我的到期待办",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "feced4b8-208f-4b2a-8824-8ebc44fc4bfe",
+      "conversation_id": "a3be22b5-ce65-4a39-90ef-9d10a4fac583",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:01:03 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "get",
+          "http_url": "http://host.docker.internal:8000/api/v1/enterprise/todos?due_only=True",
+          "http_body": "",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "todos"
+        }
+      },
+      {
+        "node_id": "http_get",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.01
+  },
+  {
+    "case_id": "M27",
+    "query": "查看我的站内通知",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "db5734b1-8da3-464e-a97d-6c1756add6f9",
+      "conversation_id": "d6cea9d7-6511-4be3-94f9-a9babf713370",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:01:14 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "get",
+          "http_url": "http://host.docker.internal:8000/api/v1/enterprise/notifications",
+          "http_body": "",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "notifications"
+        }
+      },
+      {
+        "node_id": "http_get",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.01
+  },
+  {
+    "case_id": "M28",
+    "query": "录入客户",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "84586690-2d26-4d7d-b4ed-f47ca8bd0592",
+      "conversation_id": "edffe4ec-eac6-416e-b962-b7452e2a71e4",
+      "answer": "请补充：customer_name。未调用接口。"
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:01:20 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "请补充：customer_name。未调用接口。",
+          "pending": "{\"intent\": \"lead_create\", \"params\": {}, \"state\": \"collect\"}",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.01
+  },
+  {
+    "case_id": "M29",
+    "query": "是否支持录入客户？先不要执行。",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "cd0312e6-56f8-4ffc-9c17-1f3fe180fb19",
+      "conversation_id": "a59d7386-2ca7-433d-8c74-c0e90b557640",
+      "answer": "这是功能咨询或暂不支持的操作，没有调用业务接口。可查询客户、日报、组织、指南、成绩、请假、工单、待办及通知；写操作需要确认。"
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:01:25 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "这是功能咨询或暂不支持的操作，没有调用业务接口。可查询客户、日报、组织、指南、成绩、请假、工单、待办及通知；写操作需要确认。",
+          "pending": "",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.01
+  },
+  {
+    "case_id": "M30",
+    "query": "后端健康检查",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "9aee5bb6-bbe0-4f53-ba22-0c48ca3b0111",
+      "conversation_id": "0b2c2fcd-246d-42ec-bb6d-f5d203140899",
+      "answer": "后端探活成功。员工可信身份尚未接入时，业务API仍会返回503；探活成功不代表业务已保存。"
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:01:29 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": false,
+          "reply": "后端探活成功。员工可信身份尚未接入时，业务API仍会返回503；探活成功不代表业务已保存。"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.01
+  },
+  {
+    "case_id": "M31",
+    "query": "给学生1000004录入数学成绩88.50，学期2026-2027-1，考试标识repair-test-midterm",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "f576a0eb-948c-469e-a550-5556ed63dcbe",
+      "conversation_id": "1325bf67-b617-482b-ae19-217c8c17b9e7",
+      "answer": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nscore_create\n{\"student_id\": 1000004, \"course_name\": \"数学\", \"score\": 88.5, \"semester\": \"2026-2027-1\", \"exam_key\": \"repair-test-midterm\"}"
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:01:29 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nscore_create\n{\"student_id\": 1000004, \"course_name\": \"数学\", \"score\": 88.5, \"semester\": \"2026-2027-1\", \"exam_key\": \"repair-test-midterm\"}",
+          "pending": "{\"intent\": \"score_create\", \"params\": {\"student_id\": 1000004, \"course_name\": \"数学\", \"score\": 88.5, \"semester\": \"2026-2027-1\", \"exam_key\": \"repair-test-midterm\"}, \"state\": \"confirm\"}",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.01
+  },
+  {
+    "case_id": "M32",
+    "query": "确认",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "d18c04ba-57d7-49a2-ac4d-758bc0bdaa3a",
+      "conversation_id": "1325bf67-b617-482b-ae19-217c8c17b9e7",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:01:39 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "post",
+          "http_url": "http://host.docker.internal:8000/api/v1/enterprise/scores",
+          "http_body": "{\"student_id\": 1000004, \"course_name\": \"数学\", \"score\": 88.5, \"semester\": \"2026-2027-1\", \"exam_key\": \"repair-test-midterm\"}",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "score_create"
+        }
+      },
+      {
+        "node_id": "http_post",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.01
+  },
+  {
+    "case_id": "M33",
+    "query": "更正成绩1，学生1000004，课程数学，成绩90.00，学期2026-2027-1，当前版本1，原因复核",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "8fb646fe-9bcd-4907-a1a3-cf9328712ccf",
+      "conversation_id": "9afeb320-aabd-454e-80f6-33ccdc584fc9",
+      "answer": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nscore_correct\n{\"score_id\": 1, \"student_id\": 1000004, \"course_name\": \"数学\", \"score\": \"90.00\", \"semester\": \"2026-2027-1\", \"expected_version\": 1, \"correction_reason\": \"复核\"}"
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:01:50 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nscore_correct\n{\"score_id\": 1, \"student_id\": 1000004, \"course_name\": \"数学\", \"score\": \"90.00\", \"semester\": \"2026-2027-1\", \"expected_version\": 1, \"correction_reason\": \"复核\"}",
+          "pending": "{\"intent\": \"score_correct\", \"params\": {\"score_id\": 1, \"student_id\": 1000004, \"course_name\": \"数学\", \"score\": \"90.00\", \"semester\": \"2026-2027-1\", \"expected_version\": 1, \"correction_reason\": \"复核\"}, \"state\": \"confirm\"}",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.01
+  },
+  {
+    "case_id": "M34",
+    "query": "确认",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "a72833b4-bb7d-4c41-aa03-78dc150ec70b",
+      "conversation_id": "9afeb320-aabd-454e-80f6-33ccdc584fc9",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:02:01 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "put",
+          "http_url": "http://host.docker.internal:8000/api/v1/enterprise/scores/1",
+          "http_body": "{\"student_id\": 1000004, \"course_name\": \"数学\", \"score\": \"90.00\", \"semester\": \"2026-2027-1\", \"expected_version\": 1, \"correction_reason\": \"复核\"}",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "score_correct"
+        }
+      },
+      {
+        "node_id": "http_put",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M35",
+    "query": "新增待办，标题为本地接口测试",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "fa93aad5-f85b-44b8-8a24-3ffe363d140e",
+      "conversation_id": "faca7e43-97cc-47b4-bd3e-3f5f87290201",
+      "answer": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\ntodo_create\n{\"title\": \"本地接口测试\"}"
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:02:13 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\ntodo_create\n{\"title\": \"本地接口测试\"}",
+          "pending": "{\"intent\": \"todo_create\", \"params\": {\"title\": \"本地接口测试\"}, \"state\": \"confirm\"}",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M36",
+    "query": "取消",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "ddce9b85-08d3-45d1-bf74-f0e08c7c8817",
+      "conversation_id": "faca7e43-97cc-47b4-bd3e-3f5f87290201",
+      "answer": "已取消待确认操作，没有提交请求。"
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:02:21 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "已取消待确认操作，没有提交请求。",
+          "pending": "",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M37",
+    "query": "确认",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "7a002534-e707-4b4c-94aa-95553da3bfab",
+      "conversation_id": "faca7e43-97cc-47b4-bd3e-3f5f87290201",
+      "answer": "没有待确认的操作，请先说明要处理的数据。"
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:02:27 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "没有待确认的操作，请先说明要处理的数据。",
+          "pending": "",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M38",
+    "query": "将待办1从pending完成为done",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "cd45b1a0-ff84-4d50-b412-4af075a49e7d",
+      "conversation_id": "17ae1356-f050-4fc2-8202-b79c55b8896d",
+      "answer": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\ntodo_update\n{\"todo_id\": 1, \"expected_status\": \"pending\", \"status\": \"done\"}"
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:02:32 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\ntodo_update\n{\"todo_id\": 1, \"expected_status\": \"pending\", \"status\": \"done\"}",
+          "pending": "{\"intent\": \"todo_update\", \"params\": {\"todo_id\": 1, \"expected_status\": \"pending\", \"status\": \"done\"}, \"state\": \"confirm\"}",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M39",
+    "query": "确认",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "d47f8572-6813-47df-a8f2-cf4e12223ae4",
+      "conversation_id": "17ae1356-f050-4fc2-8202-b79c55b8896d",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:02:37 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "patch",
+          "http_url": "http://host.docker.internal:8000/api/v1/enterprise/todos/1",
+          "http_body": "{\"expected_status\": \"pending\", \"status\": \"done\"}",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "todo_update"
+        }
+      },
+      {
+        "node_id": "http_patch",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M40",
+    "query": "修改客户20，备注为本地验证修复流程",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "ee2d807d-05a1-4e16-8730-8dad3d674af3",
+      "conversation_id": "1d416b93-818c-495f-a2e2-bedcc88e1d01",
+      "answer": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nlead_update\n{\"lead_id\": 20, \"remark\": \"本地验证修复流程\"}"
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:02:46 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nlead_update\n{\"lead_id\": 20, \"remark\": \"本地验证修复流程\"}",
+          "pending": "{\"intent\": \"lead_update\", \"params\": {\"lead_id\": 20, \"remark\": \"本地验证修复流程\"}, \"state\": \"confirm\"}",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M41",
+    "query": "确认",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "00163ac1-59d7-4908-adc6-e3f504520267",
+      "conversation_id": "1d416b93-818c-495f-a2e2-bedcc88e1d01",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:02:55 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "patch",
+          "http_url": "http://host.docker.internal:8000/api/v1/consultant/leads/20",
+          "http_body": "{\"remark\": \"本地验证修复流程\"}",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "lead_update"
+        }
+      },
+      {
+        "node_id": "http_patch",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M42",
+    "query": "新增新人指南，标题本地测试说明，分类test，内容为仅用于本地功能验证",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "8e3026f4-347b-40e1-bc1b-ff19968daef5",
+      "conversation_id": "f47ef750-3485-4f5e-9b9e-cc5e5b50441b",
+      "answer": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nguide_create\n{\"title\": \"本地测试说明\", \"category\": \"test\", \"content\": \"仅用于本地功能验证\"}"
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:03:02 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\nguide_create\n{\"title\": \"本地测试说明\", \"category\": \"test\", \"content\": \"仅用于本地功能验证\"}",
+          "pending": "{\"intent\": \"guide_create\", \"params\": {\"title\": \"本地测试说明\", \"category\": \"test\", \"content\": \"仅用于本地功能验证\"}, \"state\": \"confirm\"}",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.03
+  },
+  {
+    "case_id": "M43",
+    "query": "确认",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "b0da929b-7687-4f5f-9107-cf51958378db",
+      "conversation_id": "f47ef750-3485-4f5e-9b9e-cc5e5b50441b",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:03:09 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "post",
+          "http_url": "http://host.docker.internal:8000/api/v1/enterprise/onboarding-guides",
+          "http_body": "{\"title\": \"本地测试说明\", \"category\": \"test\", \"content\": \"仅用于本地功能验证\"}",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "guide_create"
+        }
+      },
+      {
+        "node_id": "http_post",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M44",
+    "query": "新增待办，标题为本地接口测试",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "9dcf820b-81ac-4843-93f2-ffdb255ee31f",
+      "conversation_id": "a42c5350-16bf-45cb-90db-9501b8ec2d20",
+      "answer": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\ntodo_create\n{\"title\": \"本地接口测试\"}"
+    },
+    "completed": true,
+    "workflow_status": "succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:03:17 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": false,
+          "method": "get",
+          "http_url": "",
+          "http_body": "",
+          "reply": "请核对以下操作，回复“确认”才会提交；回复“取消”放弃。\ntodo_create\n{\"title\": \"本地接口测试\"}",
+          "pending": "{\"intent\": \"todo_create\", \"params\": {\"title\": \"本地接口测试\"}, \"state\": \"confirm\"}",
+          "intent": "other"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  },
+  {
+    "case_id": "M45",
+    "query": "确认",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "4d933c2d-0c3c-44fd-88d3-418ddae6908a",
+      "conversation_id": "a42c5350-16bf-45cb-90db-9501b8ec2d20",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:03:22 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "post",
+          "http_url": "http://host.docker.internal:8000/api/v1/enterprise/todos",
+          "http_body": "{\"title\": \"本地接口测试\"}",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "todo_create"
+        }
+      },
+      {
+        "node_id": "http_post",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.03
+  },
+  {
+    "case_id": "M46",
+    "query": "使用nl_query查询，意图daily_reports_recent，参数为空对象，查询最近日报",
+    "workflow_id": "105f3a44-ad5a-444f-8e66-98ec696deb69",
+    "execution": "ordinary public WebApp HTTP/SSE plus read-only persisted node verification",
+    "response": {
+      "id": "893ac920-1717-4362-83fd-7df5e6700159",
+      "conversation_id": "b890524e-8498-4fa2-9e85-2bed3565f26c",
+      "answer": "员工可信身份或后端服务未就绪（HTTP 503），没有确认保存成功。请等待管理员接入身份后重试。"
+    },
+    "completed": true,
+    "workflow_status": "partial-succeeded",
+    "node_trace": [
+      {
+        "node_id": "health",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}",
+          "headers": {
+            "date": "Thu, 12 Nov 2026 03:03:29 GMT",
+            "server": "uvicorn",
+            "content-length": "15",
+            "content-type": "application/json",
+            "cache-status": "729eb310a4e9;fwd=stale;detail=match",
+            "via": "1.1 729eb310a4e9 (squid/6.13)",
+            "connection": "keep-alive"
+          },
+          "files": []
+        }
+      },
+      {
+        "node_id": "gate",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "needs_llm": true,
+          "reply": ""
+        }
+      },
+      {
+        "node_id": "plan",
+        "status": "succeeded",
+        "error": null,
+        "outputs": {
+          "call_api": true,
+          "method": "post",
+          "http_url": "http://host.docker.internal:8000/api/v1/ai/nl2sql/query",
+          "http_body": "{\"intent\": \"daily_reports_recent\", \"params\": {}}",
+          "reply": "请求处理中，结果以实际后端响应为准。",
+          "pending": "",
+          "intent": "nl_query"
+        }
+      },
+      {
+        "node_id": "http_post",
+        "status": "exception",
+        "error": "Request failed with status code 503",
+        "outputs": {
+          "error_message": "Request failed with status code 503",
+          "error_type": "HTTPResponseCodeError"
+        }
+      }
+    ],
+    "checks": {
+      "workflow_version": true,
+      "public_stream": true,
+      "terminal_or_expected_handled_503": true,
+      "answer": true,
+      "business_call_count": true,
+      "intent": true,
+      "pending_intent": true
+    },
+    "passed": true,
+    "duration_seconds": 0.02
+  }
+]

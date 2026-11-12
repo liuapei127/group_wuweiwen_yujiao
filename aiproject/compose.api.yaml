@@ -1,0 +1,25 @@
+services:
+  api:
+    build:
+      context: ./aiproject
+    restart: unless-stopped
+    mem_limit: 256m
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: ${MYSQL_DATABASE}
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      UPLOAD_DIR: /uploads
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./uploads:/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

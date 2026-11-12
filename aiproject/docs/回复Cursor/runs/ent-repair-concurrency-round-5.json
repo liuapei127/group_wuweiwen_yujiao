@@ -1,0 +1,379 @@
+{
+  "database": "ent_verify_reliability_0b51bb12",
+  "start_method": "spawn",
+  "workers_per_race": 4,
+  "rounds": [
+    {
+      "create": [
+        {
+          "pid": 32312,
+          "connection_id": 492,
+          "operation": "create",
+          "status": 200,
+          "data": {
+            "id": 113,
+            "version": 1,
+            "replayed": false
+          }
+        },
+        {
+          "pid": 37728,
+          "connection_id": 493,
+          "operation": "create",
+          "status": 200,
+          "data": {
+            "id": 113,
+            "version": 1,
+            "replayed": true
+          }
+        },
+        {
+          "pid": 4216,
+          "connection_id": 494,
+          "operation": "create",
+          "status": 200,
+          "data": {
+            "id": 113,
+            "version": 1,
+            "replayed": true
+          }
+        },
+        {
+          "pid": 12504,
+          "connection_id": 495,
+          "operation": "create",
+          "status": 200,
+          "data": {
+            "id": 113,
+            "version": 1,
+            "replayed": true
+          }
+        }
+      ],
+      "correction": [
+        {
+          "pid": 14788,
+          "connection_id": 499,
+          "operation": "correct",
+          "status": 200,
+          "data": {
+            "id": 113,
+            "version": 2
+          }
+        },
+        {
+          "pid": 42548,
+          "operation": "correct",
+          "status": 409,
+          "error": "成绩版本已变化，请刷新后重试"
+        },
+        {
+          "pid": 16340,
+          "operation": "correct",
+          "status": 409,
+          "error": "成绩版本已变化，请刷新后重试"
+        },
+        {
+          "pid": 44180,
+          "operation": "correct",
+          "status": 409,
+          "error": "成绩版本已变化，请刷新后重试"
+        }
+      ],
+      "score_id": 113,
+      "history_versions": [
+        1,
+        2
+      ]
+    },
+    {
+      "create": [
+        {
+          "pid": 19384,
+          "connection_id": 501,
+          "operation": "create",
+          "status": 200,
+          "data": {
+            "id": 117,
+            "version": 1,
+            "replayed": false
+          }
+        },
+        {
+          "pid": 15440,
+          "connection_id": 503,
+          "operation": "create",
+          "status": 200,
+          "data": {
+            "id": 117,
+            "version": 1,
+            "replayed": true
+          }
+        },
+        {
+          "pid": 25720,
+          "connection_id": 500,
+          "operation": "create",
+          "status": 200,
+          "data": {
+            "id": 117,
+            "version": 1,
+            "replayed": true
+          }
+        },
+        {
+          "pid": 41520,
+          "connection_id": 502,
+          "operation": "create",
+          "status": 200,
+          "data": {
+            "id": 117,
+            "version": 1,
+            "replayed": true
+          }
+        }
+      ],
+      "correction": [
+        {
+          "pid": 34764,
+          "connection_id": 504,
+          "operation": "correct",
+          "status": 200,
+          "data": {
+            "id": 117,
+            "version": 2
+          }
+        },
+        {
+          "pid": 7372,
+          "operation": "correct",
+          "status": 409,
+          "error": "成绩版本已变化，请刷新后重试"
+        },
+        {
+          "pid": 35424,
+          "operation": "correct",
+          "status": 409,
+          "error": "成绩版本已变化，请刷新后重试"
+        },
+        {
+          "pid": 43000,
+          "operation": "correct",
+          "status": 409,
+          "error": "成绩版本已变化，请刷新后重试"
+        }
+      ],
+      "score_id": 117,
+      "history_versions": [
+        1,
+        2
+      ]
+    },
+    {
+      "create": [
+        {
+          "pid": 4108,
+          "connection_id": 509,
+          "operation": "create",
+          "status": 200,
+          "data": {
+            "id": 121,
+            "version": 1,
+            "replayed": false
+          }
+        },
+        {
+          "pid": 33136,
+          "connection_id": 510,
+          "operation": "create",
+          "status": 200,
+          "data": {
+            "id": 121,
+            "version": 1,
+            "replayed": true
+          }
+        },
+        {
+          "pid": 22452,
+          "connection_id": 511,
+          "operation": "create",
+          "status": 200,
+          "data": {
+            "id": 121,
+            "version": 1,
+            "replayed": true
+          }
+        },
+        {
+          "pid": 43300,
+          "connection_id": 508,
+          "operation": "create",
+          "status": 200,
+          "data": {
+            "id": 121,
+            "version": 1,
+            "replayed": true
+          }
+        }
+      ],
+      "correction": [
+        {
+          "pid": 30464,
+          "connection_id": 512,
+          "operation": "correct",
+          "status": 200,
+          "data": {
+            "id": 121,
+            "version": 2
+          }
+        },
+        {
+          "pid": 5764,
+          "operation": "correct",
+          "status": 409,
+          "error": "成绩版本已变化，请刷新后重试"
+        },
+        {
+          "pid": 44128,
+          "operation": "correct",
+          "status": 409,
+          "error": "成绩版本已变化，请刷新后重试"
+        },
+        {
+          "pid": 22004,
+          "operation": "correct",
+          "status": 409,
+          "error": "成绩版本已变化，请刷新后重试"
+        }
+      ],
+      "score_id": 121,
+      "history_versions": [
+        1,
+        2
+      ]
+    }
+  ],
+  "parallel_scans": [
+    {
+      "pid": 34684,
+      "connection_id": 489,
+      "operation": "scan",
+      "status": 200,
+      "data": {
+        "todos_created": 0,
+        "system_notifications_created": 0
+      }
+    },
+    {
+      "pid": 33520,
+      "connection_id": 487,
+      "operation": "scan",
+      "status": 200,
+      "data": {
+        "todos_created": 0,
+        "system_notifications_created": 0
+      }
+    },
+    {
+      "pid": 38276,
+      "connection_id": 488,
+      "operation": "scan",
+      "status": 200,
+      "data": {
+        "todos_created": 0,
+        "system_notifications_created": 0
+      }
+    },
+    {
+      "pid": 44736,
+      "connection_id": 490,
+      "operation": "scan",
+      "status": 200,
+      "data": {
+        "todos_created": 40,
+        "system_notifications_created": 40
+      }
+    }
+  ],
+  "parallel_approval": [
+    {
+      "pid": 30844,
+      "operation": "approve",
+      "status": 409,
+      "error": "请假单已处理或审批范围已变化，请刷新后重试"
+    },
+    {
+      "pid": 41280,
+      "operation": "approve",
+      "status": 409,
+      "error": "请假单已处理或审批范围已变化，请刷新后重试"
+    },
+    {
+      "pid": 23968,
+      "operation": "approve",
+      "status": 409,
+      "error": "请假单已处理或审批范围已变化，请刷新后重试"
+    },
+    {
+      "pid": 28048,
+      "connection_id": 517,
+      "operation": "approve",
+      "status": 200,
+      "data": {
+        "id": 16,
+        "status": "approved"
+      }
+    }
+  ],
+  "reassignment_race": [
+    {
+      "pid": 33156,
+      "connection_id": 523,
+      "operation": "scan",
+      "status": 200,
+      "data": {
+        "todos_created": 0,
+        "system_notifications_created": 0
+      }
+    },
+    {
+      "pid": 17752,
+      "connection_id": 522,
+      "operation": "scan",
+      "status": 200,
+      "data": {
+        "todos_created": 0,
+        "system_notifications_created": 0
+      }
+    },
+    {
+      "pid": 39116,
+      "connection_id": 521,
+      "operation": "reassign",
+      "status": 200,
+      "data": {
+        "assignee_id": 1000002
+      }
+    },
+    {
+      "pid": 12964,
+      "connection_id": 524,
+      "operation": "scan",
+      "status": 200,
+      "data": {
+        "todos_created": 0,
+        "system_notifications_created": 0
+      }
+    }
+  ],
+  "invariants": {
+    "one_score_per_exam": true,
+    "one_winning_correction": true,
+    "history_atomic": true,
+    "one_winning_approval": true,
+    "todo_reassignment_synchronized": true,
+    "duplicate_source_todos": 0,
+    "duplicate_notification_keys": 0
+  },
+  "status": "passed"
+}

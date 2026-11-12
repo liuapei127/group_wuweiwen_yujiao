@@ -1,0 +1,37 @@
+from sqlalchemy import Table, Column, BigInteger, Integer, SmallInteger, String, Text, DateTime, Numeric, Enum, LargeBinary, UniqueConstraint
+from app.core.database import Base
+
+todo_item = Table("todo_item", Base.metadata,
+    Column("id", BigInteger().with_variant(Integer, "sqlite"), primary_key=True),
+    Column("assignee_id", BigInteger, nullable=False),
+    Column("todo_type", Enum('leave_approval','complaint_follow','report_remind','custom'), nullable=False),
+    Column("title", String(255), nullable=False),
+    Column("description", Text, nullable=True),
+    Column("related_type", String(64), nullable=True),
+    Column("related_id", BigInteger, nullable=True),
+    Column("priority", Enum('low','medium','high','urgent'), nullable=False),
+    Column("status", Enum('pending','in_progress','done','cancelled'), nullable=False),
+    Column("due_time", DateTime, nullable=True),
+    Column("completed_time", DateTime, nullable=True),
+    Column("assignment_version", Integer, nullable=False, default=1, server_default="1"),
+    Column("source_status", String(32), nullable=True),
+    UniqueConstraint("related_type", "related_id", name="uk_todo_source"),
+    Column("create_time", DateTime, nullable=False),
+    Column("update_time", DateTime, nullable=False),
+)
+
+notification_log = Table("notification_log", Base.metadata,
+    Column("id", BigInteger().with_variant(Integer, "sqlite"), primary_key=True),
+    Column("user_id", BigInteger, nullable=False),
+    Column("notification_type", String(64), nullable=False),
+    Column("dedup_key", String(128), nullable=True),
+    UniqueConstraint("dedup_key", name="uk_notification_dedup"),
+    Column("related_type", String(64), nullable=True),
+    Column("related_id", BigInteger, nullable=True),
+    Column("title", String(255), nullable=False),
+    Column("content", Text, nullable=False),
+    Column("channel", Enum('system','email','sms','wechat'), nullable=False),
+    Column("status", Enum('pending','sent','failed'), nullable=False),
+    Column("error_message", Text, nullable=True),
+    Column("create_time", DateTime, nullable=False),
+)

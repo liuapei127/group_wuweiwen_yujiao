@@ -1,0 +1,19 @@
+{
+  "date": "2026-11-11T14:28:08.170Z",
+  "scope": "isolated SQLite and ASGI only",
+  "result": {
+    "code": 0,
+    "stdout": "..............................                                           [100%]\r\n============================== warnings summary ===============================\r\n.venv313\\Lib\\site-packages\\fastapi\\testclient.py:1\r\n  D:\\Project course\\group_wuweiwen_yujiao\\aiproject\\.venv313\\Lib\\site-packages\\fastapi\\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\r\n    from starlette.testclient import TestClient as TestClient  # noqa\r\n\r\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\r\n30 passed, 1 warning in 4.41s\r\n",
+    "stderr": ""
+  },
+  "sha256": {
+    "app/core/auth/dependencies.py": "dc90780b793a26767ad557cac182241d76e499c1831853304107ea1e68606cfe",
+    "app/router_registry.py": "2d41db3652ced1f24a1a9ed0b20ef69b4ee481900e55cc31b2f904ddd2952e56",
+    "app/modules/student_admin/models.py": "e0310d7e4f2f15991427ba56c87590a1d2c6084b3e3ff5266d2c25abacd5446f",
+    "app/modules/enterprise_support/tables.py": "002aab8df3ebe5c42d4ec3997f19af3aea9944e5c501f8893d9b152b9ad5f0d8",
+    "app/modules/enterprise_support/router.py": "b4f4fba8aeeca79eb0a4bf3a84e4ec2bc4eaf12f3eefa5659298e97e04967ab8",
+    "app/modules/enterprise_support/reminders.py": "eb541f5aeae82b4bd99d20620327a6c8dc3334f33b7c1960c38b706d815ff5e5",
+    "scripts/run_ent_reminders.py": "9cceeff059962840df3c6942dac608f3700f305a750dadd76be466a578b519e7",
+    "tests/test_ent_support.py": "5760f07a362f6195e9e7c513637df65f71f087223933696e78e0acf1d7173aa1"
+  }
+}
