@@ -4,15 +4,17 @@ from __future__ import annotations
 from datetime import timedelta, timezone
 from pathlib import Path
 
+import jwt
 import pytest
 from sqlalchemy import create_engine, delete, event, select, update
 from sqlalchemy import inspect as sa_inspect
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import DisconnectionError, InterfaceError, OperationalError
+from sqlalchemy.exc import TimeoutError as StoreTimeout
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool
 
 from app.core.database import engine as production_engine
-from app.core.security.base_jwt import ACCESS_TOKEN_USE, issue_access_token, verify_token
+from app.core.security.base_jwt import ACCESS_TOKEN_USE, BaseTokenError, issue_access_token, verify_token
 from app.core.security.base_session import (
     IDLE_TTL_MAX,
     REFRESH_TTL_MAX,
@@ -20,6 +22,7 @@ from app.core.security.base_session import (
     SESSION_TTL_MAX,
     BaseSessionError,
     BaseSessionUnavailable,
+    access_matches_session,
     authorize_access,
     end_login,
     note_verified_access,
@@ -417,6 +420,148 @@ def test_database_failure_rejects_instead_of_accepting_the_signature(env, monkey
         )
     assert session_failure_status(logout.value) == 503
     assert _revoked(db, issued.session_id) is None
+
+
+def test_access_subject_must_match_session_user(env):
+    db, _engine, keyset, _private = env
+    _seed(db, 15, "other.session", "employee", 1, "employee")
+    own = start_session(db, user_id=10, keyset=keyset, audience=AUD, now=NOW)
+    victim = start_session(db, user_id=15, keyset=keyset, audience=AUD, now=NOW)
+    claims = verify_token(keyset, own.access_token, audience=AUD, token_use=ACCESS_TOKEN_USE)
+    stored_user = db.execute(
+        select(base_sessions.c.user_id).where(base_sessions.c.id == own.session_id)
+    ).scalar_one()
+    assert claims["sub"] == str(int(stored_user)) == "10"
+    forged = jwt.encode(
+        {**claims, "sid": victim.session_id},
+        keyset.signing_key().private_pem,
+        algorithm="RS256",
+        headers={"kid": keyset.signing_key().kid, "typ": "JWT"},
+    )
+    for use in (
+        lambda: note_verified_access(
+            db, forged, keyset=keyset, audience=AUD, now=NOW + timedelta(minutes=1),
+        ),
+        lambda: authorize_access(
+            db, forged, keyset=keyset, audience=AUD, permission="dashboard:read",
+            now=NOW + timedelta(minutes=1),
+        ),
+        lambda: access_matches_session(
+            db, forged, keyset=keyset, audience=AUD, now=NOW + timedelta(minutes=1),
+        ),
+    ):
+        with pytest.raises(BaseSessionError) as mismatch:
+            use()
+        assert mismatch.value.code == "invalid"
+    with pytest.raises(BaseSessionError) as logout:
+        end_login(
+            db, access_token=forged, refresh_token=victim.refresh_token,
+            keyset=keyset, audience=AUD, now=NOW + timedelta(minutes=1),
+        )
+    assert logout.value.code == "invalid"
+    assert session_failure_status(logout.value) == 401
+    assert _revoked(db, victim.session_id) is None
+    assert _revoked(db, own.session_id) is None
+    kept = refresh_session(db, victim.refresh_token, keyset=keyset, audience=AUD, now=NOW)
+    assert kept.session_id == victim.session_id
+    kept_claims = verify_token(keyset, kept.access_token, audience=AUD, token_use=ACCESS_TOKEN_USE)
+    assert kept_claims["sub"] == "15"
+    assert int(db.execute(
+        select(base_sessions.c.user_id).where(base_sessions.c.id == kept.session_id)
+    ).scalar_one()) == 15
+    db.execute(
+        update(refresh_tokens).where(refresh_tokens.c.session_id == own.session_id).values(user_id=15)
+    )
+    db.commit()
+    with pytest.raises(BaseSessionError) as rebound:
+        refresh_session(db, own.refresh_token, keyset=keyset, audience=AUD, now=NOW)
+    assert rebound.value.code == "invalid"
+    assert _revoked(db, own.session_id) is None
+    assert access_matches_session(
+        db, own.access_token, keyset=keyset, audience=AUD, now=NOW,
+    )["sub"] == "10"
+
+
+@pytest.mark.parametrize("make_error", [
+    lambda: InterfaceError("SELECT", {}, Exception("closed")),
+    lambda: DisconnectionError("closed"),
+    lambda: StoreTimeout("timeout"),
+])
+def test_disconnect_and_timeout_fail_closed(env, monkeypatch, make_error):
+    db, _engine, keyset, _private = env
+    issued = start_session(db, user_id=10, keyset=keyset, audience=AUD, now=NOW)
+    _grant(db, "dashboard:read")
+    import app.core.security.base_session as session_mod
+
+    original_session = session_mod._session
+
+    def fail_read(*_args, **_kwargs):
+        raise make_error()
+
+    monkeypatch.setattr(session_mod, "_session", fail_read)
+    with pytest.raises(BaseSessionUnavailable) as denied:
+        authorize_access(
+            db, issued.access_token, keyset=keyset, audience=AUD, permission="dashboard:read",
+            now=NOW + timedelta(minutes=6),
+        )
+    assert session_failure_status(denied.value) == 503
+    with pytest.raises(BaseSessionUnavailable) as logout:
+        end_login(
+            db, access_token=issued.access_token, refresh_token=issued.refresh_token,
+            keyset=keyset, audience=AUD, now=NOW,
+        )
+    assert session_failure_status(logout.value) == 503
+    assert _revoked(db, issued.session_id) is None
+    assert _last_used(db, issued.session_id) == NOW
+    monkeypatch.setattr(session_mod, "_session", original_session)
+
+    def fail_touch(*_args, **_kwargs):
+        raise make_error()
+
+    monkeypatch.setattr(session_mod, "_touch_last_used", fail_touch)
+    with pytest.raises(BaseSessionUnavailable) as touch:
+        authorize_access(
+            db, issued.access_token, keyset=keyset, audience=AUD, permission="dashboard:read",
+            now=NOW + timedelta(minutes=6),
+        )
+    assert session_failure_status(touch.value) == 503
+    assert _last_used(db, issued.session_id) == NOW
+    assert _revoked(db, issued.session_id) is None
+
+
+def test_refresh_logout_accepts_only_a_genuinely_expired_access(env):
+    db, _engine, keyset, _private = env
+    live = start_session(db, user_id=10, keyset=keyset, audience=AUD, now=NOW)
+    claims = verify_token(keyset, live.access_token, audience=AUD, token_use=ACCESS_TOKEN_USE)
+    private = keyset.signing_key().private_pem
+    header = {"kid": keyset.signing_key().kid, "typ": "JWT"}
+    other_private, _other_public = _pair()
+    rejected_tokens = (
+        jwt.encode(dict(claims), other_private, algorithm="RS256", headers=header),
+        jwt.encode({**claims, "iss": "ent-portal"}, private, algorithm="RS256", headers=header),
+        jwt.encode({**claims, "aud": "edu-api:stu"}, private, algorithm="RS256", headers=header),
+        issue_access_token(
+            keyset, sub="10", sid=live.session_id, audience="edu-api:stu", user_type="employee",
+            now=(NOW - timedelta(hours=2)).replace(tzinfo=timezone.utc),
+        ),
+    )
+    for token in rejected_tokens:
+        with pytest.raises(BaseTokenError) as rejected:
+            end_login(
+                db, access_token=token, refresh_token=live.refresh_token,
+                keyset=keyset, audience=AUD, now=NOW,
+            )
+        assert session_failure_status(rejected.value) == 401
+        assert _revoked(db, live.session_id) is None
+    genuine = issue_access_token(
+        keyset, sub="10", sid=live.session_id, audience=AUD, user_type="employee",
+        now=(NOW - timedelta(hours=2)).replace(tzinfo=timezone.utc),
+    )
+    assert end_login(
+        db, access_token=genuine, refresh_token=live.refresh_token,
+        keyset=keyset, audience=AUD, now=NOW,
+    ) == "revoked"
+    assert _revoked(db, live.session_id) is not None
 
 
 def _grant(db, permission: str) -> None:

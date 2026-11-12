@@ -168,6 +168,31 @@ def verify_token(
     audience: str,
     token_use: str,
 ) -> dict:
+    return _decode_token(keyset, token, audience=audience, token_use=token_use, verify_exp=True)
+
+
+def verify_expired_access(keyset: BaseKeySet, token: str, *, audience: str) -> dict:
+    """Accept an access token only when every check except exp passes, and exp is past.
+
+    Signature, issuer, audience, and the other access checks still fail closed.
+    A still-valid token, or any token that fails those checks, is rejected.
+    """
+    claims = _decode_token(
+        keyset, token, audience=audience, token_use=ACCESS_TOKEN_USE, verify_exp=False,
+    )
+    if _numeric_date(claims.get("exp")) > int(datetime.now(timezone.utc).timestamp()):
+        raise BaseTokenError("BASE 令牌无效")
+    return claims
+
+
+def _decode_token(
+    keyset: BaseKeySet,
+    token: str,
+    *,
+    audience: str,
+    token_use: str,
+    verify_exp: bool,
+) -> dict:
     if token_use not in {ACCESS_TOKEN_USE, SERVICE_TOKEN_USE}:
         raise BaseTokenError("BASE 令牌无效")
     if audience not in RESOURCE_AUDIENCES:
@@ -184,6 +209,9 @@ def verify_token(
     if not isinstance(kid, str):
         raise BaseTokenError("BASE 令牌无效")
     key = keyset.verification_key(kid)
+    options = {"require": ["exp", "iat", "nbf", "iss", "aud", "sub", "sid", "token_use"]}
+    if not verify_exp:
+        options["verify_exp"] = False
     try:
         claims = jwt.decode(
             token,
@@ -192,7 +220,7 @@ def verify_token(
             issuer=ISSUER,
             audience=audience,
             leeway=0,
-            options={"require": ["exp", "iat", "nbf", "iss", "aud", "sub", "sid", "token_use"]},
+            options=options,
         )
     except jwt.PyJWTError as exc:
         raise BaseTokenError("BASE 令牌无效") from exc

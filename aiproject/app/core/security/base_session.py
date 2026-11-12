@@ -10,7 +10,13 @@ from uuid import uuid4
 
 import jwt
 from sqlalchemy import delete, or_, select, update
-from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy.exc import (
+    DisconnectionError,
+    InterfaceError,
+    OperationalError,
+    ProgrammingError,
+)
+from sqlalchemy.exc import TimeoutError as StoreTimeout
 from sqlalchemy.orm import Session
 
 from app.core.security.base_identity import BaseIdentity, BaseIdentityError, resolve_identity
@@ -20,6 +26,7 @@ from app.core.security.base_jwt import (
     BaseKeySet,
     BaseTokenError,
     issue_access_token,
+    verify_expired_access,
     verify_token,
 )
 from app.core.security.rbac import PERMISSIONS
@@ -33,6 +40,13 @@ IDLE_TTL = timedelta(hours=2)
 IDLE_TTL_MAX = timedelta(hours=12)
 RETENTION = timedelta(days=7)
 TOUCH_GAP = timedelta(minutes=5)
+_STORE_UNAVAILABLE = (
+    OperationalError,
+    ProgrammingError,
+    InterfaceError,
+    DisconnectionError,
+    StoreTimeout,
+)
 
 
 class BaseSessionError(Exception):
@@ -91,7 +105,7 @@ def start_session(
         access = _issue(db, identity, session_id, keyset, audience, moment, expires)
         return IssuedLogin(access, secret, session_id, family_id)
 
-    return _transaction(db, work)
+    return _store(db, work)
 
 
 def refresh_session(
@@ -125,6 +139,10 @@ def refresh_session(
             if row is None:
                 box["error"] = "invalid"
                 return
+            if _foreign_binding(db, row):
+                _revoke_family(db, row["family_id"], moment)
+                box["error"] = "invalid"
+                return
             if row["used_at"] is not None or row["revoked_at"] is not None:
                 _revoke_family(db, row["family_id"], moment)
                 _revoke_session_tree(db, row["session_id"], moment)
@@ -133,6 +151,10 @@ def refresh_session(
             box["error"] = "invalid"
             return
         row = _row_by_hash(db, digest)
+        if _foreign_binding(db, row):
+            _revoke_family(db, row["family_id"], moment)
+            box["error"] = "invalid"
+            return
         failure = _rotation_block(db, row, moment, idle_ttl)
         if failure:
             _revoke_family(db, row["family_id"], moment)
@@ -153,7 +175,7 @@ def refresh_session(
         access = _issue(db, identity, row["session_id"], keyset, audience, moment, session_expires)
         box["issued"] = IssuedLogin(access, secret, row["session_id"], row["family_id"])
 
-    _transaction(db, work)
+    _store(db, work)
     if "error" in box:
         raise BaseSessionError(box["error"])
     return box["issued"]
@@ -170,7 +192,7 @@ def revoke_session(db: Session, session_id: str, *, now: datetime | None = None)
             _revoke_family(db, family_id, moment)
 
     try:
-        _transaction(db, work)
+        _store(db, work)
     except BaseSessionError:
         raise
 
@@ -209,7 +231,7 @@ def revoke_sessions_for_kid(db: Session, kid: str, *, now: datetime | None = Non
             for family_id in _families_for_sessions(db, _tree_ids(db, session_id)):
                 _revoke_family(db, family_id, moment)
 
-    _transaction(db, work)
+    _store(db, work)
 
 
 def require_live_session(db: Session, session_id: str, user_id: int, *, now: datetime | None = None):
@@ -313,12 +335,17 @@ def end_login(
     audience: str,
     now: datetime | None = None,
 ) -> str:
-    """Revoke the presented login. Never creates a session or a refresh token."""
+    """Revoke the presented login. Never creates a session or a refresh token.
+
+    A present access token may fall through to the refresh cookie only when its
+    signature, issuer, audience, and other access checks pass and exp is past.
+    A bad signature, issuer, or audience is rejected and does not use the cookie.
+    """
     moment = _naive(now)
-    claims = _access_claims(access_token, keyset, audience)
-    if claims is not None:
-        return _end_known_session(db, claims["sid"], moment)
-    if refresh_token:
+    kind, claims = _presented_access(access_token, keyset, audience)
+    if kind == "valid":
+        return _end_known_session(db, claims["sid"], int(claims["sub"]), moment)
+    if refresh_token and kind in {"absent", "expired"}:
         return _end_by_refresh(db, refresh_token, moment)
     return "already_logged_out"
 
@@ -359,7 +386,7 @@ def purge_expired_families(db: Session, *, now: datetime | None = None) -> int:
             )
         box["count"] = len(family_ids)
 
-    _transaction(db, work)
+    _store(db, work)
     return box["count"]
 
 
@@ -387,7 +414,7 @@ def _touch_last_used(db, session_id: str, moment: datetime) -> None:
             )
             .values(last_used_at=moment)
         )
-    except (OperationalError, ProgrammingError):
+    except _STORE_UNAVAILABLE:
         raise BaseSessionUnavailable() from None
 
 
@@ -536,20 +563,29 @@ def _revoke_user_rows(db, user_id: int, moment: datetime) -> None:
         _revoke_family(db, family_id, moment)
 
 
-def _access_claims(token: str | None, keyset: BaseKeySet, audience: str):
+def _presented_access(token: str | None, keyset: BaseKeySet, audience: str):
+    """Classify a logout access token as absent, valid, or expired-only.
+
+    Any failure other than a past exp raises BaseTokenError. Callers must not
+    treat that failure as an expired token.
+    """
     if not token:
-        return None
+        return "absent", None
     try:
-        return verify_token(keyset, token, audience=audience, token_use=ACCESS_TOKEN_USE)
+        return "valid", verify_token(keyset, token, audience=audience, token_use=ACCESS_TOKEN_USE)
     except BaseTokenError:
-        return None
+        return "expired", verify_expired_access(keyset, token, audience=audience)
 
 
-def _end_known_session(db, session_id: str, moment: datetime) -> str:
+def _end_known_session(db, session_id: str, user_id: int, moment: datetime) -> str:
     box = {"state": "already_logged_out"}
 
     def work():
-        if _session(db, session_id) is None:
+        session = _session(db, session_id)
+        if session is None:
+            return
+        if int(session["user_id"]) != user_id:
+            box["error"] = "invalid"
             return
         _revoke_session_tree(db, session_id, moment)
         for family_id in _families_for_sessions(db, _tree_ids(db, session_id)):
@@ -557,6 +593,8 @@ def _end_known_session(db, session_id: str, moment: datetime) -> str:
         box["state"] = "revoked"
 
     _store(db, work)
+    if "error" in box:
+        raise BaseSessionError(box["error"])
     return box["state"]
 
 
@@ -569,18 +607,32 @@ def _end_by_refresh(db, raw_token: str, moment: datetime) -> str:
         row = _row_by_hash(db, digest)
         if row is None or row["expires_at"] <= moment:
             return
+        if _foreign_binding(db, row):
+            _revoke_family(db, row["family_id"], moment)
+            box["error"] = "invalid"
+            return
         _revoke_family(db, row["family_id"], moment)
         _revoke_session_tree(db, row["session_id"], moment)
         box["state"] = "revoked"
 
     _store(db, work)
+    if "error" in box:
+        raise BaseSessionError(box["error"])
     return box["state"]
+
+
+def _foreign_binding(db, row) -> bool:
+    """True when the refresh row names a session owned by a different user."""
+    session = _session(db, row["session_id"])
+    if session is None:
+        return False
+    return int(session["user_id"]) != int(row["user_id"])
 
 
 def _session(db, session_id: str):
     try:
         return db.execute(select(base_sessions).where(base_sessions.c.id == session_id)).mappings().first()
-    except (OperationalError, ProgrammingError):
+    except _STORE_UNAVAILABLE:
         raise BaseSessionUnavailable() from None
 
 
@@ -629,7 +681,7 @@ def _store(db: Session, work):
         return _transaction(db, work)
     except BaseSessionUnavailable:
         raise
-    except (OperationalError, ProgrammingError):
+    except _STORE_UNAVAILABLE:
         raise BaseSessionUnavailable() from None
 
 
