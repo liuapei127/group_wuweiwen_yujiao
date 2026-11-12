@@ -4,7 +4,7 @@
 
 ALTER TABLE ent_auth_session
   ADD COLUMN last_used_at DATETIME NULL,
-  ADD COLUMN parent_session_id VARCHAR(36) NULL;
+  ADD COLUMN parent_session_id VARCHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL;
 
 CREATE TABLE auth_refresh_token (
   token_hash CHAR(64) NOT NULL,
@@ -27,6 +27,6 @@ CREATE TABLE auth_user_session_kid (
   kid VARCHAR(64) NOT NULL,
   first_issued_at DATETIME NOT NULL,
   PRIMARY KEY (session_id, kid),
-  KEY idx_user_session_kid (kid),
+  KEY idx_kid (kid),
   CONSTRAINT fk_user_session_kid FOREIGN KEY (session_id) REFERENCES ent_auth_session (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

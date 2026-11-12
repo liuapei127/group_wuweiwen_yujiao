@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import jwt
-from sqlalchemy import select, update
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.core.security.base_identity import BaseIdentityError, resolve_identity
@@ -29,6 +29,7 @@ SESSION_TTL_MAX = timedelta(days=7)
 IDLE_TTL = timedelta(hours=2)
 IDLE_TTL_MAX = timedelta(hours=12)
 RETENTION = timedelta(days=7)
+TOUCH_GAP = timedelta(minutes=5)
 
 
 class BaseSessionError(Exception):
@@ -131,11 +132,7 @@ def refresh_session(
             .values(replaced_by=_hash(secret))
         )
         _insert_refresh(db, secret, row["family_id"], row["session_id"], row["user_id"], refresh_expires)
-        db.execute(
-            update(base_sessions)
-            .where(base_sessions.c.id == row["session_id"])
-            .values(last_used_at=moment)
-        )
+        _touch_last_used(db, row["session_id"], moment)
         identity = resolve_identity(db, int(row["user_id"]))
         access = _issue(db, identity, row["session_id"], keyset, audience, moment, session_expires)
         box["issued"] = IssuedLogin(access, secret, row["session_id"], row["family_id"])
@@ -205,9 +202,65 @@ def require_live_session(db: Session, session_id: str, user_id: int, *, now: dat
 
 
 def access_matches_session(db: Session, token: str, *, keyset: BaseKeySet, audience: str, now: datetime | None = None):
+    """Structural session check. It does not touch last_used_at and is not an HTTP route."""
     claims = verify_token(keyset, token, audience=audience, token_use=ACCESS_TOKEN_USE)
     require_live_session(db, claims["sid"], int(claims["sub"]), now=now)
     return claims
+
+
+def note_verified_access(db: Session, token: str, *, keyset: BaseKeySet, audience: str, now: datetime | None = None):
+    """Record a successful BASE access check. Not called by the ENT HS256 login path."""
+    claims = verify_token(keyset, token, audience=audience, token_use=ACCESS_TOKEN_USE)
+    moment = _naive(now)
+    box: dict = {}
+
+    def work():
+        failure = _session_block(db, claims["sid"], int(claims["sub"]), moment, IDLE_TTL)
+        if failure:
+            if failure == "expired":
+                for family_id in _families_for_sessions(db, _tree_ids(db, claims["sid"])):
+                    _revoke_family(db, family_id, moment)
+                _revoke_session_tree(db, claims["sid"], moment)
+            box["error"] = failure
+            return
+        _touch_last_used(db, claims["sid"], moment)
+        box["claims"] = claims
+
+    _transaction(db, work)
+    if "error" in box:
+        raise BaseSessionError(box["error"])
+    return box["claims"]
+
+
+def purge_expired_families(db: Session, *, now: datetime | None = None) -> int:
+    """Delete families that are entirely expired or revoked and past the fixed 7-day retention."""
+    moment = _naive(now)
+    box = {"count": 0}
+
+    def work():
+        family_ids = _purgeable_families(db, moment)
+        if not family_ids:
+            return
+        session_ids = list(db.execute(
+            select(refresh_tokens.c.session_id).where(refresh_tokens.c.family_id.in_(family_ids))
+        ).scalars())
+        db.execute(delete(refresh_tokens).where(refresh_tokens.c.family_id.in_(family_ids)))
+        if session_ids:
+            cutoff = moment - RETENTION
+            db.execute(
+                delete(base_sessions).where(
+                    base_sessions.c.id.in_(session_ids),
+                    ~base_sessions.c.id.in_(select(refresh_tokens.c.session_id)),
+                    or_(
+                        base_sessions.c.revoked_at <= cutoff,
+                        base_sessions.c.expires_at <= cutoff,
+                    ),
+                )
+            )
+        box["count"] = len(family_ids)
+
+    _transaction(db, work)
+    return box["count"]
 
 
 def _eligible(db, user_id: int):
@@ -218,6 +271,62 @@ def _eligible(db, user_id: int):
     if not identity.ent_login_allowed:
         raise BaseSessionError("denied")
     return identity
+
+
+def _touch_last_used(db, session_id: str, moment: datetime) -> None:
+    cutoff = moment - TOUCH_GAP
+    db.execute(
+        update(base_sessions)
+        .where(
+            base_sessions.c.id == session_id,
+            or_(
+                base_sessions.c.last_used_at.is_(None),
+                base_sessions.c.last_used_at <= cutoff,
+            ),
+        )
+        .values(last_used_at=moment)
+    )
+
+
+def _session_block(db, session_id: str, user_id: int, moment: datetime, idle_ttl: timedelta) -> str | None:
+    session = _session(db, session_id)
+    if session is None or int(session["user_id"]) != user_id:
+        return "invalid"
+    if session["revoked_at"] is not None:
+        return "revoked"
+    if session["expires_at"] <= moment:
+        return "expired"
+    last_used = session["last_used_at"] or session["create_time"]
+    if moment - last_used > idle_ttl:
+        return "expired"
+    return None
+
+
+def _purgeable_families(db, moment: datetime) -> list[str]:
+    cutoff = moment - RETENTION
+    grouped: dict[str, list] = {}
+    rows = db.execute(select(
+        refresh_tokens.c.family_id,
+        refresh_tokens.c.expires_at,
+        refresh_tokens.c.used_at,
+        refresh_tokens.c.revoked_at,
+    )).mappings()
+    for row in rows:
+        grouped.setdefault(row["family_id"], []).append(row)
+    return [
+        family_id for family_id, items in grouped.items()
+        if items and all(_row_past_retention(item, moment, cutoff) for item in items)
+    ]
+
+
+def _row_past_retention(row, moment: datetime, cutoff: datetime) -> bool:
+    if row["used_at"] is None and row["revoked_at"] is None and row["expires_at"] > moment:
+        return False
+    if row["revoked_at"] is not None:
+        return row["revoked_at"] <= cutoff
+    if row["used_at"] is not None:
+        return row["used_at"] <= cutoff
+    return row["expires_at"] <= cutoff
 
 
 def _rotation_block(db, row, moment, idle_ttl) -> str | None:

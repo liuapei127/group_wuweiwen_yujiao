@@ -1,5 +1,5 @@
 """BASE session tables. Separate metadata so ENT inserts stay unchanged."""
-from sqlalchemy import BigInteger, Column, DateTime, MetaData, String, Table
+from sqlalchemy import BigInteger, Column, DateTime, Index, MetaData, String, Table
 
 metadata = MetaData()
 
@@ -35,3 +35,4 @@ session_kids = Table(
     Column("kid", String(64), primary_key=True),
     Column("first_issued_at", DateTime, nullable=False),
 )
+Index("idx_kid", session_kids.c.kid)
