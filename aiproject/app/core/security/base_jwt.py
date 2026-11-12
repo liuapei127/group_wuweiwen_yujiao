@@ -24,9 +24,6 @@ RESOURCE_AUDIENCES = frozenset({
     "edu-api:stu",
     "edu-api:rpt",
 })
-# Named by the implementation-detail note for a future exchange call.
-# No exchange route is registered in this phase.
-SERVICE_EXCHANGE_AUDIENCE = "edu-auth:token-exchange"
 ACCESS_TOKEN_USE = "access"
 SERVICE_TOKEN_USE = "service_access"
 USER_TYPES = frozenset({"employee", "admin", "student"})
@@ -100,8 +97,8 @@ def load_keyset() -> BaseKeySet:
     raw = _read_key_config()
     try:
         parsed = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise BaseKeyConfigError("BASE 密钥配置无效") from exc
+    except json.JSONDecodeError:
+        raise BaseKeyConfigError("BASE 密钥配置无效") from None
     return keyset_from_config(parsed)
 
 
@@ -150,8 +147,7 @@ def issue_service_token(
 ) -> str:
     if not isinstance(sub, str) or _SERVICE_SUB.fullmatch(sub) is None:
         raise BaseTokenError("BASE 令牌声明无效")
-    allowed = RESOURCE_AUDIENCES | {SERVICE_EXCHANGE_AUDIENCE}
-    if audience not in allowed:
+    if audience not in RESOURCE_AUDIENCES:
         raise BaseTokenError("BASE 令牌声明无效")
     return _issue(
         keyset,
@@ -173,6 +169,8 @@ def verify_token(
     token_use: str,
 ) -> dict:
     if token_use not in {ACCESS_TOKEN_USE, SERVICE_TOKEN_USE}:
+        raise BaseTokenError("BASE 令牌无效")
+    if audience not in RESOURCE_AUDIENCES:
         raise BaseTokenError("BASE 令牌无效")
     if not isinstance(token, str) or token.count(".") != 2:
         raise BaseTokenError("BASE 令牌无效")
@@ -336,8 +334,8 @@ def _public_jwk(key: BaseKey) -> dict:
 def _public_key(pem: str):
     try:
         key = load_pem_public_key(pem.encode("utf-8"))
-    except ValueError as exc:
-        raise BaseKeyConfigError("BASE 密钥配置无效") from exc
+    except ValueError:
+        raise BaseKeyConfigError("BASE 密钥配置无效") from None
     if not isinstance(key, rsa.RSAPublicKey) or key.key_size < 2048:
         raise BaseKeyConfigError("BASE 密钥配置无效")
     return key
@@ -346,8 +344,8 @@ def _public_key(pem: str):
 def _private_key(pem: str):
     try:
         key = load_pem_private_key(pem.encode("utf-8"), password=None)
-    except (TypeError, ValueError) as exc:
-        raise BaseKeyConfigError("BASE 密钥配置无效") from exc
+    except (TypeError, ValueError):
+        raise BaseKeyConfigError("BASE 密钥配置无效") from None
     if not isinstance(key, rsa.RSAPrivateKey) or key.key_size < 2048:
         raise BaseKeyConfigError("BASE 密钥配置无效")
     return key
