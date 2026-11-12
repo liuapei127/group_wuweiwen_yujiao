@@ -25,33 +25,6 @@ def resolve_db_password() -> str:
         for line in env_file.read_text(encoding="utf-8").splitlines():
             if line.startswith("DB_PASSWORD="):
                 return line.split("=", 1)[1].strip()
-    for candidate in ("123456", "root", "mysql", "password", ""):
-        try:
-            pymysql.connect(
-                host="127.0.0.1",
-                port=3306,
-                user="root",
-                password=candidate,
-                database="education_service",
-                charset="utf8mb4",
-            ).close()
-            if not env_file.exists():
-                env_file.write_text(
-                    "\n".join(
-                        [
-                            "DB_HOST=127.0.0.1",
-                            "DB_PORT=3306",
-                            "DB_NAME=education_service",
-                            "DB_USER=root",
-                            f"DB_PASSWORD={candidate}",
-                            "UPLOAD_DIR=./data/uploads",
-                        ]
-                    ),
-                    encoding="utf-8",
-                )
-            return candidate
-        except pymysql.Error:
-            continue
     raise RuntimeError("无法连接 MySQL，请配置 aiproject/.env 中 DB_PASSWORD")
 
 

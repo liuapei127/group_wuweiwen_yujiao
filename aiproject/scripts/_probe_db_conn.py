@@ -1,6 +1,7 @@
-"""一次性探测本机 MySQL 连接（不打印密码）。成功时写出 .env 片段到 stdout 的变量名提示。"""
+"""一次性探测本机 MySQL 连接（不打印密码）。成功时只提示变量名。"""
 import os
 import sys
+from pathlib import Path
 
 import pymysql
 
@@ -8,28 +9,33 @@ host = os.getenv("DB_HOST", "127.0.0.1")
 port = int(os.getenv("DB_PORT", "3306"))
 user = os.getenv("DB_USER", "root")
 db = os.getenv("DB_NAME", "education_service")
-password = os.getenv("DB_PASSWORD")
 
-candidates = []
-if password is not None:
-    candidates.append(password)
-else:
-    # 仅探测；请在环境变量 DB_PASSWORD 中提供真实密码
-    candidates.extend(["", "123456", "root", "mysql", "password"])
 
-for pwd in candidates:
-    try:
-        conn = pymysql.connect(host=host, port=port, user=user, password=pwd, database=db, charset="utf8mb4")
-        conn.close()
-        print("OK")
-        print(f"DB_HOST={host}")
-        print(f"DB_PORT={port}")
-        print(f"DB_USER={user}")
-        print(f"DB_NAME={db}")
-        print("DB_PASSWORD_SET=yes")
-        # 供父进程使用
-        sys.exit(100 if pwd == "" else 0)
-    except pymysql.Error:
-        continue
-print("FAIL")
-sys.exit(1)
+def resolve_password():
+    if os.getenv("DB_PASSWORD") is not None:
+        return os.getenv("DB_PASSWORD")
+    env_file = Path(__file__).resolve().parents[1] / ".env"
+    if env_file.is_file():
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            if line.startswith("DB_PASSWORD="):
+                return line.split("=", 1)[1].strip()
+    return None
+
+
+password = resolve_password()
+if password is None:
+    print("FAIL")
+    sys.exit(1)
+try:
+    conn = pymysql.connect(host=host, port=port, user=user, password=password, database=db, charset="utf8mb4")
+    conn.close()
+except pymysql.Error:
+    print("FAIL")
+    sys.exit(1)
+print("OK")
+print(f"DB_HOST={host}")
+print(f"DB_PORT={port}")
+print(f"DB_USER={user}")
+print(f"DB_NAME={db}")
+print("DB_PASSWORD_SET=yes")
+sys.exit(100 if password == "" else 0)
