@@ -1,5 +1,6 @@
 from app.modules.portal.router import router as portal_router
 from app.ai.assistant.router import router as assistant_router
+from app.core.security.jwks_router import router as base_jwks_router
 from app.modules.auth.router import router as auth_router
 from app.modules.organization.router import router as organization_router
 from app.modules.onboarding.router import router as onboarding_router
@@ -20,6 +21,7 @@ from app.modules.system.router import router as system_router
 
 def register_routers(app: FastAPI) -> None:
     app.add_exception_handler(BusinessError, business_error_handler)
+    app.include_router(base_jwks_router)
     app.include_router(auth_router)
     app.include_router(portal_router)
     app.include_router(assistant_router)
