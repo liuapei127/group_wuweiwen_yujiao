@@ -118,9 +118,7 @@ access 最长 3600 秒。服务令牌同样不超过 3600 秒。本阶段没有�
 
 分支：`feature/base02-safe-baseline`。
 
-本阶段代码和本报告的提交 Hash 记在本节下一行。提交前的父提交是 `8e894577889f0c5fdf60e1cba24e0b9b084ab08c`。
-
-`PHASE1_COMMIT`
+本阶段代码和报告初稿的提交是 `b89abe240500a49fcd24dc83bc6acb4ded56f308`。它的父提交是 `8e894577889f0c5fdf60e1cba24e0b9b084ab08c`。把这个 Hash 写进本报告的后续提交只改这一处。
 
 没有执行 `reset --hard`、`clean`、`rebase`、`filter-repo`、`commit --amend`，没有 `git add .`，没有推送。`backend/`、仓库根目录 `docs/`、`教育服务_0914/` 仍未纳入本次提交。71 号和 72 号报告仍留在工作区，没有被覆盖。
 
