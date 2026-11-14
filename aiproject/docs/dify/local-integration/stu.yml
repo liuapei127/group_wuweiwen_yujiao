@@ -1,10 +1,10 @@
 app:
-  description: 提交/查询请假，调用 FastAPI host.docker.internal:8001
-  icon: 🤖
+  description: 统一 aiproject 学生助手薄壳。转发到 /api/v1/student/assistant/run；请假投诉进度心理由 FastAPI 办理。
+  icon: 🎓
   icon_background: '#FFEAD5'
   icon_type: emoji
   mode: advanced-chat
-  name: 留学学生助手-请假 · 本机集成
+  name: 留学学生助手 · 统一API
   use_icon_as_answer_icon: false
 dependencies: []
 kind: app
@@ -14,45 +14,65 @@ site:
   copyright: null
   custom_disclaimer: ''
   default_language: zh-Hans
-  description: null
-  icon: 🤖
+  description: 对学生说人话；业务写入走官网统一学生接口。
+  icon: 🎓
   icon_background: '#FFEAD5'
   icon_type: emoji
-  input_placeholder: null
+  input_placeholder: 直接说请假、查进度、看考务、投诉或想聊聊
   privacy_policy: null
-  show_workflow_steps: true
-  title: 留学学生助手-请假
+  show_workflow_steps: false
+  title: 留学学生助手
   use_icon_as_answer_icon: false
 version: 0.7.0
 workflow:
-  conversation_variables: []
-  environment_variables:
-  - description: 旧学生助手演示接口使用。仅在自己的 Dify 环境配置。
-    id: 59cec62b-b53c-52ba-bab2-d6b961cf3157
-    name: stu_legacy_username
+  conversation_variables:
+  - description: 当前会话缓存的官网学生 Bearer
+    id: b22b2222-c33c-d44d-e55e-f66f66666661
+    name: access_token
     selector:
-    - env
-    - stu_legacy_username
+    - conversation
+    - access_token
     value: ''
     value_type: string
-  - description: 旧学生助手演示接口使用。仅在自己的 Dify 环境配置。
-    id: 84a78853-da62-58d0-88bc-ac9de271d8b1
-    name: stu_legacy_password
+  environment_variables:
+  - description: FastAPI 根地址。Docker 内 Dify 访问本机请用 host.docker.internal。
+    id: a11a1111-b22b-c33c-d44d-e55e55555551
+    name: stu_api_base
     selector:
     - env
-    - stu_legacy_password
+    - stu_api_base
+    value: http://host.docker.internal:8000
+    value_type: string
+  - description: 官网学生登录用户名。无传入 token 且会话未缓存时使用。
+    id: a11a1111-b22b-c33c-d44d-e55e55555552
+    name: stu_website_username
+    selector:
+    - env
+    - stu_website_username
+    value: ''
+    value_type: string
+  - description: 官网学生登录密码。
+    id: a11a1111-b22b-c33c-d44d-e55e55555553
+    name: stu_website_password
+    selector:
+    - env
+    - stu_website_password
     value: ''
     value_type: secret
   features:
     file_upload: {}
-    opening_statement: ''
+    opening_statement: 我是留学学生助手。可以说请假、查请假、查留学进度、看考试截止、投诉建议，或聊聊近况。
     retriever_resource:
-      enabled: true
+      enabled: false
     sensitive_word_avoidance:
       enabled: false
     speech_to_text:
       enabled: false
-    suggested_questions: []
+    suggested_questions:
+    - 我要请假
+    - 查一下留学进度
+    - 最近有什么考试截止
+    - 我想投诉
     suggested_questions_after_answer:
       enabled: false
     text_to_speech:
@@ -64,11 +84,35 @@ workflow:
     - data:
         isInIteration: false
         isInLoop: false
-        sourceType: '1794388184546'
-        targetType: http_login
-      id: 1794388184546-source-http_login
-      source: '1794388184546'
+        sourceType: start
+        targetType: code
+      id: e-start-resolve
+      source: start
       sourceHandle: source
+      target: resolve_auth
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: if-else
+      id: e-resolve-need
+      source: resolve_auth
+      sourceHandle: source
+      target: need_login
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: http-request
+      id: e-need-login
+      source: need_login
+      sourceHandle: 'true'
       target: http_login
       targetHandle: target
       type: custom
@@ -76,9 +120,9 @@ workflow:
     - data:
         isInIteration: false
         isInLoop: false
-        sourceType: http_login
-        targetType: parse_token
-      id: http_login-source-parse_token
+        sourceType: http-request
+        targetType: code
+      id: e-login-parse
       source: http_login
       sourceHandle: source
       target: parse_token
@@ -88,10 +132,58 @@ workflow:
     - data:
         isInIteration: false
         isInLoop: false
-        sourceType: parse_token
-        targetType: http_chat
-      id: parse_token-source-http_chat
+        sourceType: code
+        targetType: assigner
+      id: e-parse-remember
       source: parse_token
+      sourceHandle: source
+      target: remember_token
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: assigner
+      id: e-need-reuse
+      source: need_login
+      sourceHandle: 'false'
+      target: remember_reuse
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: assigner
+        targetType: code
+      id: e-remember-build
+      source: remember_token
+      sourceHandle: source
+      target: build_request
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: assigner
+        targetType: code
+      id: e-reuse-build
+      source: remember_reuse
+      sourceHandle: source
+      target: build_request
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: http-request
+      id: e-build-http
+      source: build_request
       sourceHandle: source
       target: http_chat
       targetHandle: target
@@ -100,9 +192,9 @@ workflow:
     - data:
         isInIteration: false
         isInLoop: false
-        sourceType: http_chat
-        targetType: extract_reply
-      id: http_chat-source-extract_reply
+        sourceType: http-request
+        targetType: code
+      id: e-http-extract
       source: http_chat
       sourceHandle: source
       target: extract_reply
@@ -112,9 +204,9 @@ workflow:
     - data:
         isInIteration: false
         isInLoop: false
-        sourceType: extract_reply
-        targetType: answer_chat
-      id: extract_reply-source-answer_chat
+        sourceType: code
+        targetType: answer
+      id: e-extract-answer
       source: extract_reply
       sourceHandle: source
       target: answer_chat
@@ -126,162 +218,275 @@ workflow:
         selected: false
         title: 用户输入
         type: start
-        variables: []
-      height: 72
-      id: '1794388184546'
-      position:
-        x: 0
-        y: 17.5
-      positionAbsolute:
-        x: 0
-        y: 17.5
+        variables:
+        - default: ''
+          hint: 官网学生 Bearer。FastAPI 转发时填入；工作室可留空。
+          label: student_access_token
+          max_length: 4096
+          options: []
+          placeholder: ''
+          required: false
+          type: paragraph
+          variable: student_access_token
+        - default: '[]'
+          hint: '[{"role":"user","content":"..."},{"role":"assistant","content":"..."}]'
+          label: history_json
+          max_length: 20000
+          options: []
+          placeholder: '[]'
+          required: false
+          type: paragraph
+          variable: history_json
+      height: 118
+      id: start
+      position: {x: 0, y: 0}
+      positionAbsolute: {x: 0, y: 0}
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 0
     - data:
-        authorization:
-          config: null
-          type: no-auth
+        code: "import json\n\ndef main(student_access_token: str, cached_token: str,\
+          \ history_json: str) -> dict:\n    token = (student_access_token or '').strip()\
+          \ or (cached_token or '').strip()\n    raw = (history_json or '').strip()\
+          \ or '[]'\n    try:\n        history = json.loads(raw)\n        if not\
+          \ isinstance(history, list):\n            history = []\n    except Exception:\n\
+          \        history = []\n    clean = []\n    for turn in history[-12:]:\n\
+          \        if not isinstance(turn, dict):\n            continue\n        role\
+          \ = turn.get('role')\n        content = (turn.get('content') or '').strip()\n\
+          \        if role in ('user', 'assistant') and content:\n            clean.append({'role':\
+          \ role, 'content': content[:4000]})\n    return {\n        'token': token,\n\
+          \        'need_login': 'yes' if not token else 'no',\n        'history_json':\
+          \ json.dumps(clean, ensure_ascii=False),\n    }\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          token: {children: null, type: string}
+          need_login: {children: null, type: string}
+          history_json: {children: null, type: string}
+        selected: false
+        title: 解析鉴权与历史
+        type: code
+        variables:
+        - value_selector: [start, student_access_token]
+          variable: student_access_token
+        - value_selector: [conversation, access_token]
+          variable: cached_token
+        - value_selector: [start, history_json]
+          variable: history_json
+      height: 51
+      id: resolve_auth
+      position: {x: 300, y: 0}
+      positionAbsolute: {x: 300, y: 0}
+      selected: false
+      type: custom
+      width: 244
+      zIndex: 0
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: is
+            id: need-login-yes
+            value: 'yes'
+            varType: string
+            variable_selector: [resolve_auth, need_login]
+          logical_operator: and
+        title: 是否需要登录
+        type: if-else
+      height: 126
+      id: need_login
+      position: {x: 600, y: 0}
+      positionAbsolute: {x: 600, y: 0}
+      selected: false
+      type: custom
+      width: 244
+      zIndex: 0
+    - data:
+        authorization: {config: null, type: no-auth}
         body:
           data:
           - key: ''
             type: text
-            value: '{"username":"{{#env.stu_legacy_username#}}","password":"{{#env.stu_legacy_password#}}"}'
+            value: '{"username":"{{#env.stu_website_username#}}","password":"{{#env.stu_website_password#}}"}'
           type: json
         desc: ''
         headers: 'Content-Type: application/json'
         method: post
         params: ''
-        retry_config:
-          max_retries: 3
-          retry_enabled: false
-          retry_interval: 100
+        retry_config: {max_retries: 2, retry_enabled: true, retry_interval: 100}
         selected: false
         ssl_verify: true
-        timeout:
-          connect: 10
-          read: 30
-          write: 30
-        title: 学生登录
+        timeout: {connect: 10, read: 30, write: 30}
+        title: 官网学生登录
         type: http-request
-        url: http://host.docker.internal:8001/api/stu/auth/login
+        url: '{{#env.stu_api_base#}}/api/v1/visitors/login'
       height: 107
       id: http_login
-      position:
-        x: 342
-        y: 0
-      positionAbsolute:
-        x: 342
-        y: 0
+      position: {x: 900, y: -120}
+      positionAbsolute: {x: 900, y: -120}
       selected: false
       type: custom
-      width: 241
+      width: 244
       zIndex: 0
     - data:
-        code: "import json\ndef main(body: str) -> dict:\n    try:\n        data =\
-          \ json.loads(body or '{}')\n    except Exception:\n        data = {}\n \
-          \   return {'token': data.get('access_token') or ''}\n"
+        code: "import json\n\ndef main(body: str) -> dict:\n    try:\n        data\
+          \ = json.loads(body or '{}')\n    except Exception:\n        data = {}\n\
+          \    if isinstance(data, dict) and isinstance(data.get('data'), dict):\n\
+          \        data = data['data']\n    token = ''\n    if isinstance(data, dict):\n\
+          \        token = data.get('access_token') or ''\n    return {'token': token\
+          \ or ''}\n"
         code_language: python3
         desc: ''
         outputs:
-          token:
-            children: null
-            type: string
+          token: {children: null, type: string}
         selected: false
         title: 取出令牌
         type: code
         variables:
-        - value_selector:
-          - http_login
-          - body
+        - value_selector: [http_login, body]
           variable: body
       height: 51
       id: parse_token
-      position:
-        x: 683
-        y: 28
-      positionAbsolute:
-        x: 683
-        y: 28
+      position: {x: 1200, y: -120}
+      positionAbsolute: {x: 1200, y: -120}
       selected: false
       type: custom
-      width: 241
+      width: 244
       zIndex: 0
     - data:
-        authorization:
-          config: null
-          type: no-auth
+        items:
+        - input_type: variable
+          operation: over-write
+          value: [parse_token, token]
+          variable_selector: [conversation, access_token]
+          write_mode: over-write
+        title: 缓存登录令牌
+        type: assigner
+        version: '2'
+      height: 90
+      id: remember_token
+      position: {x: 1500, y: -120}
+      positionAbsolute: {x: 1500, y: -120}
+      selected: false
+      type: custom
+      width: 244
+      zIndex: 0
+    - data:
+        items:
+        - input_type: variable
+          operation: over-write
+          value: [resolve_auth, token]
+          variable_selector: [conversation, access_token]
+          write_mode: over-write
+        title: 缓存已有令牌
+        type: assigner
+        version: '2'
+      height: 90
+      id: remember_reuse
+      position: {x: 900, y: 140}
+      positionAbsolute: {x: 900, y: 140}
+      selected: false
+      type: custom
+      width: 244
+      zIndex: 0
+    - data:
+        code: "import json\n\ndef main(token: str, history_json: str, query: str)\
+          \ -> dict:\n    token = (token or '').strip()\n    try:\n        history\
+          \ = json.loads(history_json or '[]')\n        if not isinstance(history,\
+          \ list):\n            history = []\n    except Exception:\n        history\
+          \ = []\n    body = {'query': (query or '').strip(), 'history': history}\n\
+          \    return {\n        'token': token,\n        'body': json.dumps(body,\
+          \ ensure_ascii=False),\n        'ok': 'yes' if token and body['query'] else\
+          \ 'no',\n        'error': '' if token else '缺少学生登录令牌，请配置环境账号或由后端传入 student_access_token。',\n\
+          \    }\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          token: {children: null, type: string}
+          body: {children: null, type: string}
+          ok: {children: null, type: string}
+          error: {children: null, type: string}
+        selected: false
+        title: 组装助手请求
+        type: code
+        variables:
+        - value_selector: [conversation, access_token]
+          variable: token
+        - value_selector: [resolve_auth, history_json]
+          variable: history_json
+        - value_selector: [sys, query]
+          variable: query
+      height: 51
+      id: build_request
+      position: {x: 1800, y: 0}
+      positionAbsolute: {x: 1800, y: 0}
+      selected: false
+      type: custom
+      width: 244
+      zIndex: 0
+    - data:
+        authorization: {config: null, type: no-auth}
         body:
           data:
           - key: ''
             type: text
-            value: '{"message":"{{#sys.query#}}"}'
+            value: '{{#build_request.body#}}'
           type: json
         desc: ''
-        headers: 'Content-Type: application/json
-
-          Authorization: Bearer {{#parse_token.token#}}'
+        headers: "Content-Type: application/json\nAuthorization: Bearer {{#build_request.token#}}"
         method: post
         params: ''
-        retry_config:
-          max_retries: 3
-          retry_enabled: false
-          retry_interval: 100
-        selected: true
+        retry_config: {max_retries: 2, retry_enabled: true, retry_interval: 100}
+        selected: false
         ssl_verify: true
-        timeout:
-          connect: 10
-          read: 30
-          write: 30
-        title: 助手对话
+        timeout: {connect: 10, read: 60, write: 30}
+        title: 调用统一学生助手
         type: http-request
-        url: http://host.docker.internal:8001/api/stu/assistant/chat
+        url: '{{#env.stu_api_base#}}/api/v1/student/assistant/run'
       height: 107
       id: http_chat
-      position:
-        x: 1024
-        y: 0
-      positionAbsolute:
-        x: 1024
-        y: 0
-      selected: true
+      position: {x: 2100, y: 0}
+      positionAbsolute: {x: 2100, y: 0}
+      selected: false
       type: custom
-      width: 241
+      width: 244
       zIndex: 0
     - data:
-        code: "import json\n\ndef main(body: str) -> dict:\n    if isinstance(body,\
-          \ dict):\n        data = body\n    else:\n        try:\n            data\
-          \ = json.loads(body or \"{}\")\n        except Exception:\n            data\
-          \ = {\"reply\": str(body or \"\")}\n    reply = data.get(\"reply\") if isinstance(data,\
-          \ dict) else str(body or \"\")\n    return {\"reply\": reply or \"\"}\n"
+        code: "import json\n\ndef main(body: str, prep_ok: str, prep_error: str) ->\
+          \ dict:\n    if (prep_ok or '') != 'yes':\n        return {'reply': prep_error\
+          \ or '学生助手鉴权失败。'}\n    try:\n        data = json.loads(body or '{}')\n\
+          \    except Exception:\n        return {'reply': str(body or '助手暂时没有返回内容。')}\n\
+          \    if not isinstance(data, dict):\n        return {'reply': str(body or\
+          \ '')}\n    if data.get('code') not in (0, None) and 'message' in data:\n\
+          \        return {'reply': str(data.get('message') or '办理失败，请稍后再试。')}\n\
+          \    payload = data.get('data') if isinstance(data.get('data'), dict) else\
+          \ data\n    reply = ''\n    if isinstance(payload, dict):\n        reply\
+          \ = payload.get('answer') or payload.get('reply') or ''\n    return {'reply':\
+          \ (reply or '暂时没有得到有效回复。').strip()}\n"
         code_language: python3
         desc: ''
         outputs:
-          reply:
-            children: null
-            type: string
+          reply: {children: null, type: string}
         selected: false
-        title: 取出回复
+        title: 取出口语回复
         type: code
         variables:
-        - value_selector:
-          - http_chat
-          - body
+        - value_selector: [http_chat, body]
           variable: body
+        - value_selector: [build_request, ok]
+          variable: prep_ok
+        - value_selector: [build_request, error]
+          variable: prep_error
       height: 51
       id: extract_reply
-      position:
-        x: 1365
-        y: 28
-      positionAbsolute:
-        x: 1365
-        y: 28
+      position: {x: 2400, y: 0}
+      positionAbsolute: {x: 2400, y: 0}
       selected: false
       type: custom
-      width: 241
+      width: 244
       zIndex: 0
     - data:
         answer: '{{#extract_reply.reply#}}'
@@ -291,20 +496,12 @@ workflow:
         variables: []
       height: 101
       id: answer_chat
-      position:
-        x: 1706
-        y: 3
-      positionAbsolute:
-        x: 1706
-        y: 3
+      position: {x: 2700, y: 0}
+      positionAbsolute: {x: 2700, y: 0}
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 241
+      width: 244
       zIndex: 0
-    viewport:
-      x: 217.2913680850013
-      y: 267.7621643498868
-      zoom: 0.8775149678024933
-  rag_pipeline_variables: []
+    viewport: {x: 20, y: 140, zoom: 0.65}

@@ -2,8 +2,10 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.concurrency import run_in_threadpool
 
+from app.core.config import get_settings
 from app.core.exceptions import BusinessError
 from app.core.security import EmployeePrincipal, require_employee
 from app.core.responses import success
@@ -18,9 +20,11 @@ from app.modules.visitor.service import VisitorPrincipal
 from app.modules.visitor.repository import student_destination
 from app.modules.visitor.service import website_student
 
-from . import alerts, assistant_chat, notifications, service
+from . import alerts, assistant_chat, assistant_dify, notifications, service
 from .schemas import DeadlineWrite, ProgressWrite, StudentAssistantRequest
 from .service import student_policies
+
+_BEARER = HTTPBearer(auto_error=False)
 
 router = APIRouter(prefix="/api/v1/student", tags=["官网学生服务"])
 BeforeId = Annotated[int | None, Query(ge=1)]
@@ -34,31 +38,73 @@ def _student_id(db: Session, principal: VisitorPrincipal, *, lock: bool = False)
     return student_id
 
 
-@router.post("/assistant")
-async def student_assistant(body: StudentAssistantRequest, request: Request, db: Database, principal: Principal):
-    """Spoken student assistant with cross-module leave/feedback/progress/psych links."""
+def _local_assistant(db: Session, principal: VisitorPrincipal, body: StudentAssistantRequest) -> dict:
+    student_id = _student_id(db, principal, lock=False)
+    db.rollback()
+    history = [turn.model_dump() for turn in (body.history or [])]
+    return assistant_chat.handle_chat(
+        db,
+        student_id=student_id,
+        message=body.query,
+        history=history,
+        mock_country=body.mock_country,
+    )
 
-    def resolve_student() -> int:
+
+@router.post("/assistant/run")
+async def student_assistant_run(body: StudentAssistantRequest, request: Request, db: Database, principal: Principal):
+    """Always-local brain for the Dify thin shell. Do not call Dify from here."""
+
+    def resolve() -> int:
         student_id = _student_id(db, principal, lock=False)
-        db.rollback()  # drop auth locks before LLM / long work
+        db.rollback()
         return student_id
 
-    student_id = await run_in_threadpool(resolve_student)
+    student_id = await run_in_threadpool(resolve)
     client_ip = request.client.host if request.client else f"student:{student_id}"
-    history = [turn.model_dump() for turn in (body.history or [])]
-
-    def run() -> dict:
-        return assistant_chat.handle_chat(
-            db,
-            student_id=student_id,
-            message=body.query,
-            history=history,
-            mock_country=body.mock_country,
-        )
 
     try:
         async with get_cs_capacity().slot(client_ip):
-            return success(await run_in_threadpool(run))
+            return success(await run_in_threadpool(_local_assistant, db, principal, body))
+    except CsCapacityExceeded as exc:
+        raise BusinessError(429, exc.message) from exc
+
+
+@router.post("/assistant")
+async def student_assistant(
+    body: StudentAssistantRequest,
+    request: Request,
+    db: Database,
+    principal: Principal,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_BEARER)] = None,
+):
+    """Website entry: Dify shell when ``STU_DIFY_API_KEY`` is set, otherwise local brain."""
+
+    def resolve() -> int:
+        student_id = _student_id(db, principal, lock=False)
+        db.rollback()
+        return student_id
+
+    student_id = await run_in_threadpool(resolve)
+    client_ip = request.client.host if request.client else f"student:{student_id}"
+    use_dify = bool(get_settings().stu_dify_api_key.get_secret_value().strip())
+
+    try:
+        async with get_cs_capacity().slot(client_ip):
+            if use_dify:
+                token = credentials.credentials if credentials else ""
+                if not token:
+                    raise BusinessError(401, "请先登录官网")
+                history = [turn.model_dump() for turn in (body.history or [])]
+                return success(
+                    await assistant_dify.ask_dify(
+                        query=body.query,
+                        access_token=token,
+                        history=history,
+                        user_key=f"student_{student_id}",
+                    )
+                )
+            return success(await run_in_threadpool(_local_assistant, db, principal, body))
     except CsCapacityExceeded as exc:
         raise BusinessError(429, exc.message) from exc
 
