@@ -2,11 +2,22 @@ import {useState} from 'react'
 import {Alert, Card, Input, Space, Typography} from 'antd'
 import {useMutation} from '@tanstack/react-query'
 
-type Ask = (query: string) => Promise<{answer: string}>
+export type AssistantTurn = {role: 'user' | 'assistant'; content: string}
+type Ask = (query: string, history: AssistantTurn[]) => Promise<{answer: string}>
 
 export function WebsiteAssistant({title, ask}: {title: string; ask: Ask}) {
   const [question, setQuestion] = useState('')
-  const result = useMutation({mutationFn: ask})
+  const [history, setHistory] = useState<AssistantTurn[]>([])
+  const result = useMutation({
+    mutationFn: (query: string) => ask(query, history),
+    onSuccess: (data, query) => {
+      setHistory(prev => [
+        ...prev.slice(-10),
+        {role: 'user', content: query},
+        {role: 'assistant', content: data.answer},
+      ])
+    },
+  })
   return <Card title={title} style={{marginBottom: 16}}>
     <Space orientation="vertical" style={{width: '100%'}}>
       <Input.Search aria-label="输入咨询问题" value={question} maxLength={500}

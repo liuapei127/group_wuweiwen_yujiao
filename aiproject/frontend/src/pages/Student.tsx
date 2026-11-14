@@ -52,7 +52,7 @@ export function Student({request, accountRecords}: {request: Request; accountRec
       action={<Button onClick={() => setActiveTab('deadlines')}>查看考务</Button>}/>}
     <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
       {key: 'guide', label: '服务指引', children: <>
-        <WebsiteAssistant title="学生助手" ask={query => request(prefix + '/assistant', 'POST', {query})}/>
+        <WebsiteAssistant title="学生助手" ask={(query, history) => request(prefix + '/assistant', 'POST', {query, history})}/>
         <WebsiteGuide topics={studentTopics} open={setActiveTab}/>
       </>},
       {key: 'leaves', label: '请假申请', children: <Leaves request={request}/>},

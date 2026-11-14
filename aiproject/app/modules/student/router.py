@@ -7,8 +7,7 @@ from starlette.concurrency import run_in_threadpool
 from app.core.exceptions import BusinessError
 from app.core.security import EmployeePrincipal, require_employee
 from app.core.responses import success
-from app.modules.customer_service.schemas import PublicChatRequest
-from app.modules.customer_service.service import chat
+from app.modules.customer_service.capacity import CsCapacityExceeded, get_cs_capacity
 from app.modules.feedback import service as feedback
 from app.modules.feedback.schemas import StudentComplaintCreate
 from app.modules.student_admin.schemas import StudentLeaveCreate
@@ -19,8 +18,8 @@ from app.modules.visitor.service import VisitorPrincipal
 from app.modules.visitor.repository import student_destination
 from app.modules.visitor.service import website_student
 
-from . import alerts, notifications, service
-from .schemas import DeadlineWrite, ProgressWrite
+from . import alerts, assistant_chat, notifications, service
+from .schemas import DeadlineWrite, ProgressWrite, StudentAssistantRequest
 from .service import student_policies
 
 router = APIRouter(prefix="/api/v1/student", tags=["官网学生服务"])
@@ -36,14 +35,32 @@ def _student_id(db: Session, principal: VisitorPrincipal, *, lock: bool = False)
 
 
 @router.post("/assistant")
-async def student_assistant(body: PublicChatRequest, request: Request, db: Database, principal: Principal):
-    def authorize() -> None:
-        _student_id(db, principal)
-        db.rollback()
+async def student_assistant(body: StudentAssistantRequest, request: Request, db: Database, principal: Principal):
+    """Spoken student assistant with cross-module leave/feedback/progress/psych links."""
 
-    await run_in_threadpool(authorize)
-    client_ip = request.client.host if request.client else "unknown"
-    return success(await chat(body.query, client_ip, student=True))
+    def resolve_student() -> int:
+        student_id = _student_id(db, principal, lock=False)
+        db.rollback()  # drop auth locks before LLM / long work
+        return student_id
+
+    student_id = await run_in_threadpool(resolve_student)
+    client_ip = request.client.host if request.client else f"student:{student_id}"
+    history = [turn.model_dump() for turn in (body.history or [])]
+
+    def run() -> dict:
+        return assistant_chat.handle_chat(
+            db,
+            student_id=student_id,
+            message=body.query,
+            history=history,
+            mock_country=body.mock_country,
+        )
+
+    try:
+        async with get_cs_capacity().slot(client_ip):
+            return success(await run_in_threadpool(run))
+    except CsCapacityExceeded as exc:
+        raise BusinessError(429, exc.message) from exc
 
 
 @router.get("/profile")

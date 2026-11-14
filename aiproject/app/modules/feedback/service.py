@@ -64,13 +64,22 @@ def submit_student_complaint(
         if assignee is None:
             raise BusinessError(409, "尚未配置可处理该投诉的负责人")
         now = now_naive()
-        ticket_id = feedback.add_complaint({
-            **payload.model_dump(), "student_id": student_id, "ticket_type": "complaint",
-            "status": "pending", "priority": "medium", "assignee_id": assignee,
-            "is_notified": 0, "create_time": now, "update_time": now,
-        })
+        values = {
+            **payload.model_dump(),
+            "student_id": student_id,
+            "status": "pending",
+            "priority": "medium",
+            "assignee_id": assignee,
+            "is_notified": 0,
+            "create_time": now,
+            "update_time": now,
+        }
+        ticket_id = feedback.add_complaint(values)
         synchronization.synchronize_source(db, "student_feedback_ticket", ticket_id)
-        result = StudentComplaintOut.model_validate(feedback.get_student_complaint(student_id, ticket_id))
+        raw = feedback.get(ticket_id)
+        if raw is None or raw.get("student_id") != student_id:
+            raise BusinessError(500, "投诉工单写入失败")
+        result = StudentComplaintOut.model_validate(raw)
         db.commit()
     except Exception:
         db.rollback()

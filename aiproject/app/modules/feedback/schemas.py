@@ -16,6 +16,7 @@ class StudentComplaintCreate(Input):
     category: Literal["learning", "company"]
     title: str | None = Field(default=None, max_length=255)
     content: str = Field(min_length=1, max_length=10000)
+    ticket_type: Literal["complaint", "suggestion"] = "complaint"
 
 
 class StudentComplaintOut(BaseModel):
@@ -25,5 +26,6 @@ class StudentComplaintOut(BaseModel):
     content: str
     status: str
     solution: str | None
+    assignee_id: int | None = None
     create_time: datetime
     update_time: datetime

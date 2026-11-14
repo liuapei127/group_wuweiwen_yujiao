@@ -1,7 +1,7 @@
 from datetime import date, datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, NaiveDatetime
+from pydantic import BaseModel, ConfigDict, Field, NaiveDatetime, StringConstraints
 
 
 class ProgressWrite(BaseModel):
@@ -49,3 +49,20 @@ class DeadlineWrite(BaseModel):
     description: str | None = Field(default=None, max_length=10000)
     deadline: NaiveDatetime
     reminder_enabled: bool = True
+
+
+class AssistantTurn(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    role: Literal["user", "assistant"]
+    content: Annotated[str, StringConstraints(min_length=1, max_length=4000)]
+
+
+class StudentAssistantRequest(BaseModel):
+    """Spoken assistant input. ``query`` matches WebsiteAssistant; history enables choice follow-ups."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    query: Annotated[str, StringConstraints(min_length=1, max_length=4000)]
+    history: list[AssistantTurn] | None = Field(default=None, max_length=12)
+    mock_country: Literal["Germany", "Singapore"] | None = None
