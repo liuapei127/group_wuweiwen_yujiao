@@ -1,8 +1,9 @@
-import {CalendarOutlined,AppstoreOutlined,TeamOutlined,FileTextOutlined,ApartmentOutlined,BookOutlined,TrophyOutlined,AuditOutlined,CustomerServiceOutlined,CheckSquareOutlined,BellOutlined,SearchOutlined,ThunderboltOutlined,RobotOutlined,SafetyCertificateOutlined,UserOutlined,HistoryOutlined} from '@ant-design/icons'
+import {CalendarOutlined,AppstoreOutlined,TeamOutlined,FileTextOutlined,ApartmentOutlined,BookOutlined,TrophyOutlined,AuditOutlined,CustomerServiceOutlined,CheckSquareOutlined,BellOutlined,SearchOutlined,ThunderboltOutlined,RobotOutlined,SafetyCertificateOutlined,UserOutlined,HistoryOutlined,FileSearchOutlined} from '@ant-design/icons'
 export const navigation=[
  {path:'/dashboard',title:'工作台',permission:'dashboard:read',icon:<AppstoreOutlined/>},
  {path:'/assistant',title:'AI 助手',permission:'ai:use',icon:<RobotOutlined/>},
  {path:'/customers',title:'客户管理',permission:'crm:read',icon:<TeamOutlined/>},
+ {path:'/profile-screening',title:'客户研判',permission:'crm:read',icon:<FileSearchOutlined/>},
  {path:'/visitor-intake',title:'游客跟进',permission:'visitor-intake:read',icon:<CustomerServiceOutlined/>},
  {path:'/reporting',title:'智报中心',permission:'reports:operations:read',alternatePermission:'reports:summary:read',extraPermission:'student-alerts:read',icon:<FileTextOutlined/>},
  {path:'/reports',title:'员工日报',permission:'reports:read',icon:<FileTextOutlined/>},
@@ -30,7 +31,7 @@ export const navigation=[
 /** 侧栏分组：只决定展示顺序与分组标题，不改变权限判断、路由与页面映射 */
 export const navGroups=[
  {label:'工作概览',paths:['/dashboard','/assistant','/todos','/notifications']},
- {label:'客户与业务',paths:['/customers','/visitor-intake','/reporting','/reports','/queries','/commands']},
+ {label:'客户与业务',paths:['/customers','/profile-screening','/visitor-intake','/reporting','/reports','/queries','/commands']},
  {label:'学生事务',paths:['/scores','/course-management','/student-alerts','/academic-deadlines','/application-progress']},
  {label:'组织与协同',paths:['/directory','/guides','/leaves','/events','/tickets']},
  {label:'系统管理',paths:['/settings/website-content','/settings/website-accounts','/settings/users','/settings/roles','/settings/audit']},
@@ -49,8 +50,8 @@ export const permissionNames:Record<string,string>={
 
 export function workplaceHome(roleCode: string, permittedPaths: string[]) {
  const rolePages: Record<string,string[]> = {
-   advisor: ['/visitor-intake','/customers'],
-   employee: ['/visitor-intake','/customers'],
+   advisor: ['/profile-screening','/visitor-intake','/customers'],
+   employee: ['/profile-screening','/visitor-intake','/customers'],
    teacher: ['/leaves','/scores','/tickets'],
    team_leader: ['/leaves','/scores','/tickets'],
    manager: ['/tickets','/reports'],

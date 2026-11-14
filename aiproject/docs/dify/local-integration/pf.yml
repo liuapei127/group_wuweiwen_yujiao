@@ -6,7 +6,12 @@ app:
   mode: workflow
   name: 客户研判 · 本机集成
   use_icon_as_answer_icon: false
-dependencies: []
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6
+    version: null
 kind: app
 version: 0.7.0
 workflow:
@@ -156,10 +161,36 @@ workflow:
         isInIteration: false
         isInLoop: false
         sourceType: code
-        targetType: end
-      id: 1794465387686-source-1794465705386
+        targetType: knowledge-retrieval
+      id: 1794465387686-source-1794466000010
       selected: false
       source: '1794465387686'
+      sourceHandle: source
+      target: '1794466000010'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+      id: 1794466000010-source-1794466000011
+      selected: false
+      source: '1794466000010'
+      sourceHandle: source
+      target: '1794466000011'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: end
+      id: 1794466000011-source-1794465705386
+      selected: false
+      source: '1794466000011'
       sourceHandle: source
       target: '1794465705386'
       targetHandle: target
@@ -176,7 +207,7 @@ workflow:
           label: 客户资料
           max_length: 48000
           options: []
-          placeholder: 可直接粘贴一位客户的资料
+          placeholder: 填 customer_source 中这一位客户的原始记录
           required: false
           type: paragraph
           variable: raw_content
@@ -389,12 +420,20 @@ workflow:
                   "match_score": decision["match_score"],
                   "match_reason": decision["match_reason"],
                   "recommended_programs": decision["recommended_programs"],
+                  "conclusion": decision["conclusion"],
+                  "missing_materials": decision["missing_materials"],
+                  "talk_points": decision["talk_points"],
+                  "rule_brief": decision["rule_brief"],
+                  "retrieval_query": decision["retrieval_query"],
                   "parse_result": {
                       **background,
                       "missing_fields": decision["missing_fields"],
                       "gaps": decision["gaps"],
                       "next_stage": decision["next_stage"],
                       "next_stage_reached": decision["next_stage_reached"],
+                      "conclusion": decision["conclusion"],
+                      "missing_materials": decision["missing_materials"],
+                      "talk_points": decision["talk_points"],
                   },
               }
 
@@ -411,7 +450,7 @@ workflow:
                   "annual_income_range": _pick(payload, "annual_income_range") or _regex(
                       text, r"\d+\s*[-~到至]\s*\d+\s*万|\d+\s*万以上"
                   ),
-                  "target_project": _pick(payload, "target_project"),
+                  "target_project": _pick(payload, "target_project") or _regex_group(text, r"目标项目[:：]\s*([^\n]+)"),
                   "gender": _pick(payload, "gender"),
                   "location": _pick(payload, "location"),
                   "profile_summary": _pick(payload, "profile_summary"),
@@ -485,6 +524,9 @@ workflow:
               if isinstance(value, str) and value.isdigit():
                   return int(value)
               found = re.search(r"(\d{1,2})\s*岁", text)
+              if found:
+                  return int(found.group(1))
+              found = re.search(r"(?:年龄|age)\s*[:：]\s*(\d{1,2})\b", text, re.I)
               if found:
                   return int(found.group(1))
               return None
@@ -887,16 +929,22 @@ workflow:
                   result = "partial"
                   product = best["product"]
                   programs = list(best["programs"])
+              advice = _advisor_advice(best, other, fields, missing_fields)
               return {
                   "match_result": result,
                   "matched_product": product,
                   "match_score": best["score"],
-                  "match_reason": _reason(best, other, missing_fields),
+                  "match_reason": advice["match_reason"],
                   "recommended_programs": programs,
                   "missing_fields": missing_fields,
                   "gaps": list(best["gaps"]),
                   "next_stage": best["next_stage"],
                   "next_stage_reached": best["next_stage_reached"],
+                  "conclusion": advice["conclusion"],
+                  "missing_materials": advice["missing_materials"],
+                  "talk_points": advice["talk_points"],
+                  "rule_brief": advice["rule_brief"],
+                  "retrieval_query": advice["retrieval_query"],
               }
 
 
@@ -1003,27 +1051,118 @@ workflow:
               return None
 
 
-          def _reason(best: dict, other: dict, missing_fields: list[str]) -> str:
-              if best["level"] == "none":
-                  lines = ["匹配产品：没有符合的产品线。", "推荐项目：无。"]
-              else:
-                  programs = "、".join(best["programs"]) if best["programs"] else "专业方向还没写明，先不推荐具体项目"
-                  lines = [f"匹配产品：{best['product']}。", f"推荐项目：{programs}。"]
-              if best["basis"]:
-                  lines.append("匹配依据：" + "；".join(best["basis"]) + "。")
-              lines.append("待补条件：" + ("、".join(best["gaps"]) if best["gaps"] else "无") + "。")
-              if best["notes"]:
-                  lines.append("未写成已符合：" + "；".join(best["notes"]) + "。")
-              lines.append(
-                  f"下一办理阶段：{best['next_stage']}。"
-                  + ("已达到进入该阶段的要求。" if best["next_stage_reached"] else "尚有待补条件。")
+          _MATERIAL_BY_GAP = {
+              "学历": "学历或在读说明",
+              "年龄": "年龄",
+              "升学或就业需求": "这次是想升学还是就业",
+              "年收入": "家庭大致预算",
+              "英语水平": "英语水平说明，入学有英语笔试和口语面试",
+              "就业、升学或移民诉求": "更看重就业、升学还是移民",
+              "专业方向": "想读的专业方向",
+              "德语B1": "德语B1证明，匹配企业前需要",
+          }
+
+
+          def _advisor_advice(best: dict, other: dict, fields: dict, missing_fields: list[str]) -> dict:
+              """给顾问的沟通参考，不代替后续办理。"""
+              materials = _missing_materials(best, missing_fields)
+              conclusion = _conclusion(best, fields, materials)
+              basis = _basis_sentence(best, other, conclusion)
+              talk = _talk_points(conclusion, best, materials)
+              material_text = "、".join(materials) if materials else "没有发现还缺的关键资料"
+              reason = (
+                  f"结论：{conclusion}。"
+                  f"沟通时可以这样说：{basis}"
+                  f"还缺这些资料：{material_text}。"
+                  f"下一步先问：{talk}"
               )
-              if missing_fields:
-                  lines.append("资料里没写的字段：" + "、".join(missing_fields) + "。")
+              programs = "、".join(best["programs"]) if best["programs"] else "未点名专业"
+              product = best["product"] if best["level"] != "none" else "没有对上的产品线"
+              summary = str(fields.get("profile_summary") or "").strip()
+              retrieval_query = " ".join(
+                  bit for bit in (
+                      str(fields.get("target_project") or ""),
+                      product,
+                      str(fields.get("education") or ""),
+                      str(fields.get("core_demand") or ""),
+                      str(fields.get("language_ability") or ""),
+                      programs,
+                      material_text,
+                      summary[:120],
+                  ) if bit
+              )
+              rule_brief = f"结论：{conclusion}。产品：{product}。方向：{programs}。核对依据：{basis}还缺：{material_text}。"
+              return {
+                  "conclusion": conclusion,
+                  "missing_materials": material_text,
+                  "talk_points": talk,
+                  "match_reason": reason,
+                  "rule_brief": rule_brief,
+                  "retrieval_query": retrieval_query or "用户画像研判规则",
+              }
+
+
+          def _missing_materials(best: dict, missing_fields: list[str]) -> list[str]:
+              materials = [_MATERIAL_BY_GAP[gap] for gap in best["gaps"] if gap in _MATERIAL_BY_GAP]
+              if best["level"] == "none" and not materials:
+                  materials.append("符合项目档位的年龄和学历说明")
+              covered = set(materials)
+              extras = {
+                  "语言能力": "语言能力说明",
+                  "核心诉求": "升学、就业或移民诉求",
+                  "目标项目": "想了解的项目",
+              }
+              for label in missing_fields:
+                  extra = extras.get(label)
+                  if extra and extra not in covered and label not in {"年龄", "学历", "年收入"}:
+                      materials.append(extra)
+                      covered.add(extra)
+              return _unique(materials)
+
+
+          def _conclusion(best: dict, fields: dict, materials: list[str]) -> str:
+              named = _named_product(fields)
+              direction_gap = any("不完全一致" in gap or gap.startswith("年龄不在") for gap in best["gaps"])
+              switched = bool(named and named != best["product"] and best["level"] != "none")
+              if best["level"] == "none":
+                  return "暂不推进"
+              if materials:
+                  return "需要补充信息"
+              if switched or direction_gap:
+                  return "建议调整方向"
+              if best["next_stage_reached"]:
+                  return "可以推进"
+              return "需要补充信息"
+
+
+          def _basis_sentence(best: dict, other: dict, conclusion: str) -> str:
+              if best["level"] == "none":
+                  reason = "；".join(best["gaps"]) if best["gaps"] else "年龄或学历没有对上现有项目"
+                  return f"按现有材料，{reason}，先不建议推进。评分{best['score']}分，属于{_band_label(best['score'])}。"
+              programs = "、".join(best["programs"]) if best["programs"] else "具体专业还没写明"
+              basis = "；".join(best["basis"]) if best["basis"] else "现有材料只够判断产品线"
+              sentence = f"更贴近{best['product']}，可谈的方向是{programs}。依据是：{basis}。"
+              if best["notes"]:
+                  sentence += "另外注意：" + "；".join(best["notes"]) + "。"
               if other["level"] != "none" and other["product"] != best["product"]:
-                  lines.append(f"另一条产品线{other['product']}也有部分对应，本次只保留更贴近的一条。")
-              lines.append(f"评分：{best['score']}分，区间{_band_label(best['score'])}。")
-              return "".join(lines)
+                  sentence += f"{other['product']}也有部分对应，这次先按更贴近的一条沟通。"
+              if conclusion == "可以推进":
+                  sentence += f"关键条件已经齐，下一步可以谈到{best['next_stage']}。"
+              sentence += f"评分{best['score']}分，属于{_band_label(best['score'])}。"
+              return sentence
+
+
+          def _talk_points(conclusion: str, best: dict, materials: list[str]) -> str:
+              if conclusion == "暂不推进":
+                  return "先说明目前差在年龄或学历，不把客户推进到入学测试或企业匹配；条件变化后再联系。"
+              if conclusion == "需要补充信息":
+                  ask = "、".join(materials) if materials else "还没写清的关键情况"
+                  return f"先把{ask}问清楚，补齐前不要说已经符合或可以报名。"
+              if conclusion == "建议调整方向":
+                  return f"先说明客户原来的方向和{best['product']}不完全一致，问是否愿意改看{best['product']}。"
+              if best["product"] == SINGAPORE:
+                  return "确认客户接受推荐项目后，说明下一步是入学测试，包含英语笔试、心理测评和面试。"
+              return "确认专业方向后，说明德语已到B1，下一步可以谈匹配企业；收入不够不作为否决理由。"
 
 
           def _band_label(score: int) -> str:
@@ -1059,9 +1198,14 @@ workflow:
                       "match_result": "not_matched",
                       "matched_product": "",
                       "match_score": 0,
-                      "match_reason": reason,
+                      "match_reason": f"结论：暂不推进。沟通时可以这样说：{reason}。还缺这些资料：一份只包含一位客户的完整正文。下一步先问：请客户单独提供年龄、学历、诉求和目标项目。",
                       "recommended_programs": [],
-                      "judgment_json": json.dumps({"error": code}, ensure_ascii=False),
+                      "conclusion": "暂不推进",
+                      "missing_materials": "一份只包含一位客户的完整正文",
+                      "talk_points": "请客户单独提供年龄、学历、诉求和目标项目。",
+                      "rule_brief": "结论：暂不推进。产品：没有对上的产品线。方向：未点名专业。核对依据：没有可研判的正文。还缺：一份只包含一位客户的完整正文。",
+                      "retrieval_query": "用户画像研判规则",
+                      "judgment_json": json.dumps({"error": code, "conclusion": "暂不推进"}, ensure_ascii=False),
                   }
               return {
                   "customer_name": judgment.get("customer_name") or "",
@@ -1071,6 +1215,11 @@ workflow:
                   "match_score": judgment.get("match_score") or 0,
                   "match_reason": judgment.get("match_reason") or "",
                   "recommended_programs": list(judgment.get("recommended_programs") or []),
+                  "conclusion": judgment.get("conclusion") or "",
+                  "missing_materials": judgment.get("missing_materials") or "",
+                  "talk_points": judgment.get("talk_points") or "",
+                  "rule_brief": judgment.get("rule_brief") or "",
+                  "retrieval_query": judgment.get("retrieval_query") or "用户画像研判规则",
                   "judgment_json": json.dumps(judgment, ensure_ascii=False),
               }
         code_language: python3
@@ -1079,6 +1228,9 @@ workflow:
             children: null
             type: string
           customer_name:
+            children: null
+            type: string
+          conclusion:
             children: null
             type: string
           judgment_json:
@@ -1096,9 +1248,21 @@ workflow:
           matched_product:
             children: null
             type: string
+          missing_materials:
+            children: null
+            type: string
           recommended_programs:
             children: null
             type: array[string]
+          retrieval_query:
+            children: null
+            type: string
+          rule_brief:
+            children: null
+            type: string
+          talk_points:
+            children: null
+            type: string
         selected: false
         title: 画像研判
         type: code
@@ -1117,6 +1281,74 @@ workflow:
         x: 1580
         y: 220
       selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        dataset_ids:
+        - 8daaee59-1cdf-4377-830d-eed3b0f7ff8f
+        multiple_retrieval_config:
+          reranking_enable: false
+          reranking_mode: reranking_model
+          reranking_model: null
+          score_threshold: null
+          top_k: 4
+        query_variable_selector:
+        - '1794465387686'
+        - retrieval_query
+        retrieval_mode: multiple
+        selected: false
+        title: 检索研判规则
+        type: knowledge-retrieval
+      height: 89
+      id: '1794466000010'
+      position:
+        x: 1880
+        y: 80
+      positionAbsolute:
+        x: 1880
+        y: 80
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - '1794466000010'
+          - result
+        model:
+          completion_params:
+            temperature: 0.3
+          mode: chat
+          name: qwen-plus
+          provider: langgenius/tongyi/tongyi
+        prompt_template:
+        - id: pf-advice-system
+          role: system
+          text: '你是顾问的研判助手。只根据客户记录、规则核对和检索到的规则条款，写给顾问的一段话。结论必须原样使用规则核对里的结论，只能是：可以推进、需要补充信息、建议调整方向、暂不推进。把这个客户自己的经历、顾虑和目标写进依据。缺的资料用客户能听懂的说法。下一步只问这一位还没说清的事。检索条款里没有的承诺、费用和录取结果不要写。按这四句输出：结论：……。沟通时可以这样说：……还缺这些资料：……下一步先问：……'
+        - id: pf-advice-user
+          role: user
+          text: "客户记录：\n{{#1794466000005.output#}}\n\n规则核对：\n{{#1794465387686.rule_brief#}}"
+        selected: false
+        title: 顾问建议
+        type: llm
+        vision:
+          enabled: false
+      height: 87
+      id: '1794466000011'
+      position:
+        x: 2180
+        y: 160
+      positionAbsolute:
+        x: 2180
+        y: 160
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -1150,8 +1382,8 @@ workflow:
           value_type: number
           variable: match_score
         - value_selector:
-          - '1794465387686'
-          - match_reason
+          - '1794466000011'
+          - text
           value_type: string
           variable: match_reason
         - value_selector:
@@ -1164,16 +1396,31 @@ workflow:
           - judgment_json
           value_type: string
           variable: judgment_json
+        - value_selector:
+          - '1794465387686'
+          - conclusion
+          value_type: string
+          variable: conclusion
+        - value_selector:
+          - '1794465387686'
+          - missing_materials
+          value_type: string
+          variable: missing_materials
+        - value_selector:
+          - '1794465387686'
+          - talk_points
+          value_type: string
+          variable: talk_points
         selected: false
         title: 输出
         type: end
       height: 270
       id: '1794465705386'
       position:
-        x: 1880
+        x: 2480
         y: 220
       positionAbsolute:
-        x: 1880
+        x: 2480
         y: 220
       selected: true
       sourcePosition: right

@@ -15,17 +15,17 @@ type Material = {source_id: number; file_name: string | null; submitted_at: stri
 type ScreeningInput = {
   project?: string | null; age?: number | null; education?: string | null; education_stage?: string | null
 }
-type ScreeningResult = {status: string; missing_fields: string[]; findings: string[]}
-type SourceDetails = {
+export type ScreeningResult = {status: string; missing_fields: string[]; findings: string[]}
+export type SourceDetails = {
   source_id: number; raw_content: string | null; file_name: string | null
   screening_input: ScreeningInput | null; screening: ScreeningResult | null
 }
 
 const endpoint = '/api/v1/consultant/visitor-intake'
-const pageSize = 20
+export const pageSize = 20
 const fieldLabels: Record<string, string> = {project: '意向项目', age: '年龄', education: '学历类别', education_stage: '在读或毕业状态'}
 const materialStatuses: Record<string, string> = {received: '已收到', needs_information: '待补充', reviewed: '已研判'}
-const screeningStatuses: Record<string, string> = {
+export const screeningStatuses: Record<string, string> = {
   needs_information: '待补充', needs_review: '待人工复核', potential_match: '初筛符合', not_matched: '初筛不符合',
 }
 const choices = (options: Record<string, string>) => Object.entries(options).map(([value, label]) => ({value, label}))
@@ -44,7 +44,7 @@ const screeningFields: Field[] = [
   })},
 ]
 
-function beijingTime(value: string) {
+export function beijingTime(value: string) {
   const utc = value.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(value) ? value : value + 'Z'
   return new Intl.DateTimeFormat('zh-CN', {
     timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit',
@@ -91,10 +91,9 @@ export function VisitorIntake() {
 
   return <>
     <PageTitle title="游客跟进" description="认领注册游客，记录通话后补录资料并查看初筛结果。"
-      extra={tab !== "advisor" && <Button onClick={() => void list.refetch()}>刷新</Button>}/>
+      extra={<Button onClick={() => void list.refetch()}>刷新</Button>}/>
     <Card>
       <Tabs activeKey={tab} onChange={key => {setAfter(0); setTab(key)}} items={[
-        ...(can('crm:read') ? [{key: 'advisor', label: '客户资料录入', children: <AdvisorMaterials canWrite={can('crm:write')}/>}]: []),
         {key: 'pending', label: '待认领', children: <>
           <ErrorNotice error={pending.error}/>
           <Table rowKey="visitor_id" dataSource={pending.data || []} loading={pending.isFetching}
@@ -292,7 +291,7 @@ function IntakeDetail({visitor, canWrite, scope, onUpdate}: {
   </Space>
 }
 
-function ScreeningForm({initial, result, enabled, path, onSaved}: {
+export function ScreeningForm({initial, result, enabled, path, onSaved}: {
   initial?: ScreeningInput | null; result?: ScreeningResult | null; enabled: boolean; path: string
   onSaved: (sourceId: number) => void
 }) {
@@ -323,89 +322,9 @@ function ScreeningForm({initial, result, enabled, path, onSaved}: {
 }
 
 
-function HistoryPaging({before, count, reset, next}: {before?: number; count?: number; reset: () => void; next: () => void}) {
+export function HistoryPaging({before, count, reset, next}: {before?: number; count?: number; reset: () => void; next: () => void}) {
   return <Space style={{marginTop: 12}}>
     <Button disabled={before === undefined} onClick={reset}>返回最新</Button>
     <Button disabled={count !== pageSize} onClick={next}>查看更多</Button>
-  </Space>
-}
-
-
-const advisorEndpoint = '/api/v1/profile'
-type AdvisorSource = {source_id: number; file_name: string | null; submitted_at: string; screening: ScreeningResult | null}
-
-function AdvisorMaterials({canWrite}: {canWrite: boolean}) {
-  const {user} = useAuth()
-  const {message} = App.useApp()
-  const cache = useQueryClient()
-  const file = useRef<HTMLInputElement>(null)
-  const [form] = Form.useForm<{raw_content?: string}>()
-  const [before, setBefore] = useState<number>()
-  const [active, setActive] = useState<number>()
-  const scope = [user?.id, 'advisor-materials']
-  const list = useQuery({
-    queryKey: [...scope, before],
-    queryFn: () => api<AdvisorSource[]>(advisorEndpoint + query({before_id: before, limit: pageSize})),
-  })
-  const upload = useMutation({
-    mutationFn: (values: {raw_content?: string}) => {
-      const body = new FormData()
-      const attachment = file.current?.files?.[0]
-      const extension = attachment?.name.split('.').at(-1)?.toLowerCase()
-      const types: Record<string, string> = {pdf: 'pdf_resume', xls: 'excel', xlsx: 'excel', csv: 'import'}
-      body.append('source_type', types[extension ?? ''] ?? 'text')
-      if (values.raw_content?.trim()) body.append('raw_content', values.raw_content.trim())
-      if (attachment) body.append('file', attachment)
-      return api<{source_id: number}>(advisorEndpoint + '/upload', {method: 'POST', body})
-    },
-    onSuccess: item => {
-      form.resetFields()
-      if (file.current) file.current.value = ''
-      setBefore(undefined)
-      setActive(item.source_id)
-      void cache.invalidateQueries({queryKey: scope})
-      void message.success('客户资料已提交')
-    },
-  })
-  return <Space orientation="vertical" style={{width: '100%'}}>
-    {canWrite && <Form form={form} layout="vertical" onFinish={values => upload.mutate(values)}>
-      <Form.Item name="raw_content" label="客户资料说明">
-        <Input.TextArea maxLength={16000} placeholder="可粘贴顾问收集的单个客户资料"/>
-      </Form.Item>
-      <Form.Item label="附件" htmlFor="advisor-material-file">
-        <input id="advisor-material-file" ref={file} type="file" accept=".txt,.csv,.pdf,.xls,.xlsx"/>
-      </Form.Item>
-      <Button type="primary" htmlType="submit" loading={upload.isPending}>提交客户资料</Button>
-    </Form>}
-    <ErrorNotice error={upload.error || list.error}/>
-    <Table<AdvisorSource> rowKey="source_id" dataSource={list.data ?? []} loading={list.isFetching} pagination={false} columns={[
-      {title: '客户资料', render: (_, row) => row.file_name || '文字资料'},
-      {title: '上传时间（北京时间）', dataIndex: 'submitted_at', render: beijingTime},
-      {title: '初筛结果', render: (_, row) => row.screening ? screeningStatuses[row.screening.status] : '待研判'},
-      {title: '操作', render: (_, row) => <Button type="link" onClick={() => setActive(row.source_id)}>查看与研判</Button>},
-    ]}/>
-    <HistoryPaging before={before} count={list.data?.length ?? 0} reset={() => setBefore(undefined)}
-      next={() => setBefore(list.data?.at(-1)?.source_id)}/>
-    <Drawer title="客户资料研判" open={active !== undefined} onClose={() => setActive(undefined)} size="large">
-      {active !== undefined && <AdvisorReview key={active} id={active} canWrite={canWrite}
-        onSaved={() => void cache.invalidateQueries({queryKey: scope})}/>}
-    </Drawer>
-  </Space>
-}
-
-function AdvisorReview({id, canWrite, onSaved}: {id: number; canWrite: boolean; onSaved: () => void}) {
-  const {user} = useAuth()
-  const path = advisorEndpoint + '/' + id
-  const details = useQuery({queryKey: [user?.id, 'advisor-material', id], queryFn: () => api<SourceDetails>(path)})
-  const preview = useMutation({mutationFn: () => api<{match_reason: string}>(path + '/dify-preview', {method: 'POST', timeout: 60000})})
-  return <Space orientation="vertical" style={{width: '100%'}}>
-    <ErrorNotice error={details.error || preview.error}/>
-    {details.data && <>
-      <Typography.Paragraph style={{whiteSpace: 'pre-wrap'}}>{details.data.raw_content}</Typography.Paragraph>
-      <Button loading={preview.isPending} onClick={() => preview.mutate()}>运行 Dify 研判</Button>
-      {preview.data && <Alert type="info" title="Dify 研判建议" description={preview.data.match_reason}/>}
-      <ScreeningForm initial={details.data.screening_input} result={details.data.screening} enabled={canWrite}
-        path={path + '/analyze'} onSaved={() => {void details.refetch(); onSaved()}}/>
-    </>}
   </Space>
 }
