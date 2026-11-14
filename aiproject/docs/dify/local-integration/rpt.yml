@@ -1,0 +1,319 @@
+app:
+  description: 接收 FastAPI 组装的员工工作内容与统计数据，生成正式报告四段 JSON 总结；不评价绩效。
+  icon: 📋
+  icon_background: '#E0F2FE'
+  icon_type: emoji
+  mode: workflow
+  name: 员工正式报告 AI 总结 · 本机集成
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6
+    version: null
+kind: app
+version: 0.7.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 20
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: llm
+      id: start-llm
+      source: start
+      sourceHandle: source
+      target: llm_summary
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: llm-parse
+      source: llm_summary
+      sourceHandle: source
+      target: parse_json
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: parse-end
+      source: parse_json
+      sourceHandle: source
+      target: end_out
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: 由 FastAPI 传入报告类型与结构化正文，不包含员工原始口述。
+        selected: false
+        title: 业务入参
+        type: start
+        variables:
+        - label: 报告类型
+          options:
+          - daily
+          - weekly
+          required: true
+          type: select
+          variable: report_kind
+        - label: 结构化工作内容
+          max_length: 50000
+          required: true
+          type: paragraph
+          variable: report_payload
+      height: 178
+      id: start
+      position:
+        x: 0
+        y: 280
+      positionAbsolute:
+        x: 0
+        y: 280
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: 输出四段式 JSON 总结。
+        model:
+          completion_params:
+            temperature: 0.2
+          mode: chat
+          name: qwen-plus
+          provider: langgenius/tongyi/tongyi
+        prompt_template:
+        - id: emp-formal-system
+          role: system
+          text: '你是企业内部的员工工作报告整理助手。输入为业务系统组装的文本，含报告类型、统计数据、已提交员工的姓名、部门、整理后工作正文、关键进展、风险与计划等；不含员工原始口述。
+
+
+            任务：仅依据输入事实归纳，直接输出一个 JSON 对象，不要使用 markdown 代码围栏，不要输出任何 JSON 以外的文字。
+
+
+            禁止：评价个人能力、绩效、工作态度；禁止员工排名或优劣对比；禁止编造输入中不存在的信息。
+
+
+            若某类信息在输入中缺失或无人提交工作内容，对应字段写「本期无相关记录」，并简要说明依据。
+
+
+            固定键名（均为字符串）：
+
+            - work_summary：整体工作总结
+
+            - key_progress_summary：关键进展汇总（按员工或事项分组叙述均可）
+
+            - risk_summary：风险事项汇总
+
+            - next_work_suggestions：后续工作建议（中性表述，非绩效要求）'
+        - id: emp-formal-user
+          role: user
+          text: '报告类型：{{#start.report_kind#}}
+
+
+            业务数据：
+
+            {{#start.report_payload#}}'
+        selected: false
+        title: 生成正式报告总结
+        type: llm
+        vision:
+          enabled: false
+      height: 115
+      id: llm_summary
+      position:
+        x: 320
+        y: 280
+      positionAbsolute:
+        x: 320
+        y: 280
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        code: "import json, re\nREQ = (\"work_summary\", \"key_progress_summary\"\
+          , \"risk_summary\", \"next_work_suggestions\")\nMAX = 8000\n\ndef main(text:\
+          \ str) -> dict:\n    base = {k: \"\" for k in REQ}\n    base[\"status\"\
+          ] = \"invalid\"\n    base[\"error\"] = \"\"\n    if not isinstance(text,\
+          \ str) or not text.strip():\n        base[\"error\"] = \"LLM 输出为空\"\n  \
+          \      return base\n    tag_open, tag_close = chr(60) + \"think\" + chr(62),\
+          \ chr(60) + \"/think\" + chr(62)\n    clean = re.sub(tag_open + \".*?\"\
+          \ + tag_close, \"\", text, flags=re.DOTALL).strip()\n    m = re.search(r'```(?:json)?\\\
+          s*(\\{.*\\})\\s*```', clean, re.DOTALL)\n    if m:\n        clean = m.group(1)\n\
+          \    else:\n        s, e = clean.find('{'), clean.rfind('}')\n        if\
+          \ s >= 0 and e > s:\n            clean = clean[s:e + 1]\n        else:\n\
+          \            base[\"error\"] = \"未找到 JSON 对象\"\n            return base\n\
+          \    try:\n        data = json.loads(clean)\n    except Exception:\n   \
+          \     base[\"error\"] = \"JSON 解析失败\"\n        return base\n    if not isinstance(data,\
+          \ dict):\n        base[\"error\"] = \"根节点须为对象\"\n        return base\n \
+          \   out = {}\n    for k in REQ:\n        v = data.get(k)\n        if not\
+          \ isinstance(v, str) or not v.strip():\n            base[\"error\"] = \"\
+          缺少或无效: \" + k\n            return base\n        if len(v) > MAX:\n     \
+          \       base[\"error\"] = \"字段过长: \" + k\n            return base\n    \
+          \    out[k] = v.strip()\n    out[\"status\"] = \"ok\"\n    out[\"error\"\
+          ] = \"\"\n    return out\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          error:
+            children: null
+            type: string
+          key_progress_summary:
+            children: null
+            type: string
+          next_work_suggestions:
+            children: null
+            type: string
+          risk_summary:
+            children: null
+            type: string
+          status:
+            children: null
+            type: string
+          work_summary:
+            children: null
+            type: string
+        selected: false
+        title: 校验输出 JSON
+        type: code
+        variables:
+        - value_selector:
+          - llm_summary
+          - text
+          variable: text
+      height: 51
+      id: parse_json
+      position:
+        x: 640
+        y: 280
+      positionAbsolute:
+        x: 640
+        y: 280
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        desc: 供 Service API 消费的固定字段。
+        outputs:
+        - value_selector:
+          - parse_json
+          - work_summary
+          value_type: string
+          variable: work_summary
+        - value_selector:
+          - parse_json
+          - key_progress_summary
+          value_type: string
+          variable: key_progress_summary
+        - value_selector:
+          - parse_json
+          - risk_summary
+          value_type: string
+          variable: risk_summary
+        - value_selector:
+          - parse_json
+          - next_work_suggestions
+          value_type: string
+          variable: next_work_suggestions
+        - value_selector:
+          - parse_json
+          - status
+          value_type: string
+          variable: status
+        - value_selector:
+          - parse_json
+          - error
+          value_type: string
+          variable: error
+        selected: false
+        title: 输出
+        type: end
+      height: 245
+      id: end_out
+      position:
+        x: 960
+        y: 280
+      positionAbsolute:
+        x: 960
+        y: 280
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    viewport:
+      x: 209.20692060512238
+      y: 11.23290973926504
+      zoom: 0.8705505632961241
+  rag_pipeline_variables: []

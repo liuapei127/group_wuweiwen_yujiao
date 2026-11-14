@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 class Input(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -39,3 +39,11 @@ class RoleWrite(Input):
 
 class StudentScope(Input):
     student_ids: list[int] = Field(default_factory=list,max_length=10000)
+
+
+class ServiceTokenRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    client_id: str = Field(min_length=1, max_length=64)
+    client_secret: SecretStr
+    audience: str = Field(min_length=1, max_length=64)

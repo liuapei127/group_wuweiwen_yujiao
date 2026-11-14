@@ -1,7 +1,10 @@
+from typing import Annotated
+from uuid import UUID
+
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 
 LeadStatus = Literal["new", "contacting", "qualified", "signed", "lost"]
@@ -87,3 +90,43 @@ class FollowUpOut(BaseModel):
 class LeadDetailOut(BaseModel):
     lead: LeadOut
     follow_ups: list[FollowUpOut]
+
+
+class VisitorQueueEntry(BaseModel):
+    visitor_id: int
+    registered_at: datetime
+
+
+class ClaimedVisitor(VisitorQueueEntry):
+    name: str
+    contact: str
+    claimed_at: datetime
+    last_contact_at: datetime | None
+    manual_source_id: int | None
+    crm_lead_id: int | None = None
+
+
+class VisitorCallCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    request_id: UUID
+    notes: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=10000)]
+
+
+class VisitorCallOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    advisor_id: int
+    notes: str
+    recorded_at: datetime
+
+
+class VisitorLeadCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    source_id: int = Field(ge=1)
+    customer_name: str = Field(min_length=1, max_length=64)
+    contact_info: str = Field(min_length=1, max_length=128)
+    intended_major: str | None = Field(default=None, max_length=128)
+    remark: str = Field(min_length=1, max_length=10000)

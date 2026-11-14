@@ -5,12 +5,16 @@ MODEL_MODULES = (
     "app.ai.assistant.models",
     "app.modules.auth.models",
     "app.modules.consultant.models",
+    "app.modules.profile.models",
     "app.modules.employee_report.models",
     "app.modules.student_admin.models",
+    "app.modules.student.models",
     "app.modules.organization.models",
     "app.modules.onboarding.models",
     "app.modules.score.models",
     "app.modules.feedback.models",
+    "app.modules.events.models",
+    "app.modules.visitor.models",
     "app.modules.todo.models",
 )
 

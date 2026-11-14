@@ -1,4 +1,7 @@
+from datetime import datetime
+
 from sqlalchemy import select, update
+from app.modules.auth.repository import student_info
 from app.modules.consultant.errors import ConflictError
 from sqlalchemy.orm import Session
 
@@ -9,6 +12,48 @@ from app.shared.utils.time_util import now_naive
 class StudentAdminRepository:
     def __init__(self, db: Session):
         self.db = db
+
+    def list_student_leaves(self, student_id: int, before_id: int | None, limit: int) -> list[StudentAdminService]:
+        stmt = select(StudentAdminService).where(
+            StudentAdminService.student_id == student_id, StudentAdminService.service_type == "leave"
+        )
+        if before_id is not None:
+            stmt = stmt.where(StudentAdminService.id < before_id)
+        return list(self.db.scalars(stmt.order_by(StudentAdminService.id.desc()).limit(limit)))
+
+    def lock_student(self, student_id: int) -> bool:
+        stmt = select(SysUser.id).where(
+            SysUser.id == student_id, SysUser.user_type == "student", SysUser.status == "normal"
+        ).with_for_update()
+        return self.db.scalar(stmt) is not None
+
+    def class_teacher(self, student_id: int) -> int | None:
+        stmt = (
+            select(SysUser.id)
+            .join(student_info, student_info.c.class_teacher_id == SysUser.id)
+            .where(student_info.c.user_id == student_id, SysUser.user_type == "employee", SysUser.status == "normal")
+            .limit(2)
+            .with_for_update()
+        )
+        ids = self.db.scalars(stmt).all()
+        return ids[0] if len(ids) == 1 else None
+
+    def has_identical_submission(
+        self, student_id: int, start: datetime, end: datetime, day_start: datetime, day_end: datetime
+    ) -> bool:
+        stmt = select(StudentAdminService.id).where(
+            StudentAdminService.student_id == student_id,
+            StudentAdminService.service_type == "leave",
+            StudentAdminService.start_time == start,
+            StudentAdminService.end_time == end,
+            StudentAdminService.create_time >= day_start,
+            StudentAdminService.create_time < day_end,
+        ).limit(1).with_for_update()
+        return self.db.scalar(stmt) is not None
+
+    def add_leave(self, leave: StudentAdminService) -> None:
+        self.db.add(leave)
+        self.db.flush()
 
     def list_pending_leaves(self, approver_id: int | None, limit: int = 50) -> list[StudentAdminService]:
         stmt = select(StudentAdminService).where(

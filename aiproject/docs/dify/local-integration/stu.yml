@@ -1,0 +1,310 @@
+app:
+  description: 提交/查询请假，调用 FastAPI host.docker.internal:8001
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  icon_type: emoji
+  mode: advanced-chat
+  name: 留学学生助手-请假 · 本机集成
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+site:
+  chat_color_theme: null
+  chat_color_theme_inverted: false
+  copyright: null
+  custom_disclaimer: ''
+  default_language: zh-Hans
+  description: null
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  icon_type: emoji
+  input_placeholder: null
+  privacy_policy: null
+  show_workflow_steps: true
+  title: 留学学生助手-请假
+  use_icon_as_answer_icon: false
+version: 0.7.0
+workflow:
+  conversation_variables: []
+  environment_variables:
+  - description: 旧学生助手演示接口使用。仅在自己的 Dify 环境配置。
+    id: 59cec62b-b53c-52ba-bab2-d6b961cf3157
+    name: stu_legacy_username
+    selector:
+    - env
+    - stu_legacy_username
+    value: ''
+    value_type: string
+  - description: 旧学生助手演示接口使用。仅在自己的 Dify 环境配置。
+    id: 84a78853-da62-58d0-88bc-ac9de271d8b1
+    name: stu_legacy_password
+    selector:
+    - env
+    - stu_legacy_password
+    value: ''
+    value_type: secret
+  features:
+    file_upload: {}
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: '1794388184546'
+        targetType: http_login
+      id: 1794388184546-source-http_login
+      source: '1794388184546'
+      sourceHandle: source
+      target: http_login
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http_login
+        targetType: parse_token
+      id: http_login-source-parse_token
+      source: http_login
+      sourceHandle: source
+      target: parse_token
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: parse_token
+        targetType: http_chat
+      id: parse_token-source-http_chat
+      source: parse_token
+      sourceHandle: source
+      target: http_chat
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http_chat
+        targetType: extract_reply
+      id: http_chat-source-extract_reply
+      source: http_chat
+      sourceHandle: source
+      target: extract_reply
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: extract_reply
+        targetType: answer_chat
+      id: extract_reply-source-answer_chat
+      source: extract_reply
+      sourceHandle: source
+      target: answer_chat
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        selected: false
+        title: 用户输入
+        type: start
+        variables: []
+      height: 72
+      id: '1794388184546'
+      position:
+        x: 0
+        y: 17.5
+      positionAbsolute:
+        x: 0
+        y: 17.5
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data:
+          - key: ''
+            type: text
+            value: '{"username":"{{#env.stu_legacy_username#}}","password":"{{#env.stu_legacy_password#}}"}'
+          type: json
+        desc: ''
+        headers: 'Content-Type: application/json'
+        method: post
+        params: ''
+        retry_config:
+          max_retries: 3
+          retry_enabled: false
+          retry_interval: 100
+        selected: false
+        ssl_verify: true
+        timeout:
+          connect: 10
+          read: 30
+          write: 30
+        title: 学生登录
+        type: http-request
+        url: http://host.docker.internal:8001/api/stu/auth/login
+      height: 107
+      id: http_login
+      position:
+        x: 342
+        y: 0
+      positionAbsolute:
+        x: 342
+        y: 0
+      selected: false
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        code: "import json\ndef main(body: str) -> dict:\n    try:\n        data =\
+          \ json.loads(body or '{}')\n    except Exception:\n        data = {}\n \
+          \   return {'token': data.get('access_token') or ''}\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          token:
+            children: null
+            type: string
+        selected: false
+        title: 取出令牌
+        type: code
+        variables:
+        - value_selector:
+          - http_login
+          - body
+          variable: body
+      height: 51
+      id: parse_token
+      position:
+        x: 683
+        y: 28
+      positionAbsolute:
+        x: 683
+        y: 28
+      selected: false
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data:
+          - key: ''
+            type: text
+            value: '{"message":"{{#sys.query#}}"}'
+          type: json
+        desc: ''
+        headers: 'Content-Type: application/json
+
+          Authorization: Bearer {{#parse_token.token#}}'
+        method: post
+        params: ''
+        retry_config:
+          max_retries: 3
+          retry_enabled: false
+          retry_interval: 100
+        selected: true
+        ssl_verify: true
+        timeout:
+          connect: 10
+          read: 30
+          write: 30
+        title: 助手对话
+        type: http-request
+        url: http://host.docker.internal:8001/api/stu/assistant/chat
+      height: 107
+      id: http_chat
+      position:
+        x: 1024
+        y: 0
+      positionAbsolute:
+        x: 1024
+        y: 0
+      selected: true
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        code: "import json\n\ndef main(body: str) -> dict:\n    if isinstance(body,\
+          \ dict):\n        data = body\n    else:\n        try:\n            data\
+          \ = json.loads(body or \"{}\")\n        except Exception:\n            data\
+          \ = {\"reply\": str(body or \"\")}\n    reply = data.get(\"reply\") if isinstance(data,\
+          \ dict) else str(body or \"\")\n    return {\"reply\": reply or \"\"}\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          reply:
+            children: null
+            type: string
+        selected: false
+        title: 取出回复
+        type: code
+        variables:
+        - value_selector:
+          - http_chat
+          - body
+          variable: body
+      height: 51
+      id: extract_reply
+      position:
+        x: 1365
+        y: 28
+      positionAbsolute:
+        x: 1365
+        y: 28
+      selected: false
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        answer: '{{#extract_reply.reply#}}'
+        selected: false
+        title: 助手回复
+        type: answer
+        variables: []
+      height: 101
+      id: answer_chat
+      position:
+        x: 1706
+        y: 3
+      positionAbsolute:
+        x: 1706
+        y: 3
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    viewport:
+      x: 217.2913680850013
+      y: 267.7621643498868
+      zoom: 0.8775149678024933
+  rag_pipeline_variables: []

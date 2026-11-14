@@ -7,7 +7,7 @@ from app.core.security.credentials import utc_now
 
 student_info = table('student_info',column('id',BigInteger),column('user_id',BigInteger),
                      column('class_teacher_id',BigInteger),column('student_no',String),
-                     column('school',String),column('major',String))
+                     column('school',String),column('major',String),column('abroad_country',String))
 PUBLIC_COLUMNS = [accounts.c.id,accounts.c.username,accounts.c.real_name,accounts.c.user_type,
                   accounts.c.role_id,accounts.c.department,accounts.c.contact_info,accounts.c.status,
                   accounts.c.create_time,roles.c.role_code,roles.c.role_name]
@@ -26,6 +26,9 @@ class AuthRepository:
         stmt=stmt.where(accounts.c.id==user_id) if user_id is not None else stmt.where(func.lower(accounts.c.username)==username.lower())
         row=self.db.execute(stmt).mappings().first()
         return dict(row) if row else None
+
+    def lock_account_id(self, user_id):
+        return self.db.scalar(select(accounts.c.id).where(accounts.c.id == user_id).with_for_update())
 
     def permissions(self, role_id):
         return set(self.db.execute(select(role_permissions.c.permission).where(role_permissions.c.role_id==role_id)).scalars()) if role_id else set()
@@ -125,3 +128,16 @@ class AuthRepository:
         rows=[dict(r) for r in self.db.execute(select(audit_log).order_by(audit_log.c.id.desc()).limit(limit)).mappings()]
         for r in rows:r['details']=json.loads(r['details'])
         return rows
+
+
+    def eligible_employee_ids(self, role_code: str, permissions: tuple[str, ...], limit: int = 2) -> list[int]:
+        stmt = select(accounts.c.id).join(roles, accounts.c.role_id == roles.c.id).where(
+            accounts.c.user_type == "employee", accounts.c.status == "normal",
+            roles.c.role_code == role_code, roles.c.status == 1,
+        )
+        for permission in permissions:
+            stmt = stmt.where(select(role_permissions.c.role_id).where(
+                role_permissions.c.role_id == roles.c.id,
+                role_permissions.c.permission == permission,
+            ).exists())
+        return list(self.db.scalars(stmt.order_by(accounts.c.id).limit(limit)))

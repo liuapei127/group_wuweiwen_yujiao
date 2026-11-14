@@ -10,7 +10,7 @@ if _mode == "insecure_header_repro":
         "app.main 不允许 EMPLOYEE_IDENTITY_MODE=insecure_header_repro；"
         "漏洞复现请使用 tests.repro.asgi_app"
     )
-if _mode not in ("blocked", "trusted_jwt"):
+if _mode not in ("blocked", "trusted_jwt", "base_rs256"):
     raise RuntimeError(f"不支持的 EMPLOYEE_IDENTITY_MODE={_mode!r}")
 
 register_models()

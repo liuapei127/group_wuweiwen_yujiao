@@ -20,15 +20,18 @@ bearer=HTTPBearer(auto_error=False)
 def require_employee(request:Request, db:Session=Depends(get_db),
                      credentials:HTTPAuthorizationCredentials|None=Depends(bearer)) -> EmployeePrincipal:
     mode=(get_settings().employee_identity_mode or 'blocked').strip().lower()
-    if mode!='trusted_jwt':
+    if mode not in ('trusted_jwt', 'base_rs256'):
         raise HTTPException(503,'员工可信身份未就绪，consultant 业务不可用')
     if not credentials or credentials.scheme.lower()!='bearer':
         raise HTTPException(401,'请先登录',headers={'WWW-Authenticate':'Bearer'})
     from app.modules.auth.service import AuthService
     from app.core.security.rbac import route_permission
     from app.core.security.authorization import require_permission
-    principal=AuthService(db).authenticate(credentials.credentials)
     path=getattr(request.scope.get('route'),'path',request.url.path)
     permission=route_permission(request.method,path)
+    auth = AuthService(db)
+    if mode == 'base_rs256':
+        return auth.authenticate_base(credentials.credentials, permission)
+    principal = auth.authenticate(credentials.credentials)
     if permission:require_permission(principal,permission)
     return principal

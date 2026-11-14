@@ -1,11 +1,18 @@
 """Authentication, live RBAC and account-management transactions."""
 import hashlib
+
+import jwt
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, OperationalError, ProgrammingError
 from fastapi import HTTPException
 from app.core.config import get_settings
 from app.core.exceptions import BusinessError
 from app.core.security.credentials import require_auth_config, hash_password, verify_password, issue_token, decode_token, utc_now
 from app.core.security.rbac import PERMISSIONS
+from app.core.security import base_session
+from app.core.security.base_jwt import ACCESS_TOKEN_USE, BaseTokenError, verify_expired_access, verify_token
+from app.core.security.base_session_schema import refresh_tokens
+from . import base_portal
 from .repository import AuthRepository
 
 class AuthService:
@@ -13,22 +20,40 @@ class AuthService:
         self.db=db
         self.repo=AuthRepository(db)
 
-    def login(self,body,remote):
-        settings=get_settings();require_auth_config(settings)
+    def login(self,body,remote,*,use_base=False):
+        settings=get_settings()
+        if not use_base:
+            require_auth_config(settings)
         key=hashlib.sha256((body.username.strip().casefold()+'|'+remote).encode()).hexdigest()
         try:
             if self.repo.failed_attempts(key)>=10:raise HTTPException(429,'登录尝试过多，请15分钟后重试')
-            row=self.repo.account(username=body.username.strip())
+            row = self.repo.account(username=body.username.strip())
+            if use_base and row:
+                user_id = row['id']
+                self.db.rollback()
+                self.repo.lock_account_id(user_id)
+                row = self.repo.account(user_id=user_id)
+            keyset=base_portal.keys() if use_base else None
             valid=verify_password(body.password,row.get('password_hash') if row else None)
-            if not valid or not row or row['status']!='normal' or row['role_status']!=1 or row['user_type'] not in ('employee','admin'):
+            if not valid or not row or row['username'].casefold() != body.username.strip().casefold() or row['status']!='normal' or row['role_status']!=1 or row['user_type'] not in ('employee','admin'):
                 self.repo.add_failure(key);self.db.commit()
                 raise HTTPException(401,'账号或密码错误',headers={'WWW-Authenticate':'Bearer'})
+            if use_base:
+                self.repo.audit(row['id'],'login',row['id'])
+                profile = self.profile(row)
+                issued = base_session.start_session(
+                    self.db, user_id=row['id'], keyset=keyset, audience=base_portal.AUDIENCE,
+                )
+                return _base_payload(issued.access_token, profile), issued.refresh_token
             token,sid,expires=issue_token(row['id'],settings)
             self.repo.create_session(sid,row['id'],expires)
             self.repo.audit(row['id'],'login',row['id'])
             profile=self.profile(row)
             self.db.commit()
             return {'access_token':token,'token_type':'bearer','expires_at':expires.isoformat()+'Z','user':profile}
+        except base_portal.SESSION_ERRORS as exc:
+            self.db.rollback()
+            raise base_portal.map_failure(exc) from None
         except (OperationalError,ProgrammingError):
             self.db.rollback();raise HTTPException(503,'身份存储未就绪，请先初始化认证表') from None
 
@@ -46,6 +71,79 @@ class AuthService:
         except (OperationalError,ProgrammingError):
             self.db.rollback();raise HTTPException(503,'身份存储未就绪') from None
 
+    def authenticate_base(self, token, permission):
+        from app.core.security.dependencies import EmployeePrincipal
+
+        try:
+            keyset = base_portal.keys()
+            claims = verify_token(keyset, token, audience=base_portal.AUDIENCE, token_use=ACCESS_TOKEN_USE)
+            self.repo.lock_account_id(int(claims["sub"]))
+            access = base_session.authorize_access(
+                self.db, token, keyset=keyset, audience=base_portal.AUDIENCE, permission=permission,
+            )
+            identity = access.identity
+            return EmployeePrincipal(
+                employee_id=identity.user_id, permissions=identity.permissions,
+                student_ids=frozenset(self.repo.scope(identity.user_id)),
+                username=identity.username, role_code=identity.role_code, session_id=access.claims["sid"],
+            )
+        except base_portal.SESSION_ERRORS as exc:
+            self.db.rollback()
+            raise base_portal.map_failure(exc) from None
+        except (OperationalError, ProgrammingError):
+            self.db.rollback()
+            raise HTTPException(503, "身份存储未就绪") from None
+
+    def refresh_base(self, refresh):
+        if not refresh:
+            raise HTTPException(401, "登录已失效，请重新登录")
+        try:
+            self._lock_refresh_owner(refresh)
+            issued = base_session.refresh_session(
+                self.db, refresh, keyset=base_portal.keys(), audience=base_portal.AUDIENCE,
+            )
+            return _base_payload(issued.access_token), issued.refresh_token
+        except base_portal.SESSION_ERRORS as exc:
+            raise base_portal.map_failure(exc) from None
+        except (OperationalError, ProgrammingError):
+            self.db.rollback()
+            raise HTTPException(503, "身份存储未就绪") from None
+
+    def _lock_refresh_owner(self, refresh):
+        digest = hashlib.sha256(refresh.encode('ascii')).hexdigest()
+        # End the lookup snapshot before serializing on the same account row as governance.
+        owner = self.db.scalar(select(refresh_tokens.c.user_id).where(refresh_tokens.c.token_hash == digest))
+        self.db.rollback()
+        if owner is not None:
+            self.repo.lock_account_id(owner)
+
+    def logout_base(self, token, refresh):
+        try:
+            keyset = base_portal.keys()
+            if token:
+                try:
+                    claims = verify_token(keyset, token, audience=base_portal.AUDIENCE, token_use=ACCESS_TOKEN_USE)
+                except BaseTokenError:
+                    claims = verify_expired_access(keyset, token, audience=base_portal.AUDIENCE)
+                self.repo.lock_account_id(int(claims["sub"]))
+            elif refresh:
+                self._lock_refresh_owner(refresh)
+            base_session.end_login(
+                self.db, access_token=token, refresh_token=refresh,
+                keyset=keyset, audience=base_portal.AUDIENCE,
+            )
+        except base_portal.SESSION_ERRORS as exc:
+            raise base_portal.map_failure(exc) from None
+        except (OperationalError, ProgrammingError):
+            self.db.rollback()
+            raise HTTPException(503, "身份存储未就绪") from None
+        return {"logged_out": True}
+
+    def _revoke_all(self, user_id):
+        self.repo.revoke(user_id)
+        if get_settings().employee_identity_mode == base_portal.MODE:
+            base_session.revoke_user_sessions(self.db, user_id)
+
     def profile(self,row):
         return {**{k:row[k] for k in ('id','username','real_name','user_type','role_id','role_code','role_name','department','contact_info','status')},
             'permissions':sorted(self.repo.permissions(row['role_id'])&set(PERMISSIONS)),
@@ -59,10 +157,12 @@ class AuthService:
         return {'logged_out':True}
 
     def change_password(self,body,p):
+        self.db.rollback()
+        self.repo.lock_account_id(p.employee_id)
         row=self.repo.account(user_id=p.employee_id)
-        if not verify_password(body.old_password,row['password_hash']):raise BusinessError(400,'原密码不正确')
+        if not row or not verify_password(body.old_password,row['password_hash']):raise BusinessError(400,'原密码不正确')
         self.repo.update_account(p.employee_id,{'password_hash':hash_password(body.new_password),'update_time':utc_now()})
-        self.repo.revoke(p.employee_id);self.repo.audit(p.employee_id,'password_change',p.employee_id);self.db.commit()
+        self._revoke_all(p.employee_id);self.repo.audit(p.employee_id,'password_change',p.employee_id);self.db.commit()
         return {'relogin_required':True}
 
     def _role(self,role_id):
@@ -90,20 +190,23 @@ class AuthService:
             self.db.rollback();raise BusinessError(409,'账号已存在') from None
 
     def update_user(self,user_id,body,p):
+        self.db.rollback()
         try:
-            self.repo.lock_policy();self._employee(user_id);self._role(body.role_id)
+            self.repo.lock_policy();self.repo.lock_account_id(user_id);self._employee(user_id);self._role(body.role_id)
             self.repo.update_account(user_id,{**body.model_dump(),'update_time':utc_now()})
             self._keep_admin()
-            if body.status!='normal':self.repo.revoke(user_id)
+            if body.status!='normal':self._revoke_all(user_id)
             self.repo.audit(p.employee_id,'user_update',user_id,body.model_dump())
             self.db.commit();return {'id':user_id}
         except Exception:
             self.db.rollback();raise
 
     def reset_password(self,user_id,body,p):
+        self.db.rollback()
+        self.repo.lock_account_id(user_id)
         self._employee(user_id)
         self.repo.update_account(user_id,{'password_hash':hash_password(body.new_password),'update_time':utc_now()})
-        self.repo.revoke(user_id);self.repo.audit(p.employee_id,'password_reset',user_id);self.db.commit()
+        self._revoke_all(user_id);self.repo.audit(p.employee_id,'password_reset',user_id);self.db.commit()
         return {'id':user_id,'sessions_revoked':True}
 
     def set_scope(self,user_id,body,p):
@@ -144,6 +247,14 @@ class AuthService:
 
     def status(self):
         settings=get_settings()
+        if settings.employee_identity_mode == base_portal.MODE:
+            try:
+                base_portal.portal_origin()
+                base_portal.keys()
+                ready = self.repo.ready() and base_portal.store_ready(self.db)
+            except (HTTPException, OperationalError, ProgrammingError):
+                ready = False
+            return {"mode": base_portal.MODE, "ready": ready}
         configured=settings.employee_identity_mode=='trusted_jwt' and len(settings.auth_jwt_secret.get_secret_value())>=32
         return {'mode':settings.employee_identity_mode,'ready':configured and self.repo.ready()}
 
@@ -162,3 +273,8 @@ class AuthService:
 
     def audits(self,limit):
         return self.repo.audits(limit)
+
+
+def _base_payload(token: str, user: dict | None = None) -> dict:
+    expires = jwt.decode(token, options={"verify_signature": False})["exp"]
+    return base_portal.access_payload(token, expires, user)

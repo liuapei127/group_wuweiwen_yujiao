@@ -1,0 +1,196 @@
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import insert, update
+from sqlalchemy.orm import Session
+
+from app.core.exceptions import BusinessError
+from app.core.security import EmployeePrincipal
+from app.modules.auth.repository import AuthRepository
+from app.modules.organization.membership import managed_employees_query
+from app.modules.student import alerts
+
+from . import scheduled_repository as repository, service
+from .periods import week_bounds, week_monday
+from .schemas import ScheduleWrite
+
+BEIJING = timezone(timedelta(hours=8))
+REPORTS = {
+    "customer_ops": ("客户经营日报", "reports:operations:read"),
+    "daily_summary": ("员工日报提交汇总", "reports:summary:read"),
+    "weekly_summary": ("员工周报提交汇总", "reports:summary:read"),
+    "psych_weekly": ("心理预警周报", "student-alerts:read"),
+    "complaint_weekly": ("投诉周报", "reports:operations:read"),
+}
+_WEEKLY = {"weekly_summary", "psych_weekly", "complaint_weekly"}
+
+
+def _now() -> datetime:
+    return datetime.now(BEIJING).replace(tzinfo=None, microsecond=0)
+
+
+def _allowed_kinds(db: Session, principal: EmployeePrincipal) -> tuple[str, ...]:
+    kinds = []
+    for kind, (_, permission) in REPORTS.items():
+        if permission not in principal.permissions:
+            continue
+        if kind == "psych_weekly":
+            kinds.append(kind)
+            continue
+        try:
+            service._report_department(db, principal)
+        except BusinessError:
+            continue
+        kinds.append(kind)
+    return tuple(kinds)
+
+
+def _schedule_view(row):
+    run_at = _scheduled_time(row["schedule_cron"], row["report_type"], _now())
+    return {"kind": row["report_type"], "run_at": run_at.strftime("%H:%M") if run_at else "09:00",
+            "enabled": bool(row["enabled"]), "last_run_time": row["last_run_time"]}
+
+
+def preferences(db: Session, principal: EmployeePrincipal):
+    kinds = _allowed_kinds(db, principal)
+    if not kinds:
+        raise BusinessError(403, "缺少报表计划权限")
+    rows = {row["report_type"]: _schedule_view(row) for row in repository.own_schedules(db, principal.employee_id)
+            if row["report_type"] in kinds}
+    return {"items": [
+        {"kind": kind, "title": REPORTS[kind][0], "weekly": kind in _WEEKLY,
+         "run_at": "09:00", "enabled": False, "last_run_time": None, **rows.get(kind, {})}
+        for kind in kinds
+    ]}
+
+
+def configure(db: Session, principal: EmployeePrincipal, payload: ScheduleWrite):
+    if payload.kind not in _allowed_kinds(db, principal):
+        raise BusinessError(403, "缺少该报表的查看权限")
+    if payload.run_at.tzinfo is not None or payload.run_at.second or payload.run_at.microsecond:
+        raise BusinessError(422, "请选择北京时间的小时和分钟")
+    try:
+        if repository.lock_employee(db, principal.employee_id) is None:
+            raise BusinessError(403, "员工账号不可用")
+        previous = next((row for row in repository.own_schedules(db, principal.employee_id)
+                         if row["report_type"] == payload.kind), None)
+        cron = f"{payload.run_at.minute} {payload.run_at.hour} * * {1 if payload.kind in _WEEKLY else '*'}"
+        now = _now()
+        values = {"schedule_cron": cron, "enabled": int(payload.enabled), "update_time": now}
+        if previous:
+            db.execute(update(repository.schedules).where(repository.schedules.c.id == previous["id"]).values(**values))
+        else:
+            db.execute(insert(repository.schedules).values(
+                **values, report_type=payload.kind, recipients=[principal.employee_id], create_time=now,
+            ))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return preferences(db, principal)
+
+
+def archive(db: Session, principal: EmployeePrincipal, before_id: int | None):
+    kinds = _allowed_kinds(db, principal)
+    if not kinds:
+        raise BusinessError(403, "缺少报表归档权限")
+    current_department = None
+    if any(kind != "psych_weekly" for kind in kinds):
+        current_department = service._report_department(db, principal)
+    department_members = set(db.scalars(managed_employees_query(current_department))) if isinstance(current_department, int) else set()
+    return [
+        _visible_report(row, current_department, principal.student_ids, department_members)
+        for row in repository.own_reports(db, principal.employee_id, kinds, before_id)
+    ]
+
+
+def _visible_report(row: dict, department: str | int | None, student_ids: frozenset[int], department_members: set[int]) -> dict:
+    scope = row.pop("report_content")
+    if isinstance(scope, dict) and scope.get("scope_version") == 1:
+        if row["report_type"] == "psych_weekly":
+            allowed = isinstance(scope.get("student_ids"), list) and set(scope["student_ids"]).issubset(student_ids)
+        elif isinstance(department, int):
+            recorded = scope.get("department_members")
+            allowed = isinstance(recorded, list) and set(recorded).issubset(department_members)
+        else:
+            allowed = scope.get("department") == department and scope.get("department_members") is None
+        if allowed and isinstance(scope.get("statistics"), dict):
+            return {**row, "report_content": scope["statistics"]}
+    return {"id": row["id"], "unavailable": True}
+
+
+def scan_reports(db: Session) -> int:
+    generated = 0
+    after_id = 0
+    now = _now()
+    while ids := repository.enabled_ids(db, after_id):
+        for schedule_id in ids:
+            try:
+                row = repository.lock_schedule(db, schedule_id)
+                generated += int(_generate_due_report(db, row, now))
+                db.commit()
+            except Exception:
+                db.rollback()
+                raise
+        after_id = ids[-1]
+    return generated
+
+
+def _generate_due_report(db: Session, row, now: datetime) -> bool:
+    if row is None or row["enabled"] != 1 or row["report_type"] not in REPORTS:
+        return False
+    kind = row["report_type"]
+    timing = _scheduled_time(row["schedule_cron"], kind, now)
+    if timing is None or timing > now or row["create_time"].date() > timing.date():
+        return False
+    if row["last_run_time"] and row["last_run_time"].date() >= timing.date():
+        return False
+    recipients = row["recipients"]
+    if not isinstance(recipients, list) or len(recipients) != 1 or type(recipients[0]) is not int:
+        return False
+    identity = AuthRepository(db)
+    employee_id = recipients[0]
+    employee = identity.account(user_id=employee_id)
+    if (not employee or employee["status"] != "normal" or employee["user_type"] not in ("employee", "admin")
+            or employee["role_status"] != 1):
+        return False
+    principal = EmployeePrincipal(
+        employee_id, frozenset(identity.permissions(employee["role_id"])),
+        frozenset(identity.scope(employee_id)), role_code=employee["role_code"],
+    )
+    if kind not in _allowed_kinds(db, principal):
+        return False
+    data = _snapshot(db, principal, kind, timing.date() - timedelta(days=1))
+    periods = {**data, "period_start": data["period_start"].isoformat(), "period_end": data["period_end"].isoformat()}
+    scope = service._report_department(db, principal) if kind != "psych_weekly" else None
+    department_members = sorted(db.scalars(managed_employees_query(scope))) if isinstance(scope, int) else None
+    payload = {**periods, "scope_version": 1, "department": data.get("department"),
+               "department_members": department_members,
+               "student_ids": sorted(principal.student_ids) if kind == "psych_weekly" else [],
+               "statistics": periods}
+    repository.record_report(db, employee_id, kind, REPORTS[kind][0], payload, now)
+    db.execute(update(repository.schedules).where(repository.schedules.c.id == row["id"]).values(last_run_time=now))
+    return True
+
+
+def _scheduled_time(spec: str, kind: str, now: datetime) -> datetime | None:
+    parts = spec.split()
+    if len(parts) != 5 or parts[2:] != ["*", "*", "1" if kind in _WEEKLY else "*"]:
+        return None
+    try:
+        minute, hour = map(int, parts[:2])
+        anchor = week_monday(now.date()) if kind in _WEEKLY else now.date()
+        return now.replace(year=anchor.year, month=anchor.month, day=anchor.day, hour=hour, minute=minute, second=0)
+    except ValueError:
+        return None
+
+
+def _snapshot(db: Session, principal: EmployeePrincipal, kind: str, anchor):
+    if kind in ("daily_summary", "weekly_summary"):
+        period = "day" if kind == "daily_summary" else "week"
+        return service.employee_report_summary(db, principal, anchor, period).model_dump()
+    if kind == "psych_weekly":
+        return alerts.weekly_alerts(db, principal, anchor)
+    start, end = week_bounds(anchor) if kind == "complaint_weekly" else (anchor, anchor)
+    data = service.operational_report(db, principal, start, end)
+    data.pop("leads_by_status" if kind == "complaint_weekly" else "complaints_by_status")
+    return data

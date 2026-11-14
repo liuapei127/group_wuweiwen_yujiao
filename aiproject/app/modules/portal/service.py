@@ -33,5 +33,5 @@ class PortalService:
         settings=get_settings()
         return {'backend':'ok','database':'connected' if PortalRepository(self.db).database_ready() else 'unavailable',
                 'employee_identity_mode':settings.employee_identity_mode,
-                'ai_configured':bool(settings.dify_workflow_api_key.get_secret_value()),
+                'ai_configured':bool(settings.dify_ent_chatflow_api_key.get_secret_value() or settings.dify_workflow_api_key.get_secret_value()),
                 'ai_engine':'Dify 参数理解工作流','business_authorization':'RBAC + 本人归属 + 学生授权范围'}

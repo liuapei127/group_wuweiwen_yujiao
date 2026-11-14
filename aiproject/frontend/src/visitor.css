@@ -1,0 +1,18 @@
+.visitor-site { min-height: 100vh; color: #142f2b; background: #f7faf7; }
+.visitor-header { max-width: 1120px; margin: auto; padding: 20px 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.visitor-header > a { color: #142f2b; font-size: 20px; font-weight: 700; }
+.visitor-header .ant-space a { color: #285a50; }
+.visitor-intro { padding: clamp(52px, 8vw, 112px) max(32px, calc((100% - 1056px) / 2)); background: #e6f1e9; border-block: 1px solid #cfdfd6; }
+.visitor-intro h1.ant-typography { font-size: clamp(31px, 5vw, 56px); }
+.visitor-intro .ant-typography { color: #143c33; }
+.visitor-section { max-width: 1120px; margin: auto; padding: 36px 32px 48px; scroll-margin-top: 16px; }
+.visitor-programs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.visitor-login { max-width: 520px; }
+.visitor-upload { display: grid; gap: 10px; max-width: 600px; margin-bottom: 20px; }
+.visitor-upload button { justify-self: start; }
+.visitor-site .ant-list-item-meta-description p { margin: 0 0 6px; }
+@media (max-width: 600px) {
+  .visitor-header { align-items: flex-start; padding-inline: 18px; }
+  .visitor-section, .visitor-intro { padding-inline: 18px; }
+  .visitor-programs { grid-template-columns: 1fr; }
+}

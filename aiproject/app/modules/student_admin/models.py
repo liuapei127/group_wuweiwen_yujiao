@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, Enum, String, Text
+from sqlalchemy import BigInteger, DateTime, Enum, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -9,7 +9,7 @@ from app.core.database import Base
 class StudentAdminService(Base):
     __tablename__ = "student_admin_service"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
     student_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     service_type: Mapped[str] = mapped_column(Enum("leave", "exam_query", "other"), nullable=False)
     leave_type: Mapped[str | None] = mapped_column(Enum("sick", "personal", "emergency"))
@@ -33,7 +33,7 @@ class StudentAdminService(Base):
 class SysUser(Base):
     __tablename__ = "sys_user"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
     real_name: Mapped[str] = mapped_column(String(64), nullable=False)
     department: Mapped[str | None] = mapped_column(String(128))
     contact_info: Mapped[str | None] = mapped_column(String(128))

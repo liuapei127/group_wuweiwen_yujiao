@@ -283,7 +283,7 @@ def authorize_access(
     *,
     keyset: BaseKeySet,
     audience: str,
-    permission: str,
+    permission: str | None,
     now: datetime | None = None,
 ) -> AuthorizedAccess:
     """Authorize one future BASE request. note_verified_access alone is not authorization.
@@ -291,7 +291,7 @@ def authorize_access(
     Order: RS256 claims, live session, current account status, account type, role,
     and permission from the database, then the conditional last_used_at write.
     """
-    if permission not in PERMISSIONS:
+    if permission is not None and permission not in PERMISSIONS:
         raise BaseSessionError("denied")
     claims = verify_token(keyset, token, audience=audience, token_use=ACCESS_TOKEN_USE)
     moment = _naive(now)
@@ -314,7 +314,7 @@ def authorize_access(
         if identity.sub != str(claims["sub"]) or not identity.ent_login_allowed:
             box["error"] = "denied"
             return
-        if claims.get("user_type") != identity.user_type or permission not in identity.permissions:
+        if claims.get("user_type") != identity.user_type or (permission is not None and permission not in identity.permissions):
             box["error"] = "denied"
             return
         _touch_last_used(db, claims["sid"], moment)
@@ -380,16 +380,14 @@ def purge_expired_families(db: Session, *, now: datetime | None = None) -> int:
         db.execute(delete(refresh_tokens).where(refresh_tokens.c.family_id.in_(family_ids)))
         if session_ids:
             cutoff = moment - RETENTION
-            db.execute(
-                delete(base_sessions).where(
-                    base_sessions.c.id.in_(session_ids),
-                    ~base_sessions.c.id.in_(select(refresh_tokens.c.session_id)),
-                    or_(
-                        base_sessions.c.revoked_at <= cutoff,
-                        base_sessions.c.expires_at <= cutoff,
-                    ),
-                )
-            )
+            stale_ids = list(db.scalars(select(base_sessions.c.id).where(
+                base_sessions.c.id.in_(session_ids),
+                ~base_sessions.c.id.in_(select(refresh_tokens.c.session_id)),
+                or_(base_sessions.c.revoked_at <= cutoff, base_sessions.c.expires_at <= cutoff),
+            ).with_for_update()))
+            if stale_ids:
+                db.execute(delete(session_kids).where(session_kids.c.session_id.in_(stale_ids)))
+                db.execute(delete(base_sessions).where(base_sessions.c.id.in_(stale_ids)))
         box["count"] = len(family_ids)
 
     _store(db, work)

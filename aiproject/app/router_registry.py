@@ -6,6 +6,11 @@ from app.modules.organization.router import router as organization_router
 from app.modules.onboarding.router import router as onboarding_router
 from app.modules.score.router import router as score_router
 from app.modules.feedback.router import router as feedback_router
+from app.modules.events.router import router as events_router, visitor_router as visitor_events_router
+from app.modules.visitor.router import router as visitor_auth_router, staff_router as website_accounts_router, course_router
+from app.modules.student.router import (
+    academic_router, alert_router, router as website_student_router, staff_router as staff_progress_router,
+)
 from app.modules.todo.router import router as todo_router
 from fastapi import FastAPI
 from app.core.exceptions import BusinessError
@@ -13,7 +18,11 @@ from app.core.exceptions.handlers import business_error_handler
 
 from app.ai.nl2sql.router import router as nl2sql_router
 from app.modules.consultant.router import router as consultant_router
+from app.modules.consultant.intake_router import router as visitor_intake_router
+from app.modules.profile.router import router as profile_router, visitor_router as visitor_material_router
+from app.modules.customer_service.router import router as customer_service_router
 from app.modules.employee_report.router import router as employee_report_router
+from app.modules.statistics.router import router as statistics_router
 from app.modules.enterprise_ops.router import router as enterprise_ops_router
 from app.modules.student_admin.router import router as student_admin_router
 from app.modules.system.router import router as system_router
@@ -31,10 +40,24 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(onboarding_router)
     app.include_router(score_router)
     app.include_router(feedback_router)
+    app.include_router(events_router)
+    app.include_router(visitor_auth_router)
+    app.include_router(website_accounts_router)
+    app.include_router(course_router)
+    app.include_router(website_student_router)
+    app.include_router(staff_progress_router)
+    app.include_router(academic_router)
+    app.include_router(alert_router)
+    app.include_router(visitor_events_router)
     app.include_router(todo_router)
     # 企业智能助手（ENT）
     app.include_router(consultant_router)
+    app.include_router(visitor_intake_router)
+    app.include_router(profile_router)
+    app.include_router(visitor_material_router)
+    app.include_router(customer_service_router)
     app.include_router(employee_report_router)
+    app.include_router(statistics_router)
     app.include_router(student_admin_router)
     app.include_router(enterprise_ops_router)
     app.include_router(nl2sql_router)

@@ -11,12 +11,15 @@ class ConsultantRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create_lead(self, payload: LeadCreate) -> CrmLead:
+    def create_lead(self, payload: LeadCreate, *, commit: bool = True) -> CrmLead:
         now = now_naive()
         row = CrmLead(**payload.model_dump(), status="new", create_time=now, update_time=now)
         self.db.add(row)
-        self.db.commit()
-        self.db.refresh(row)
+        if commit:
+            self.db.commit()
+            self.db.refresh(row)
+        else:
+            self.db.flush()
         return row
 
     def get_lead(self, lead_id: int) -> CrmLead | None:

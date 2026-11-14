@@ -64,3 +64,45 @@ def test_invalid_jwt_is_401_without_querying_user_database(isolated_portal):
         with TestClient(app) as client:
             assert client.get('/api/v1/portal/context',headers={'Authorization':'Bearer invalid-token'}).status_code==401
     finally:engine.dispose()
+
+
+def test_profile_upload_owned_and_screened_without_creating_crm(isolated_portal, monkeypatch):
+    from app.core.security import EmployeePrincipal
+    from app.modules.consultant.models import CrmLead
+    from app.modules.profile.models import CustomerProfile
+    from sqlalchemy import func, select
+
+    app, engine = isolated_portal("trusted_jwt")
+    actors = {
+        "advisor": EmployeePrincipal(10, frozenset({"crm:read", "crm:write"})),
+        "other": EmployeePrincipal(11, frozenset({"crm:read", "crm:write"})),
+        "unprivileged": EmployeePrincipal(12),
+    }
+    monkeypatch.setattr(auth_service.AuthService, "authenticate", lambda self, token: actors[token])
+    advisor = {"Authorization": "Bearer advisor"}
+    try:
+        with TestClient(app) as client:
+            upload_url = "/api/v1/profile/upload"
+            data = {"source_type": "import"}
+            files = {"file": ("visitor.csv", "姓名,年龄\n样例,18".encode(), "text/csv")}
+            assert client.post(upload_url, data=data, files=files).status_code == 401
+            response = client.post(upload_url, data=data, files=files, headers=advisor)
+            assert response.status_code == 200
+            source_id = response.json()["data"]["source_id"]
+            url = f"/api/v1/profile/{source_id}"
+            assert client.get(url, headers={"Authorization": "Bearer other"}).status_code == 404
+            assert client.get(url, headers={"Authorization": "Bearer unprivileged"}).status_code == 403
+            original = client.get(url, headers=advisor).json()["data"]
+            assert original["extracted_fields"]["age"] == 18
+            pending = client.post(url + "/analyze", json={"project": "de_vocational"}, headers=advisor)
+            assert pending.json()["data"]["screening"]["status"] == "needs_information"
+            update = {"age": 18, "education": "senior_secondary", "education_stage": "graduated"}
+            for _ in range(2):
+                result = client.post(url + "/analyze", json=update, headers=advisor)
+                assert result.json()["data"]["screening"]["status"] == "potential_match"
+            assert client.get(url, headers=advisor).json()["data"]["raw_content"] == original["raw_content"]
+        with Session(engine) as db:
+            assert db.scalar(select(func.count()).select_from(CustomerProfile)) == 2
+            assert db.scalar(select(func.count()).select_from(CrmLead)) == 0
+    finally:
+        engine.dispose()
