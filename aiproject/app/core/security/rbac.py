@@ -92,7 +92,6 @@ def route_permission(method, path):
         ('POST','/api/v1/consultant/visitor-intake/{visitor_id}/screening'):'visitor-intake:write',
         ('POST','/api/v1/consultant/visitor-intake/{visitor_id}/lead'):'visitor-intake:write',
         ('GET','/api/v1/consultant/visitor-intake/{visitor_id}/screening'):'visitor-intake:read',
-        ('POST','/api/v1/employee-reports/transcribe'):'reports:write',
         ('POST','/api/v1/reporting/employee-reports/formal-summary'):'reports:formal:generate',
         ('GET','/api/v1/reporting/schedules'):None,
         ('PUT','/api/v1/reporting/schedules'):None,
