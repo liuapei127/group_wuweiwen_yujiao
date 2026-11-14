@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.security import EmployeePrincipal, require_employee
@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.core.responses import success
 from app.modules.employee_report.schemas import DailyReportCreate, DailyReportOut
 from app.modules.employee_report.service import EmployeeReportService
+from .transcription import MAX_AUDIO_BYTES, transcribe_audio
 
 router = APIRouter(prefix="/api/v1/employee-reports", tags=["企业助手-员工日报"])
 
@@ -40,3 +41,9 @@ def list_reports(
         raise HTTPException(422, "开始日期不能晚于结束日期")
     items = EmployeeReportService(db).list_reports(principal.employee_id, date_from, date_to)
     return success([DailyReportOut.model_validate(x) for x in items])
+
+
+@router.post("/transcribe", summary="录制音频转写为日报草稿")
+async def transcribe_report(file: UploadFile, principal: EmployeePrincipal = Depends(require_employee)):
+    audio = await file.read(MAX_AUDIO_BYTES + 1)
+    return success({"text": await transcribe_audio(audio)})
