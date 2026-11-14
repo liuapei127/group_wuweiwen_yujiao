@@ -1,4 +1,5 @@
 """Only the backend can call Dify; employee JWTs never leave this backend."""
+from datetime import datetime, timedelta, timezone
 from secrets import token_hex
 from urllib.parse import urlsplit
 import httpx
@@ -13,13 +14,14 @@ class DifyIntentClient:
         if not (chat_key or workflow_key):
             raise BusinessError(503, 'AI尚未配置，请先配置服务端Dify工作流')
 
+        today = datetime.now(timezone(timedelta(hours=8))).date().isoformat()
         payload = {'response_mode': 'blocking'}
         if chat_key:
             endpoint = '/chat-messages'
-            payload.update(inputs={'pending': pending or ''}, query=text, user='ent-' + token_hex(16))
+            payload.update(inputs={'pending': pending or '', 'today': today}, query=text, user='ent-' + token_hex(16))
         else:
             endpoint = '/workflows/run'
-            payload.update(inputs={'query': text, 'pending': pending}, user='ent-portal-intent')
+            payload.update(inputs={'query': text, 'pending': pending, 'today': today}, user='ent-portal-intent')
 
         try:
             with httpx.Client(trust_env=False, timeout=httpx.Timeout(settings.dify_timeout_seconds, connect=5)) as client:
@@ -56,7 +58,8 @@ def call_business(method,planned_url,body,employee_token):
         raise BusinessError(422,'AI请求地址不在允许范围')
     url=base+planned.path+('?' + planned.query if planned.query else '')
     try:
-        with httpx.Client(trust_env=False,timeout=httpx.Timeout(15,connect=3),follow_redirects=False) as client:
+        timeout = httpx.Timeout(s.dify_timeout_seconds + 5 if planned.path == '/api/v1/reporting/employee-reports/formal-summary' else 15, connect=3)
+        with httpx.Client(trust_env=False, timeout=timeout, follow_redirects=False) as client:
             response=client.request(method.upper(),url,headers={'Authorization':'Bearer '+employee_token,'Content-Type':'application/json'},
                 content=body.encode('utf-8') if method!='get' else None)
         return response.status_code,response.text

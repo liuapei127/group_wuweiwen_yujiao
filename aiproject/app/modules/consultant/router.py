@@ -124,6 +124,17 @@ def patch_status(
     return success(LeadOut.model_validate(row), "状态已更新")
 
 
+@router.get("/leads/{lead_id}/follow-ups/count", summary="统计本人客户跟进记录")
+def follow_up_count(
+    lead_id: int, svc: ConsultantService = Depends(_svc),
+    principal: EmployeePrincipal = Depends(require_employee),
+):
+    data = svc.follow_up_count(lead_id, principal.employee_id)
+    if data is None:
+        raise HTTPException(404, "客户不存在")
+    return success(data)
+
+
 @router.post("/leads/{lead_id}/follow-ups", summary="新增跟进记录")
 def create_follow_up(
     lead_id: int,

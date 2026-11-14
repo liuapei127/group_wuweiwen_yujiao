@@ -34,7 +34,8 @@ class Nl2SqlExecutor:
             if not lead:
                 return {"rows": [], "message": "未找到客户"}
             items = self.consultant.list_follow_ups(lead.id, limit=limit)
-            return {"rows": [FollowUpOut.model_validate(x).model_dump() for x in items]}
+            return {"total": self.consultant.count_follow_ups(lead.id),
+                    "rows": [FollowUpOut.model_validate(x).model_dump() for x in items]}
 
         if intent == "leads_by_status":
             list_params = LeadListParams(

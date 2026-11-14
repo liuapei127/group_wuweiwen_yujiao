@@ -32,11 +32,12 @@ class FormalReportSections(BaseModel):
 class FormalReportRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    anchor: date
+    anchor: date | None = None
     report_kind: FormalReportKind
 
 
 class FormalEmployeeReport(BaseModel):
+    archive_id: int
     report_kind: FormalReportKind
     statistics: EmployeeReportSummary
     sections: FormalReportSections

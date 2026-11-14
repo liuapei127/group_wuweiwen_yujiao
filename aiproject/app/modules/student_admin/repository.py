@@ -66,6 +66,18 @@ class StudentAdminRepository:
         stmt = stmt.order_by(StudentAdminService.id.asc()).limit(limit)
         return list(self.db.scalars(stmt).all())
 
+    def pending_leave_candidates(self, approver_id: int, student_name: str):
+        leave = StudentAdminService
+        query = (
+            select(leave.id, leave.student_id, SysUser.real_name.label("student_name"), leave.start_time, leave.end_time)
+            .join(SysUser, SysUser.id == leave.student_id)
+            .where(leave.approver_id == approver_id, leave.status == "pending", leave.service_type == "leave",
+                   SysUser.user_type == "student", SysUser.status == "normal", SysUser.real_name == student_name)
+            .order_by(leave.id.desc()).limit(21)
+        )
+        rows = [dict(row) for row in self.db.execute(query).mappings()]
+        return {"items": rows[:20], "has_more": len(rows) > 20}
+
     def get_leave(self, leave_id: int) -> StudentAdminService | None:
         row = self.db.get(StudentAdminService, leave_id)
         if row and row.service_type == "leave":

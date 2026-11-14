@@ -63,6 +63,9 @@ class StudentAdminServiceLayer:
     def pending_leaves(self, approver_id: int | None):
         return self.repo.list_pending_leaves(approver_id)
 
+    def pending_leave_candidates(self, approver_id: int, student_name: str):
+        return self.repo.pending_leave_candidates(approver_id, student_name)
+
     def approve_leave(self, leave_id: int, payload: LeaveApprove):
         row = self.repo.get_leave(leave_id)
         if not row:

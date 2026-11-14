@@ -80,12 +80,15 @@ export async function api<T = any>(path: string, options: {method?: string; body
 }
 
 
-export async function download(path: string, filename: string) {
+export async function download(path: string, filename: string, renewed = false): Promise<void> {
   const token = getToken()
   const response = await fetch(path, {
     headers: token ? {Authorization: 'Bearer ' + token} : {},
     signal: AbortSignal.timeout(30000),
   })
+  if (response.status === 401 && !renewed && ((getToken() && getToken() !== token) || await refreshSession())) {
+    return download(path, filename, true)
+  }
   if (!response.ok) {
     if (response.status === 401 && getToken() === token) window.dispatchEvent(new Event('ent-auth-expired'))
     const result = await response.json().catch(() => ({}))

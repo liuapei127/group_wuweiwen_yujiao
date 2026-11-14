@@ -75,3 +75,29 @@ def test_reasoning_envelope_does_not_break_strict_final_json():
     result=plan(text,'查学生101成绩')
     assert result['call_api'] and result['intent']=='scores'
     assert 'student_id=101' in result['http_url']
+
+def test_leave_selection_rejects_unlisted_number_before_confirmation():
+    draft = plan(action('leave_approve', student_name='张三', decision='approved'), '同意张三请假')
+    assert draft['intent']=='leave_candidates' and draft['method']=='get'
+    inferred = plan(action('leave_approve', decision='approved'), '同意张三的请假')
+    assert inferred['http_url'] == draft['http_url']
+    shortened = plan(action('leave_approve', student_name='同名学生', decision='approved'), '同意联调同名学生的请假')
+    from urllib.parse import parse_qs, urlsplit
+    assert parse_qs(urlsplit(shortened['http_url']).query)['student_name'] == ['联调同名学生']
+    pending = json.loads(draft['pending'])
+    pending['choices'] = [23, 26]
+    state = json.dumps(pending)
+    assert plan('', '选择99', state)['pending'] == state
+    selected = plan('', '选择23。', state)
+    assert not selected['call_api'] and json.loads(selected['pending'])['state']=='confirm'
+    executed = plan('', '确认', selected['pending'])
+    assert executed['http_url'].endswith('/leaves/23/approve')
+    assert json.loads(executed['http_body']) == {'decision': 'approved'}
+
+
+def test_formal_report_uses_archive_id_after_confirmation():
+    draft = plan(action('formal_report', report_kind='weekly'), '生成正式周报')
+    assert not draft['call_api']
+    assert plan('', '确认', draft['pending'])['call_api']
+    reply = format_result(200, '{"code":0,"data":{"archive_id":321}}', 'formal_report')['reply']
+    assert '已归档（编号 321）' in reply

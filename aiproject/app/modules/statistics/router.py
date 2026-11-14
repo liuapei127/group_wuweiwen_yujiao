@@ -1,7 +1,8 @@
 from datetime import date
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Path, Query, Response
+from pydantic import StringConstraints
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -10,19 +11,33 @@ from app.core.security import EmployeePrincipal, require_employee
 
 from .schemas import FormalReportRequest, ScheduleWrite
 from . import scheduled
-from .service import employee_report_summary, formal_employee_report, operational_report
+from .pdf import render_report
+from .periods import beijing_now
+from .service import employee_report_summary, formal_employee_report, managed_employee_reports, operational_report
 
 router = APIRouter(prefix="/api/v1/reporting", tags=["智能报告"])
 
 
 @router.get("/employee-reports/summary")
 def employee_summary(
-    anchor: date,
     db: Annotated[Session, Depends(get_db)],
     principal: Annotated[EmployeePrincipal, Depends(require_employee)],
+    anchor: date | None = None,
     period: Literal["day", "week"] = "day",
 ):
-    return success(employee_report_summary(db, principal, anchor, period))
+    return success(employee_report_summary(db, principal, anchor or beijing_now().date(), period))
+
+
+@router.get("/employee-reports/managed", summary="查询授权组织的已提交日报")
+def managed_reports(
+    db: Annotated[Session, Depends(get_db)],
+    principal: Annotated[EmployeePrincipal, Depends(require_employee)],
+    employee_name: Annotated[str | None, Query(), StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] = None,
+    anchor: date | None = None,
+    period: Literal["day", "week"] = "day",
+):
+    return success(managed_employee_reports(db, principal, anchor or beijing_now().date(), period,
+                                            employee_name))
 
 
 @router.post("/employee-reports/formal-summary")
@@ -63,3 +78,18 @@ def archive(
     before_id: Annotated[int | None, Query(ge=1)] = None,
 ):
     return success(scheduled.archive(db, principal, before_id))
+
+
+@router.get("/archive/{report_id}/pdf", response_class=Response, responses={
+    200: {"content": {"application/pdf": {}}},
+})
+def archive_pdf(
+    report_id: Annotated[int, Path(ge=1)],
+    db: Annotated[Session, Depends(get_db)],
+    principal: Annotated[EmployeePrincipal, Depends(require_employee)],
+):
+    report = scheduled.archived_report(db, principal, report_id)
+    return Response(render_report(report), media_type="application/pdf", headers={
+        "Content-Disposition": f'attachment; filename="report-{report_id}.pdf"',
+        "Cache-Control": "no-store",
+    })

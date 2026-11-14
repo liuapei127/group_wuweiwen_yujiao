@@ -31,7 +31,7 @@ class AssistantRepository:
         # CAS reserves a turn and clears pending BEFORE any network or write call.
         count=self.db.execute(update(conversations).where(conversations.c.id==cid,conversations.c.employee_id==user_id,
             conversations.c.version==version,or_(conversations.c.busy_token.is_(None),conversations.c.busy_until<now)).values(
-                version=version+1,busy_token=nonce,busy_until=now+timedelta(seconds=180),pending='',update_time=now)).rowcount
+                version=version+1,busy_token=nonce,busy_until=now+timedelta(minutes=5),pending='',update_time=now)).rowcount
         return nonce if count==1 else None
 
     def finish(self,cid,user_id,version,nonce,pending,text,reply,metadata):

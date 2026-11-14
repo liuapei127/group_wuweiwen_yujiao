@@ -1,16 +1,16 @@
 import {useState} from 'react'
-import {Button, Card, Form, Input, Select, Space, Table, Tag, Typography} from 'antd'
+import {App, Button, Card, Drawer, Form, Input, Select, Space, Table, Tag, Typography} from 'antd'
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {useAuth} from '../auth'
-import {DetailDrawer, ErrorNotice} from '../components/shared'
-import {api, query} from '../lib/api'
+import {ErrorNotice} from '../components/shared'
+import {api, download, query} from '../lib/api'
 
 type Schedule = {
   kind: string; title: string; weekly: boolean; run_at: string; enabled: boolean; last_run_time: string | null
 }
 type ArchiveEntry = {
   id: number; report_title?: string; period_start?: string; period_end?: string
-  report_content?: Record<string, unknown>; unavailable?: boolean
+  report_content?: Record<string, unknown>; unavailable?: boolean; format?: 'formal'; create_time?: string
 }
 const endpoint = '/api/v1/reporting'
 const pagination = 20
@@ -24,7 +24,14 @@ function summarize(report: ArchiveEntry) {
   const counts = (values: Record<string, unknown>) => Object.entries(values).map(([state, count]) => ({
     状态: statusLabels[state] || state, 数量: count,
   }))
+  const sections = content.sections as Record<string, string> | undefined
   if (content.days) return {
+    ...(sections && {
+      工作总结: sections.work_summary,
+      关键进展: sections.key_progress_summary,
+      风险事项: sections.risk_summary,
+      下一步建议: sections.next_work_suggestions,
+    }),
     累计提交人次: content.submitted_employee_days,
     每日人数: (content.days as {report_date: string; submitted_employees: number}[]).map(row =>
       ({日期: row.report_date, 提交人数: row.submitted_employees})),
@@ -37,9 +44,10 @@ function summarize(report: ArchiveEntry) {
 
 export function ReportSchedules() {
   const {user} = useAuth()
+  const {message} = App.useApp()
   const cache = useQueryClient()
   const [before, setBefore] = useState<number>()
-  const [detail, setDetail] = useState<ArchiveEntry>()
+  const [detailId, setDetailId] = useState<number>()
   const plans = useQuery({
     queryKey: [user?.id, 'report-schedules'],
     queryFn: () => api<{items: Schedule[]}>(endpoint + '/schedules'),
@@ -47,7 +55,9 @@ export function ReportSchedules() {
   const records = useQuery({
     queryKey: [user?.id, 'report-archive', before],
     queryFn: () => api<ArchiveEntry[]>(endpoint + '/archive' + query({before_id: before})),
+    refetchInterval: before === undefined ? 30_000 : false,
   })
+  const detail = records.data?.find(row => row.id === detailId && !row.unavailable)
   const save = useMutation({
     mutationFn: (values: {kind: string; run_at: string; enabled: boolean}) =>
       api<{items: Schedule[]}>(endpoint + '/schedules', {method: 'PUT', body: values}),
@@ -70,8 +80,14 @@ export function ReportSchedules() {
       <ErrorNotice error={records.error}/>
       <Table rowKey="id" size="small" pagination={false} loading={records.isFetching} dataSource={records.data || []} columns={[
         {title: '报告', render: (_, row) => row.unavailable ? '权限已变更' : row.report_title},
+        {title: '类型', render: (_, row) => row.unavailable ? '—' : row.format === 'formal' ? '正式 AI 报告' : '定时统计'},
+        {title: '生成时间（北京时间）', render: (_, row) => row.create_time?.replace('T', ' ') || '—'},
         {title: '统计期间', render: (_, row) => row.period_start ? row.period_start + ' 至 ' + row.period_end : '—'},
-        {title: '操作', render: (_, row) => !row.unavailable && <Button type="link" onClick={() => setDetail(row)}>查看</Button>},
+        {title: '操作', render: (_, row) => !row.unavailable && <Space wrap>
+          <Button type="link" onClick={() => setDetailId(row.id)}>查看</Button>
+          <Button type="link" onClick={() => void download(endpoint + '/archive/' + row.id + '/pdf',
+            (row.report_title || '报表') + '-' + row.id + '.pdf').catch((error: Error) => void message.error(error.message))}>下载 PDF</Button>
+        </Space>},
       ]}/>
       <Space style={{marginTop: 12}}>
         <Button disabled={!before || records.isFetching} onClick={() => setBefore(undefined)}>返回最新</Button>
@@ -79,6 +95,18 @@ export function ReportSchedules() {
           onClick={() => setBefore(records.data?.at(-1)?.id)}>查看更多</Button>
       </Space>
     </Card>
-    <DetailDrawer title={detail?.report_title || '报告'} data={detail ? summarize(detail) : null} onClose={() => setDetail(undefined)}/>
+    <Drawer title={detail?.report_title || '报告'} open={!!detail} onClose={() => setDetailId(undefined)} size="large">
+      {detail && <>
+        <Typography.Paragraph type="secondary">{detail.period_start} 至 {detail.period_end}</Typography.Paragraph>
+        {Object.entries(summarize(detail)).map(([label, value]) => <section key={label}>
+          <Typography.Title level={5}>{label}</Typography.Title>
+          {Array.isArray(value) ? <Table
+            size="small" pagination={false} dataSource={value.map((row, id) => ({...row, id}))} rowKey="id"
+            columns={Object.keys(value[0] || {}).map(key => ({title: key, dataIndex: key}))}
+            locale={{emptyText: '本期无相关记录'}}
+          /> : <Typography.Paragraph style={{whiteSpace: 'pre-wrap'}}>{String(value ?? '—')}</Typography.Paragraph>}
+        </section>)}
+      </>}
+    </Drawer>
   </Space>
 }

@@ -86,6 +86,9 @@ class ConsultantRepository:
         )
         return list(self.db.scalars(stmt).all())
 
+    def count_follow_ups(self, lead_id: int) -> int:
+        return self.db.scalar(select(func.count()).select_from(CrmFollowUp).where(CrmFollowUp.lead_id == lead_id))
+
     def find_lead_by_name(self, name: str, owner_employee_id: int) -> CrmLead | None:
         if not owner_employee_id:
             raise PermissionError("必须提供可信员工身份")

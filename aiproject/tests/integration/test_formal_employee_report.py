@@ -2,6 +2,7 @@ import json
 from datetime import date, datetime
 
 import httpx
+from sqlalchemy import text, update
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -9,13 +10,16 @@ from app.core.config import Settings
 from app.core.security import EmployeePrincipal
 from app.modules.auth import service as auth_service
 from app.modules.employee_report.models import EmployeeDailyReport
-from app.modules.statistics import formal_dify
+from app.modules.statistics import formal_dify, scheduled, service as statistics_service
 from app.modules.student_admin.models import SysUser
 from tests.integration.test_ent_portal_routes import isolated_portal
 
 
 def test_formal_report_sends_only_latest_submitted_rows_in_authorized_department(isolated_portal, monkeypatch):
     app, engine = isolated_portal("trusted_jwt")
+    monkeypatch.setattr(statistics_service, "get_settings", lambda: Settings(
+        _env_file=None, employee_identity_mode="trusted_jwt", auth_jwt_secret="s" * 48
+    ))
     read = "reports:summary:read"
     generate = "reports:formal:generate"
     actors = {
@@ -51,6 +55,14 @@ def test_formal_report_sends_only_latest_submitted_rows_in_authorized_department
     ))
     try:
         with Session(engine) as db:
+            db.execute(text("""CREATE TABLE report_generation(
+                id INTEGER PRIMARY KEY, report_type TEXT, report_title TEXT, report_content JSON,
+                period_start DATE, period_end DATE, generated_by INTEGER, status TEXT, create_time DATETIME
+            )"""))
+            db.execute(text("""CREATE TABLE report_schedule(
+                id INTEGER PRIMARY KEY, report_type TEXT, schedule_cron TEXT, recipients JSON, enabled INTEGER,
+                last_run_time DATETIME, create_time DATETIME, update_time DATETIME
+            )"""))
             db.add_all([
                 SysUser(id=10, real_name="主管", user_type="employee", department="A"),
                 SysUser(id=13, real_name="员工甲", user_type="employee", department="A"),
@@ -86,6 +98,19 @@ def test_formal_report_sends_only_latest_submitted_rows_in_authorized_department
             assert result.status_code == 200
             assert result.json()["data"]["sections"] == sections
             assert result.json()["data"]["statistics"]["submitted_employee_days"] == 2
+            archive_url = "/api/v1/reporting/archive"
+            archive_id = result.json()["data"]["archive_id"]
+            pdf_url = f"{archive_url}/{archive_id}/pdf"
+            archived = client.get(archive_url, headers=headers("manager")).json()["data"]
+            assert [(r["id"], r["format"]) for r in archived] == [(archive_id, "formal")]
+            assert archived[0]["report_content"]["sections"] == sections
+            pdf = client.get(pdf_url, headers=headers("manager"))
+            assert pdf.headers["content-type"] == "application/pdf"
+            assert pdf.headers["cache-control"] == "no-store"
+            assert pdf.content.startswith(b"%PDF-")
+            assert client.get(pdf_url).status_code == 401
+            assert client.get(pdf_url, headers=headers("admin")).status_code == 404
+            assert client.get(pdf_url, headers=headers("reader")).status_code == 403
             sent = calls[-1]
             assert sent.headers["Authorization"] == "Bearer rpt-test-key"
             assert sent.url.path.endswith("/workflows/run")
@@ -110,7 +135,30 @@ def test_formal_report_sends_only_latest_submitted_rows_in_authorized_department
             empty = client.post(url, json={**daily, "anchor": "2026-11-01"}, headers=headers("manager"))
             assert empty.json()["data"]["sections"]["work_summary"] == "本期无相关记录"
             assert len(calls) == previous_calls
+            assert empty.json()["data"]["archive_id"] != archive_id
+            with Session(engine) as db:
+                db.execute(update(SysUser).where(SysUser.id == 13).values(department="B"))
+                db.commit()
+            assert client.get(pdf_url, headers=headers("manager")).status_code == 403
         with Session(engine) as db:
             assert db.query(EmployeeDailyReport).count() == 6
+            assert db.scalar(text("SELECT COUNT(*) FROM report_generation")) == 3
+            db.execute(text("""INSERT INTO report_schedule
+                (report_type, schedule_cron, recipients, enabled, create_time)
+                VALUES ('weekly_summary', '0 9 * * 1', '[12]', 1, '2026-11-15 10:00:00')
+            """))
+            db.commit()
+            monkeypatch.setattr(scheduled, "_now", lambda: datetime(2026, 11, 16, 10))
+            monkeypatch.setattr(scheduled.AuthRepository, "account", lambda self, **kwargs: {
+                "status": "normal", "user_type": "admin", "role_status": 1, "role_id": 1, "role_code": "admin",
+            })
+            monkeypatch.setattr(scheduled.AuthRepository, "permissions", lambda self, role_id: {read})
+            monkeypatch.setattr(scheduled.AuthRepository, "scope", lambda self, user_id: set())
+            assert scheduled.scan_reports(db) == 1
+            assert scheduled.scan_reports(db) == 0
+            snapshot = scheduled.archive(db, actors["admin"], None)[0]
+            assert snapshot["report_content"]["days"][0] == {
+                "report_date": "2026-11-09", "submitted_employees": 2,
+            }
     finally:
         engine.dispose()

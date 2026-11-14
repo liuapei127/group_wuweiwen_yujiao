@@ -15,16 +15,20 @@ prompt='''你是ENT业务参数抽取器。只输出一个JSON对象：{"intent"
 成绩score为十进制数字或数字字符串；更正必须有expected_version，未知版本先留空。
 工单状态pending→processing→resolved→closed，更正状态不得臆造expected_status；解决/关闭需要solution。
 待办状态pending/in_progress/done/cancelled；创建时不需expected_status，更新时必须有expected_status。
-请假decision仅approved/rejected。日期时间不带时区。
+请假decision仅approved/rejected。“同意张三请假”用leave_approve，填写student_name和decision，缺请假单编号时交由后端列出该老师的候选。不能猜编号。只查某人的请假单用leave_candidates。示例：输入“同意张三的请假”，输出 {"intent":"leave_approve","params":{"student_name":"张三","decision":"approved"}}。
+“王明有多少条跟进”用lead_followup_count，填写customer_name或用户明确提供的lead_id。“查看王明的跟进记录”用nl_query中的lead_follow_ups_by_name。
+“查看下属/所管组织/团队的日报”用managed_daily_list；点名时employee_name仅填用户明确给出的员工姓名。“本周多少人次提交”用daily_submission_summary。日/周对应period为day/week。
+“生成正式日报/周报”使用formal_report，分别传report_kind为daily/weekly。仅抽取指令并等待服务端确认。anchor只填明确的YYYY-MM-DD日期，或根据下方服务端日期换算今日、昨日、本周、上周。自然周从星期一开始，上周用前一周任一天。
 白名单查询nl_query的params为{"intent":"白名单名","params":{}}，白名单仅：
 leads_by_status(status)、lead_detail_by_name(customer_name)、lead_follow_ups_by_name(customer_name)、pending_leaves(空对象)、daily_reports_recent(空对象)。
 不要把普通业务查询全部变成nl_query；只有查询跟进或用户明确指定时用此动作。客户列表用lead_list，近期本人日报用daily_list。
 动作目录（method,path,required,allowed）：
-'''+json.dumps(ACTIONS,ensure_ascii=False)+'\n服务端待处理状态：{{#start.pending#}}'
+'''+json.dumps(ACTIONS,ensure_ascii=False)+'\n服务端北京时间日期：{{#start.today#}}\n服务端待处理状态：{{#start.pending#}}'
 nodes=[
  {'id':'start','type':'custom','position':{'x':0,'y':200},'data':{'type':'start','title':'门户输入','variables':[
   {'variable':'query','label':'query','type':'paragraph','required':True,'max_length':8000},
-  {'variable':'pending','label':'pending','type':'paragraph','required':False,'max_length':32000}]}},
+  {'variable':'pending','label':'pending','type':'paragraph','required':False,'max_length':32000},
+  {'variable':'today','label':'today','type':'text-input','required':False,'max_length':10}]}},
  {'id':'llm','type':'custom','position':{'x':350,'y':200},'data':{'type':'llm','title':'只抽取业务动作和字段','model':model,
   'prompt_template':[{'id':'portal-system','role':'system','text':prompt},{'id':'portal-user','role':'user','text':'{{#start.query#}}'}],
   'context':{'enabled':False,'variable_selector':[]},'vision':{'enabled':False}}},

@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query
+from pydantic import StringConstraints
 from sqlalchemy.orm import Session
 
 from app.core.security import EmployeePrincipal, require_employee
@@ -21,6 +24,15 @@ def pending_leaves(
         return fail("无权查询他人审批列表", code=403)
     items = StudentAdminServiceLayer(db).pending_leaves(principal.employee_id)
     return success([LeaveOut.model_validate(x) for x in items])
+
+
+@router.get("/leaves/candidates", summary="按姓名查询本人待审批的请假单")
+def leave_candidates(
+    student_name: Annotated[str, Query(), StringConstraints(strip_whitespace=True, min_length=1, max_length=64)],
+    db: Session = Depends(get_db),
+    principal: EmployeePrincipal = Depends(require_employee),
+):
+    return success(StudentAdminServiceLayer(db).pending_leave_candidates(principal.employee_id, student_name))
 
 
 @router.post("/leaves/{leave_id}/approve", summary="请假审批（写操作）ENT-09/12")

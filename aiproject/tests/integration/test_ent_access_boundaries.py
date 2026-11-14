@@ -174,3 +174,20 @@ def test_actor_fields_inferred_only_from_trusted_principal(env):
     assert c.post("/api/v1/consultant/leads",json={"customer_name":"拒绝伪造","owner_employee_id":2}).status_code == 403
     del app.dependency_overrides[require_employee]
     assert c.post("/api/v1/consultant/leads",json={"customer_name":"不能匿名创建"}).status_code == 503
+
+def test_assistant_business_reads_keep_current_employee_scope(env):
+    client, db, app = env
+    leaves = "/api/v1/student-admin/leaves/candidates"
+    assert [row["id"] for row in client.get(leaves, params={"student_name": "学生1"}).json()["data"]["items"]] == [1]
+    assert client.get(leaves, params={"student_name": "   "}).status_code == 422
+
+    assert client.get("/api/v1/consultant/leads/2/follow-ups/count").status_code == 404
+    now = datetime.now()
+    db.add_all(CrmFollowUp(id=idx, lead_id=1, employee_id=1, content="跟进", create_time=now) for idx in range(3, 55))
+    db.commit()
+    assert client.get("/api/v1/consultant/leads/1/follow-ups/count").json()["data"]["total"] == 53
+    result = client.post("/api/v1/ai/nl2sql/query", json={
+        "intent": "lead_follow_ups_by_name", "params": {"customer_name": "同名客户"},
+    }).json()["data"]["result"]
+    assert result["total"] == 53
+    assert len(result["rows"]) == 50

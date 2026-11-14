@@ -45,11 +45,22 @@ def record_report(db: Session, employee_id: int, kind: str, title: str, payload:
     )).lastrowid
 
 
-def own_reports(db: Session, employee_id: int, kinds: tuple[str, ...], before_id: int | None):
-    query = select(generated).where(
+def _completed_reports(employee_id: int, kinds: tuple[str, ...]):
+    return select(generated).where(
         generated.c.generated_by == employee_id, generated.c.report_type.in_(kinds),
         generated.c.status == "completed",
     )
+
+
+def own_reports(db: Session, employee_id: int, kinds: tuple[str, ...], before_id: int | None):
+    query = _completed_reports(employee_id, kinds)
     if before_id is not None:
         query = query.where(generated.c.id < before_id)
     return [dict(row) for row in db.execute(query.order_by(generated.c.id.desc()).limit(20)).mappings()]
+
+
+def own_report(db: Session, employee_id: int, kinds: tuple[str, ...], report_id: int) -> dict | None:
+    row = db.execute(_completed_reports(employee_id, kinds).where(
+        generated.c.id == report_id,
+    )).mappings().one_or_none()
+    return dict(row) if row else None

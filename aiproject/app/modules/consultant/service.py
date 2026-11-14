@@ -54,6 +54,12 @@ class ConsultantService:
         follow_ups = self.repo.list_follow_ups(lead_id)
         return lead, follow_ups
 
+    def follow_up_count(self, lead_id: int, employee_id: int):
+        lead = self.repo.get_lead(lead_id)
+        if lead is None or lead.owner_employee_id != employee_id:
+            return None
+        return {"customer_name": lead.customer_name, "total": self.repo.count_follow_ups(lead_id)}
+
     def add_follow_up(self, lead_id: int, payload: FollowUpCreate):
         lead = self.repo.get_lead(lead_id)
         if not lead:

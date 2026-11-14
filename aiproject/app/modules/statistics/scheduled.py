@@ -1,5 +1,7 @@
-from datetime import datetime, timedelta, timezone
+import logging
+from datetime import datetime, timedelta
 
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy import insert, update
 from sqlalchemy.orm import Session
 
@@ -9,11 +11,13 @@ from app.modules.auth.repository import AuthRepository
 from app.modules.organization.membership import managed_employees_query
 from app.modules.student import alerts
 
+from . import repository as statistics_repository
 from . import scheduled_repository as repository, service
-from .periods import week_bounds, week_monday
+from .periods import beijing_now as _now, week_bounds, week_monday
 from .schemas import ScheduleWrite
 
-BEIJING = timezone(timedelta(hours=8))
+logger = logging.getLogger(__name__)
+
 REPORTS = {
     "customer_ops": ("客户经营日报", "reports:operations:read"),
     "daily_summary": ("员工日报提交汇总", "reports:summary:read"),
@@ -22,10 +26,6 @@ REPORTS = {
     "complaint_weekly": ("投诉周报", "reports:operations:read"),
 }
 _WEEKLY = {"weekly_summary", "psych_weekly", "complaint_weekly"}
-
-
-def _now() -> datetime:
-    return datetime.now(BEIJING).replace(tzinfo=None, microsecond=0)
 
 
 def _allowed_kinds(db: Session, principal: EmployeePrincipal) -> tuple[str, ...]:
@@ -93,28 +93,57 @@ def archive(db: Session, principal: EmployeePrincipal, before_id: int | None):
     kinds = _allowed_kinds(db, principal)
     if not kinds:
         raise BusinessError(403, "缺少报表归档权限")
-    current_department = None
-    if any(kind != "psych_weekly" for kind in kinds):
-        current_department = service._report_department(db, principal)
-    department_members = set(db.scalars(managed_employees_query(current_department))) if isinstance(current_department, int) else set()
+    department, members = _current_scope(db, principal, kinds)
     return [
-        _visible_report(row, current_department, principal.student_ids, department_members)
+        _visible_report(row, principal, department, members)
         for row in repository.own_reports(db, principal.employee_id, kinds, before_id)
     ]
 
 
-def _visible_report(row: dict, department: str | int | None, student_ids: frozenset[int], department_members: set[int]) -> dict:
+def archived_report(db: Session, principal: EmployeePrincipal, report_id: int) -> dict:
+    kinds = _allowed_kinds(db, principal)
+    if not kinds:
+        raise BusinessError(403, "缺少报表归档权限")
+    row = repository.own_report(db, principal.employee_id, kinds, report_id)
+    if row is None:
+        raise BusinessError(404, "报告不存在")
+    department, members = _current_scope(db, principal, (row["report_type"],))
+    visible = _visible_report(row, principal, department, members)
+    if visible.get("unavailable"):
+        raise BusinessError(403, "当前权限范围已变更，无法下载该报告")
+    db.rollback()
+    return visible
+
+
+def _current_scope(db: Session, principal: EmployeePrincipal, kinds: tuple[str, ...]):
+    if all(kind == "psych_weekly" for kind in kinds):
+        return None, set()
+    department = service._report_department(db, principal)
+    if isinstance(department, int):
+        return department, set(db.scalars(managed_employees_query(department)))
+    if department is not None:
+        return department, statistics_repository.active_department_members(db, department)
+    return None, set()
+
+
+def _visible_report(row: dict, principal: EmployeePrincipal, department: str | int | None, department_members: set[int]) -> dict:
     scope = row.pop("report_content")
     if isinstance(scope, dict) and scope.get("scope_version") == 1:
         if row["report_type"] == "psych_weekly":
-            allowed = isinstance(scope.get("student_ids"), list) and set(scope["student_ids"]).issubset(student_ids)
+            allowed = isinstance(scope.get("student_ids"), list) and set(scope["student_ids"]).issubset(principal.student_ids)
         elif isinstance(department, int):
             recorded = scope.get("department_members")
             allowed = isinstance(recorded, list) and set(recorded).issubset(department_members)
         else:
             allowed = scope.get("department") == department and scope.get("department_members") is None
+        formal = scope.get("format") == "formal"
+        if formal:
+            contributors = scope.get("contributor_ids")
+            allowed = allowed and "reports:formal:generate" in principal.permissions and (
+                department is None or isinstance(contributors, list) and set(contributors).issubset(department_members)
+            )
         if allowed and isinstance(scope.get("statistics"), dict):
-            return {**row, "report_content": scope["statistics"]}
+            return {**row, "report_content": scope["statistics"], **({"format": "formal"} if formal else {})}
     return {"id": row["id"], "unavailable": True}
 
 
@@ -122,16 +151,21 @@ def scan_reports(db: Session) -> int:
     generated = 0
     after_id = 0
     now = _now()
+    first_error = None
     while ids := repository.enabled_ids(db, after_id):
         for schedule_id in ids:
             try:
                 row = repository.lock_schedule(db, schedule_id)
-                generated += int(_generate_due_report(db, row, now))
+                created = _generate_due_report(db, row, now)
                 db.commit()
-            except Exception:
+                generated += int(created)
+            except Exception as exc:
                 db.rollback()
-                raise
+                logger.exception("报表计划 %s 生成失败，将在下次扫描重试", schedule_id)
+                first_error = first_error or exc
         after_id = ids[-1]
+    if first_error is not None:
+        raise first_error
     return generated
 
 
@@ -159,11 +193,10 @@ def _generate_due_report(db: Session, row, now: datetime) -> bool:
     )
     if kind not in _allowed_kinds(db, principal):
         return False
-    data = _snapshot(db, principal, kind, timing.date() - timedelta(days=1))
-    periods = {**data, "period_start": data["period_start"].isoformat(), "period_end": data["period_end"].isoformat()}
+    periods = jsonable_encoder(_snapshot(db, principal, kind, timing.date() - timedelta(days=1)))
     scope = service._report_department(db, principal) if kind != "psych_weekly" else None
     department_members = sorted(db.scalars(managed_employees_query(scope))) if isinstance(scope, int) else None
-    payload = {**periods, "scope_version": 1, "department": data.get("department"),
+    payload = {**periods, "scope_version": 1, "department": periods.get("department"),
                "department_members": department_members,
                "student_ids": sorted(principal.student_ids) if kind == "psych_weekly" else [],
                "statistics": periods}

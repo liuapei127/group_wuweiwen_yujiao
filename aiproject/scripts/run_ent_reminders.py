@@ -19,21 +19,38 @@ def main():
     if args.interval<5:parser.error("interval 至少 5 秒")
     next_base_cleanup = 0.0
     while True:
+        result = {}
+        failures = []
+        for key, scan in (
+            (None, scan_reminders),
+            ("academic_notifications_processed", scan_academic_reminders),
+            ("report_snapshots_created", scan_reports),
+        ):
+            try:
+                with SessionLocal() as db:
+                    output = scan(db)
+                if key is None:
+                    result.update(output)
+                else:
+                    result[key] = output
+            except Exception as exc:
+                logging.exception("扫描任务失败：%s", scan.__name__)
+                failures.append(exc)
         try:
             with SessionLocal() as db:
-                result = scan_reminders(db)
-                result["academic_notifications_processed"] = scan_academic_reminders(db)
-                result["report_snapshots_created"] = scan_reports(db)
                 if get_settings().employee_identity_mode == "base_rs256" and time.monotonic() >= next_base_cleanup:
                     result["expired_base_families_removed"] = purge_expired_families(db)
                     result["expired_service_sessions_removed"] = purge_expired_sessions(db)
                     result["expired_primary_organizations_removed"] = clear_expired_primary(db)
                     next_base_cleanup = time.monotonic() + 3600
-                print(result, flush=True)
-        except Exception:
-            logging.exception("扫描失败，本轮事务回滚")
-            if args.once:raise
-        if args.once:break
+        except Exception as exc:
+            logging.exception("过期数据清理失败")
+            failures.append(exc)
+        print(result, flush=True)
+        if args.once:
+            if failures:
+                raise failures[0]
+            break
         time.sleep(args.interval)
 
 if __name__=="__main__":main()

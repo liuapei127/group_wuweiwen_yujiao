@@ -31,7 +31,7 @@ def daily_submission_counts(
     return {report_date: count for report_date, count in db.execute(stmt)}
 
 
-def _submitted_reports(start: date, end: date, department: str | None, *columns):
+def _submitted_reports(start: date, end: date, department: str | int | None, *columns):
     reports = EmployeeDailyReport
     stmt = (
         select(*columns)
@@ -51,14 +51,14 @@ def _submitted_reports(start: date, end: date, department: str | None, *columns)
     return stmt
 
 
-def formal_report_rows(db: Session, start: date, end: date, department: str | None) -> Iterator[RowMapping]:
+def formal_report_rows(db: Session, start: date, end: date, department: str | int | None) -> Iterator[RowMapping]:
     reports = EmployeeDailyReport
     latest = _submitted_reports(start, end, department, func.max(reports.id)).group_by(
         reports.employee_id, reports.report_date
     )
     query = (
         select(
-            SysUser.real_name.label("name"), SysUser.department, reports.report_date,
+            reports.employee_id, SysUser.real_name.label("name"), SysUser.department, reports.report_date,
             reports.content, reports.key_progress, reports.risks, reports.next_plan,
         )
         .select_from(reports)
@@ -71,7 +71,20 @@ def formal_report_rows(db: Session, start: date, end: date, department: str | No
         yield from result.mappings()
 
 
-def operational_status_counts(db: Session, start: date, end: date, department: str | None):
+def managed_report_rows(db: Session, start: date, end: date, department: str | int | None,
+                        employee_name: str | None):
+    reports = EmployeeDailyReport
+    query = _submitted_reports(
+        start, end, department, reports.id, reports.employee_id, SysUser.real_name.label("employee_name"),
+        reports.report_date, reports.content,
+    )
+    if employee_name:
+        query = query.where(SysUser.real_name == employee_name)
+    rows = db.execute(query.order_by(reports.report_date.desc(), reports.id.desc()).limit(51)).mappings()
+    return [dict(row) for row in rows]
+
+
+def operational_status_counts(db: Session, start: date, end: date, department: str | int | None):
     from datetime import datetime, time, timedelta
 
     start_at = datetime.combine(start, time.min)
@@ -96,3 +109,9 @@ def operational_status_counts(db: Session, start: date, end: date, department: s
             )
         counts.append({status: count for status, count in db.execute(stmt.group_by(source.c.status))})
     return counts[0], counts[1]
+
+
+def active_department_members(db: Session, department: str) -> set[int]:
+    return set(db.scalars(select(SysUser.id).where(
+        SysUser.department == department, SysUser.user_type == "employee", SysUser.status == "normal",
+    )))

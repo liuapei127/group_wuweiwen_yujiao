@@ -1,9 +1,9 @@
 import {useState} from 'react'
-import {Button, Card, Form, Input, Segmented, Space, Table, Tabs, Typography} from 'antd'
-import {useMutation, useQuery} from '@tanstack/react-query'
+import {App, Button, Card, Form, Input, Segmented, Space, Table, Tabs, Typography} from 'antd'
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {useAuth} from '../auth'
 import {ErrorNotice, PageTitle} from '../components/shared'
-import {api, query} from '../lib/api'
+import {api, download, query} from '../lib/api'
 import {ReportSchedules} from './ReportSchedules'
 
 type Operations = {
@@ -65,6 +65,8 @@ function StatusCounts({values, loading}: {values?: Record<string, number>; loadi
 
 function DailyReport() {
   const {user, can} = useAuth()
+  const cache = useQueryClient()
+  const {message} = App.useApp()
   const [anchor, date] = useState(dateToday)
   const [period, setPeriod] = useState('week')
   const result = useQuery({
@@ -72,9 +74,10 @@ function DailyReport() {
     queryFn: () => api<Daily>('/api/v1/reporting/employee-reports/summary' + query({anchor, period})),
   })
   const formal = useMutation({
-    mutationFn: () => api<{sections: Record<string, string>}>('/api/v1/reporting/employee-reports/formal-summary', {
-      method: 'POST', body: {anchor, report_kind: period === 'day' ? 'daily' : 'weekly'},
+    mutationFn: () => api<{archive_id: number; sections: Record<string, string>}>('/api/v1/reporting/employee-reports/formal-summary', {
+      method: 'POST', body: {anchor, report_kind: period === 'day' ? 'daily' : 'weekly'}, timeout: 130000,
     }),
+    onSuccess: () => void cache.invalidateQueries({queryKey: [user?.id, 'report-archive']}),
   })
   const sections = [
     ['work_summary', '工作总结'],
@@ -87,12 +90,16 @@ function DailyReport() {
       <Input aria-label="统计日期" type="date" value={anchor} onChange={e => {date(e.target.value); formal.reset()}}/>
       <Segmented options={[{label: '按日', value: 'day'}, {label: '按周', value: 'week'}]}
         value={period} onChange={value => {setPeriod(value); formal.reset()}}/>
-      {can('reports:formal:generate') && <Button disabled={!anchor} loading={formal.isPending} onClick={() => formal.mutate()}>生成 AI 总结</Button>}
+      {can('reports:formal:generate') && <Button disabled={!anchor} loading={formal.isPending} onClick={() => formal.mutate()}>生成并归档 AI 报告</Button>}
       {result.data && <Typography.Text>累计提交 {result.data.submitted_employee_days} 人次</Typography.Text>}
     </Space>
     <ErrorNotice error={result.error}/>
     <ErrorNotice error={formal.error}/>
-    {formal.data && <Card title="员工正式报告 AI 总结" style={{marginTop: 16}}>
+    {formal.data && <Card title="已归档的正式 AI 报告" style={{marginTop: 16}} extra={<Button onClick={() => {
+      const id = formal.data!.archive_id
+      void download('/api/v1/reporting/archive/' + id + '/pdf', '正式报告-' + id + '.pdf')
+        .catch((error: Error) => void message.error(error.message))
+    }}>下载 PDF</Button>}>
       {sections.map(([key, label]) => <section key={key}>
         <Typography.Title level={5}>{label}</Typography.Title>
         <Typography.Paragraph style={{whiteSpace: 'pre-wrap'}}>{formal.data.sections[key]}</Typography.Paragraph>
