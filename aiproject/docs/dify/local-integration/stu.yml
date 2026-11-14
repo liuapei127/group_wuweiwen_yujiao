@@ -570,10 +570,10 @@ workflow:
           completion_params:
             max_tokens: 600
             temperature: 0.5
-            top_p: 1
+            top_p: 0.9
           mode: chat
-          name: deepseek-flash
-          provider: langgenius/deepseek/deepseek
+          name: qwen-plus
+          provider: langgenius/tongyi/tongyi
         prompt_template:
         - role: system
           text: |
