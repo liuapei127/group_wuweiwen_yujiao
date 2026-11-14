@@ -11,3 +11,5 @@
 | `backend/` | 早期 MVP 参考，逐步废弃，请以 `aiproject/` 为准 |
 
 技术栈：**Dify + FastAPI + MySQL 8.0**
+
+> **已停用**：`feature/integrate-test`（早期合仓总测枝）本地与远程均已删除，请勿再拉取或基于该分支开发。当前以各功能分支 / `codex/v11-integration` 等现行分支为准。

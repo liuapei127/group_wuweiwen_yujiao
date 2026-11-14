@@ -9,7 +9,7 @@ from app.core.config import get_settings
 from app.core.exceptions import BusinessError
 from app.core.security import EmployeePrincipal, require_employee
 from app.core.responses import success
-from app.modules.customer_service.capacity import CsCapacityExceeded, get_cs_capacity
+from app.modules.customer_service.capacity import CsCapacityExceeded
 from app.modules.feedback import service as feedback
 from app.modules.feedback.schemas import StudentComplaintCreate
 from app.modules.student_admin.schemas import StudentLeaveCreate
@@ -20,8 +20,10 @@ from app.modules.visitor.service import VisitorPrincipal
 from app.modules.visitor.repository import student_destination
 from app.modules.visitor.service import website_student
 
-from . import alerts, assistant_chat, assistant_dify, notifications, service
-from .schemas import DeadlineWrite, ProgressWrite, StudentAssistantRequest
+from . import alerts, assistant_chat, assistant_session, notifications, service
+from .capacity import get_stu_capacity
+from .idempotency import replay_cache
+from .schemas import DeadlineWrite, ProgressWrite, StudentAssistantConversationCreate, StudentAssistantRequest
 from .service import student_policies
 
 _BEARER = HTTPBearer(auto_error=False)
@@ -38,7 +40,8 @@ def _student_id(db: Session, principal: VisitorPrincipal, *, lock: bool = False)
     return student_id
 
 
-def _local_assistant(db: Session, principal: VisitorPrincipal, body: StudentAssistantRequest) -> dict:
+def _run_local_turn(db: Session, principal: VisitorPrincipal, body: StudentAssistantRequest) -> dict:
+    """Dify shell / legacy callers: optional client history, no session persistence required."""
     student_id = _student_id(db, principal, lock=False)
     db.rollback()
     history = [turn.model_dump() for turn in (body.history or [])]
@@ -48,6 +51,31 @@ def _local_assistant(db: Session, principal: VisitorPrincipal, body: StudentAssi
         message=body.query,
         history=history,
         mock_country=body.mock_country,
+    )
+
+
+@router.get("/assistant/conversations")
+def assistant_conversations(db: Database, principal: Principal):
+    return success(assistant_session.list_conversations(db, _student_id(db, principal)))
+
+
+@router.post("/assistant/conversations", status_code=201)
+def create_assistant_conversation(
+    db: Database,
+    principal: Principal,
+    body: StudentAssistantConversationCreate = StudentAssistantConversationCreate(),
+):
+    return success(
+        assistant_session.create_conversation(
+            db, _student_id(db, principal), title=(body.title or "新对话")
+        )
+    )
+
+
+@router.get("/assistant/conversations/{conversation_id}")
+def assistant_conversation_detail(conversation_id: str, db: Database, principal: Principal):
+    return success(
+        assistant_session.conversation_detail(db, _student_id(db, principal), conversation_id)
     )
 
 
@@ -61,11 +89,21 @@ async def student_assistant_run(body: StudentAssistantRequest, request: Request,
         return student_id
 
     student_id = await run_in_threadpool(resolve)
-    client_ip = request.client.host if request.client else f"student:{student_id}"
+    # Dify 回调的源地址是容器 IP，按 IP 限流会变成全体学生共用一个桶；按学生计。
+    bucket = f"student:{student_id}"
+    cache = replay_cache()
+    history = [turn.model_dump() for turn in (body.history or [])]
+    key = cache.key(student_id, body.query, history)
+
+    def run() -> dict:
+        # Dify 失败重试会重复提交请假/投诉，同一轮请求只执行一次。
+        payload, _ = cache.remember(key, lambda: _run_local_turn(db, principal, body))
+        return payload
 
     try:
-        async with get_cs_capacity().slot(client_ip):
-            return success(await run_in_threadpool(_local_assistant, db, principal, body))
+        # Dify 回调入口：外层 /assistant 已占用槽位，这里只查频率。
+        async with get_stu_capacity().rate_only(bucket):
+            return success(await run_in_threadpool(run))
     except CsCapacityExceeded as exc:
         raise BusinessError(429, exc.message) from exc
 
@@ -78,7 +116,7 @@ async def student_assistant(
     principal: Principal,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_BEARER)] = None,
 ):
-    """Website entry: Dify shell when ``STU_DIFY_API_KEY`` is set, otherwise local brain."""
+    """Website entry with conversation records + mem0; optional Dify thin shell."""
 
     def resolve() -> int:
         student_id = _student_id(db, principal, lock=False)
@@ -88,23 +126,23 @@ async def student_assistant(
     student_id = await run_in_threadpool(resolve)
     client_ip = request.client.host if request.client else f"student:{student_id}"
     use_dify = bool(get_settings().stu_dify_api_key.get_secret_value().strip())
+    token = credentials.credentials if credentials else ""
+    if use_dify and not token:
+        raise BusinessError(401, "请先登录官网")
 
     try:
-        async with get_cs_capacity().slot(client_ip):
-            if use_dify:
-                token = credentials.credentials if credentials else ""
-                if not token:
-                    raise BusinessError(401, "请先登录官网")
-                history = [turn.model_dump() for turn in (body.history or [])]
-                return success(
-                    await assistant_dify.ask_dify(
-                        query=body.query,
-                        access_token=token,
-                        history=history,
-                        user_key=f"student_{student_id}",
-                    )
+        async with get_stu_capacity().slot(client_ip):
+            return success(
+                await assistant_session.run_turn(
+                    db,
+                    student_id=student_id,
+                    query=body.query,
+                    conversation_id=body.conversation_id,
+                    access_token=token if use_dify else None,
+                    use_dify=use_dify,
+                    mock_country=body.mock_country,
                 )
-            return success(await run_in_threadpool(_local_assistant, db, principal, body))
+            )
     except CsCapacityExceeded as exc:
         raise BusinessError(429, exc.message) from exc
 

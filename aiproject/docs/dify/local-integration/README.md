@@ -1,6 +1,6 @@
 # 粤教 Dify 本机集成
 
-已在 Dify 1.16.0 导入和发布，应用通过同机 FastAPI 调用。工作室 http://127.0.0.1:8088/apps ，公司官网 http://127.0.0.1:5193/website ，员工工作台 http://127.0.0.1:5193/login 。
+已在 Dify 1.16.0 导入和发布，应用通过同机 FastAPI 调用。工作室 http://127.0.0.1:8090/apps ，公司官网 http://127.0.0.1:5173/website ，员工工作台 http://127.0.0.1:5173/login 。
 
 | 模块 | 应用 | FastAPI 入口 / 使用方式 |
 | --- | --- | --- |
@@ -10,7 +10,7 @@
 | RPT | 员工正式报告 AI 总结 · 本机集成 | 员工工作台 → 业务报表 → 日报提交 → 生成 AI 总结 |
 | ENT | 企业智能助手-ENT | 员工工作台 → AI 助手。32 节点版已发布，服务端配置 DIFY_ENT_CHATFLOW_API_KEY。 |
 
-CS 绑定本机四个知识库，分别是公司简介、常见问题、留学项目、政策入口。四个本地 UUID 绑定保存在 cs.yml，迁往另一工作区时重建并绑定。客服对课程和预约给出官网操作入口。新应用 WebApp 开关关闭，应用密钥由 FastAPI 服务端使用。RPT 与客服使用本机 Dify 已配置的通义 qwen-plus，调用时依赖通义服务；PF 研判在本地代码节点执行。STU 已发布组员原版六节点，旧接口待适配。学生请假和投诉仍可在官网表单办理。
+CS 绑定本机四个知识库，分别是公司简介、常见问题、留学项目、政策入口。四个本地 UUID 绑定保存在 cs.yml，迁往另一工作区时重建并绑定。客服对课程和预约给出官网操作入口。新应用 WebApp 开关关闭，应用密钥由 FastAPI 服务端使用。RPT 与客服使用本机 Dify 已配置的通义 qwen-plus，调用时依赖通义服务；PF 研判在本地代码节点执行。STU 已发布 15 节点版（统一学生 API + 模型兜底），旧的六节点版与 `/api/stu` 接口不再作为联调入口。学生请假和投诉另可在官网表单办理。
 
 顾问研判预览处理游客说明与有权限的可读附件。预览供顾问确认，原资料、初筛状态和建档流程仍由业务接口处理。RPT 只允许有 reports:formal:generate 和 reports:summary:read 的当前管理员或主管使用，主管受部门范围限制。本机已授予管理员正式报告权限。
 
@@ -19,10 +19,13 @@ CS 绑定本机四个知识库，分别是公司简介、常见问题、留学�
 ### STU 导入要点
 
 1. 在 Dify 导入 `stu.yml` 并发布 Chatflow；WebApp 建议关闭，密钥交给 FastAPI `STU_DIFY_API_KEY`。
-2. 环境变量：`stu_api_base`（默认 `http://host.docker.internal:8000`）、可选 `stu_website_username` / `stu_website_password`（工作室直连调试）。
+2. 环境变量：`stu_api_base`（默认 `http://host.docker.internal:8000`）、可选 `stu_website_username` / `stu_website_password`（仅工作室控制台直连调试）。空令牌时会用这组账号登录，生产必须留空，否则官网漏传令牌会被当成该账号办理请假。
 3. 开始节点输入：`student_access_token`、`history_json`。官网已配置 `STU_DIFY_API_KEY` 时，FastAPI `/api/v1/student/assistant` 会带上当前学生 Bearer 与历史调用本 Chatflow；Chatflow 再打 `/assistant/run`，避免套娃。
 4. 未配置 `STU_DIFY_API_KEY` 时，官网助手直接走本地口语脑，不依赖 Dify。
-5. 旧版 `stu-legacy-api-stu.yml`（8001 `/api/stu`）仅作归档，不要再当联调入口。
+5. 两个 HTTP 节点都不配 `retry_config`：`/assistant/run` 会真的提交请假和投诉，Dify 自动重试会重复写业务单据；失败由 FastAPI 回退本地口语脑，不靠流程重试。
+6. 旧版 `stu-legacy-api-stu.yml`（8001 `/api/stu`）仅作归档，不要再当联调入口。
+7. 画布最后一个分支是模型兜底：`取出口语回复` 之后先过 `是否需要模型兜底`，只有回复里出现「我在听」这类没接住内容的话才进 `模型兜底回答`（DeepSeek）；有办理结果的回复原样走 `助手回复`，不会被改写。模型输出先经 `去掉思考段` 去掉推理段，再交给学生。因此 Dify 工作区必须配置可用的 DeepSeek 供应商，否则该分支会报错。
+8. 规则仍然负责动作：请假、投诉、进度、考务、高危预警都由 FastAPI 判定和落库；模型只负责把没说清的话接住。高危话术不经过模型，直接由 FastAPI 返回安抚并写预警。
 
 本机 HTTP 已验证官网讲座指引、认领顾问可查看研判且其他员工拒绝、正式日报调用 Dify 返回四字段。ENT 32 节点版已验证查待办、取消、确认后只写入一次和重复确认拦截。合成业务数据已清理。STU 新 DSL 以统一学生 API 为准；旧 `/api/stu` 联调说明作废。
 

@@ -54,6 +54,8 @@ async def ask_dify(
     if not isinstance(answer, str) or not answer.strip():
         raise BusinessError(502, "学生助手未返回有效答复")
     text = answer.strip()
+    if _looks_like_flow_failure(text):
+        raise BusinessError(502, "学生助手暂不可用，请稍后重试")
     return {
         "reply": text,
         "answer": text,
@@ -61,3 +63,18 @@ async def ask_dify(
         "form": None,
         "data": {"source": "dify"},
     }
+
+
+_FLOW_FAILURE_MARKERS = (
+    "Run failed",
+    "Request failed with status code",
+    "Traceback (most recent call last)",
+    "暂时没有得到有效回复",
+    "学生助手未返回有效答复",
+)
+
+
+def _looks_like_flow_failure(text: str) -> bool:
+    """Dify returns its own runtime errors as the answer; treat them as outages."""
+    head = (text or "")[:120]
+    return any(marker in head for marker in _FLOW_FAILURE_MARKERS)

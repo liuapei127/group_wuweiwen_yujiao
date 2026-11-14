@@ -4,7 +4,7 @@ import {useState, type ReactNode} from 'react'
 import {AcademicDeadlines, academicDeadlineEndpoint} from './AcademicDeadlines'
 import {PolicyCards, type PolicyData} from './WebsitePolicies'
 import {WebsiteGuide, type GuideTopic} from './WebsiteGuide'
-import {WebsiteAssistant} from './WebsiteAssistant'
+import {StudentAssistant} from './StudentAssistant'
 import {ProgressPager, ProgressTable, type Progress} from './ApplicationProgress'
 
 type LeaveRequest = {leave_type: 'sick' | 'personal' | 'emergency'; start_time: string; end_time: string; reason: string}
@@ -30,7 +30,7 @@ const statuses: Record<string, string> = {
 }
 
 export function Student({request, accountRecords}: {request: Request; accountRecords: ReactNode}) {
-  const [activeTab, setActiveTab] = useState('leaves')
+  const [activeTab, setActiveTab] = useState('guide')
   const profile = useQuery({
     queryKey: ['visitor', 'student', 'profile'],
     queryFn: () => request<{abroad_country: string | null}>(prefix + '/profile'),
@@ -51,8 +51,8 @@ export function Student({request, accountRecords}: {request: Request; accountRec
       description={'截止时间（北京时间）' + nextDeadline.deadline.slice(0, 16).replace('T', ' ')}
       action={<Button onClick={() => setActiveTab('deadlines')}>查看考务</Button>}/>}
     <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
-      {key: 'guide', label: '服务指引', children: <>
-        <WebsiteAssistant title="学生助手" ask={(query, history) => request(prefix + '/assistant', 'POST', {query, history})}/>
+      {key: 'guide', label: '学生助手', children: <>
+        <StudentAssistant request={request}/>
         <WebsiteGuide topics={studentTopics} open={setActiveTab}/>
       </>},
       {key: 'leaves', label: '请假申请', children: <Leaves request={request}/>},

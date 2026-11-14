@@ -35,9 +35,15 @@ class Settings(BaseSettings):
     cs_public_dify_api_key: SecretStr = SecretStr('')
     stu_dify_api_key: SecretStr = SecretStr('')
     pf_dify_api_key: SecretStr = SecretStr('')
+    # Mem0 Platform API key. Empty → local per-account memory table (stu_mem0_memory).
+    mem0_api_key: SecretStr = SecretStr('')
     cs_chat_max_concurrent: int = Field(default=8, ge=1)
     cs_chat_queue_timeout_sec: float = Field(default=3, gt=0)
     cs_chat_rate_per_minute_per_ip: int = Field(default=12, ge=1)
+    # 学生助手独立容量：与客服互不挤占；Dify 回流 /assistant/run 只计频率不占槽位。
+    stu_chat_max_concurrent: int = Field(default=8, ge=1)
+    stu_chat_queue_timeout_sec: float = Field(default=3, gt=0)
+    stu_chat_rate_per_minute_per_ip: int = Field(default=30, ge=1)
     company_complaint_manager_id: int | None = Field(default=None, ge=1)
     assistant_api_url: str = 'http://127.0.0.1:8002'
 

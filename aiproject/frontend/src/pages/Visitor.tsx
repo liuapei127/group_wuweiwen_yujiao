@@ -194,7 +194,13 @@ export function Visitor() {
     <section id="visitor-services" className="visitor-section">
       <Typography.Title level={2}>游客服务</Typography.Title>
       {!token && <>
-        <WebsiteAssistant title="官网客服" ask={(query) => visitorApi('/api/cs/chat', '', 'POST', {query})}/>
+        <Alert
+          type="info"
+          showIcon
+          style={{marginBottom: 16}}
+          title="学生助手需要登录"
+          description="请假、查进度、投诉、对话记忆都在登录后的学生页。请先用官网账号登录；未开通学生权限时只会看到游客服务。"
+        />
         <WebsiteGuide topics={publicTopics}/>
       </>}
       {token ? <VisitorServices token={token} expire={expire}/> : <Card className="visitor-login" title={register ? '注册游客账号' : '官网登录'}>
@@ -294,7 +300,11 @@ function VisitorServices({token, expire}: {token: string; expire: () => void}) {
 
   return <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
     {key: 'guide', label: '服务指引', children: <>
-      <WebsiteAssistant title="登录客服" ask={(query) => visitorApi<{answer: string}>('/api/cs/visitor/chat', token, 'POST', {query}).catch(error => {
+      <WebsiteAssistant
+        title="登录客服"
+        hints={['活动怎么预约', '材料怎么交', '有哪些留学项目']}
+        intro="这里是游客客服。请假、投诉、学籍进度请到学生页使用学生助手。"
+        ask={(query) => visitorApi<{answer: string}>('/api/cs/visitor/chat', token, 'POST', {query}).catch(error => {
         if (error instanceof VisitorApiError && error.status === 401) expire()
         throw error
       })}/>

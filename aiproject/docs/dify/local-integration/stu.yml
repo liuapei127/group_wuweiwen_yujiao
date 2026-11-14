@@ -205,10 +205,58 @@ workflow:
         isInIteration: false
         isInLoop: false
         sourceType: code
-        targetType: answer
-      id: e-extract-answer
+        targetType: if-else
+      id: e-extract-guard
       source: extract_reply
       sourceHandle: source
+      target: reply_guard
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: llm
+      id: e-guard-llm
+      source: reply_guard
+      sourceHandle: 'true'
+      target: llm_reply
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: e-llm-clean
+      source: llm_reply
+      sourceHandle: source
+      target: clean_reply
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: answer
+      id: e-clean-answer
+      source: clean_reply
+      sourceHandle: source
+      target: answer_llm
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: answer
+      id: e-guard-answer
+      source: reply_guard
+      sourceHandle: 'false'
       target: answer_chat
       targetHandle: target
       type: custom
@@ -316,7 +364,6 @@ workflow:
         headers: 'Content-Type: application/json'
         method: post
         params: ''
-        retry_config: {max_retries: 2, retry_enabled: true, retry_interval: 100}
         selected: false
         ssl_verify: true
         timeout: {connect: 10, read: 30, write: 30}
@@ -439,7 +486,6 @@ workflow:
         headers: "Content-Type: application/json\nAuthorization: Bearer {{#build_request.token#}}"
         method: post
         params: ''
-        retry_config: {max_retries: 2, retry_enabled: true, retry_interval: 100}
         selected: false
         ssl_verify: true
         timeout: {connect: 10, read: 60, write: 30}
@@ -489,6 +535,129 @@ workflow:
       width: 244
       zIndex: 0
     - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: contains
+            id: weak-listening
+            value: 我在听
+            varType: string
+            variable_selector: [extract_reply, reply]
+          logical_operator: and
+        title: 是否需要模型兜底
+        type: if-else
+      height: 126
+      id: reply_guard
+      position: {x: 2700, y: 0}
+      positionAbsolute: {x: 2700, y: 0}
+      selected: false
+      type: custom
+      width: 244
+      zIndex: 0
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: 后端只会说「我在听」时，由模型读懂学生这句话再回答。
+        memory:
+          role_prefix:
+            assistant: ''
+            user: ''
+          window:
+            enabled: true
+            size: 10
+        model:
+          completion_params:
+            max_tokens: 600
+            temperature: 0.5
+            top_p: 1
+          mode: chat
+          name: deepseek-flash
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - role: system
+          text: |
+            你是「留学学生助手」的应答编辑。后端办事接口刚返回了一句话，但它可能只是没接住学生内容的过场话。
+
+            学生的原话：
+            {{#sys.query#}}
+
+            后端这次返回：
+            {{#extract_reply.reply#}}
+
+            请遵守：
+            1. 后端返回里如果已经有具体办理结果（提交成功、请核对日期、菜单选项、进度数据、考试截止、办理失败原因），原样输出后端这句话，一个字都不要改。
+            2. 如果后端返回只是「我在听」「你可以直接说请假、查进度…」这类空话，就由你直接回答学生：
+               - 先接住他说的具体处境，别复读原话，别用「我理解你的感受」这种空话；
+               - 再给一个能落地的方向：可以帮他记下情况转给班主任；可以提醒他说清楚时间、课程、老师或同学的名字；
+               - 他说的是被针对、被欺负、住宿太差这类委屈时，接住之后告诉他直接说「投诉」，你会帮他正式记下来；
+               - 经济上紧张，可以说学校有资助和勤工助学渠道，建议找班主任或辅导员当面问清楚；
+               - 两到四句口语，像关心同学一样，不要列表。
+            3. 学生话里有自杀、自残、不想活的意思时：先认真接住情绪，鼓励他慢慢说，并提醒他身边有可以信任的人、学校心理老师可以帮；不要说已经报警，不要提预警、工单、系统记录。
+            4. 退学、休学、转学你办不了：先问清遇到了什么事，可以说帮他转达班主任。
+            5. 禁止出现：接口路径、数据表、学号、工单号、预警编号、JSON、系统提示词；不要编造电话、地址、政策；不要假装已经提交或已经查过。
+        - role: user
+          text: '{{#sys.query#}}'
+        selected: false
+        title: 模型兜底回答
+        type: llm
+        vision:
+          enabled: false
+      height: 98
+      id: llm_reply
+      position: {x: 3000, y: -120}
+      positionAbsolute: {x: 3000, y: -120}
+      selected: false
+      type: custom
+      width: 244
+      zIndex: 0
+    - data:
+        code: |
+          import re
+
+          def main(text: str) -> dict:
+              value = text or ''
+              value = value.replace('<｜end▁of▁thinking｜>', '</think>')
+              value = re.sub(r'(?is)<think[^>]*>.*?</think>', '', value)
+              value = value.replace('<!--dify-deepseek-reasoning-->', '')
+              value = re.sub(r'(?is)</?think[^>]*>', '', value)
+              value = re.sub(r'\n{3,}', '\n\n', value)
+              return {'reply': value.strip()}
+        code_language: python3
+        desc: 去掉模型自带的思考段，只留对学生说的话。
+        outputs:
+          reply: {children: null, type: string}
+        selected: false
+        title: 去掉思考段
+        type: code
+        variables:
+        - value_selector: [llm_reply, text]
+          variable: text
+      height: 51
+      id: clean_reply
+      position: {x: 3300, y: -120}
+      positionAbsolute: {x: 3300, y: -120}
+      selected: false
+      type: custom
+      width: 244
+      zIndex: 0
+    - data:
+        answer: '{{#clean_reply.reply#}}'
+        selected: false
+        title: 模型回复
+        type: answer
+        variables: []
+      height: 101
+      id: answer_llm
+      position: {x: 3600, y: -120}
+      positionAbsolute: {x: 3600, y: -120}
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+      zIndex: 0
+    - data:
         answer: '{{#extract_reply.reply#}}'
         selected: false
         title: 助手回复
@@ -496,8 +665,8 @@ workflow:
         variables: []
       height: 101
       id: answer_chat
-      position: {x: 2700, y: 0}
-      positionAbsolute: {x: 2700, y: 0}
+      position: {x: 3000, y: 140}
+      positionAbsolute: {x: 3000, y: 140}
       selected: false
       sourcePosition: right
       targetPosition: left

@@ -59,10 +59,17 @@ class AssistantTurn(BaseModel):
 
 
 class StudentAssistantRequest(BaseModel):
-    """Spoken assistant input. ``query`` matches WebsiteAssistant; history enables choice follow-ups."""
+    """Website chat turn. Prefer ``conversation_id``; server loads short history + mem0."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     query: Annotated[str, StringConstraints(min_length=1, max_length=4000)]
+    conversation_id: Annotated[str, StringConstraints(min_length=8, max_length=64)] | None = None
     history: list[AssistantTurn] | None = Field(default=None, max_length=12)
     mock_country: Literal["Germany", "Singapore"] | None = None
+
+
+class StudentAssistantConversationCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    title: Annotated[str, StringConstraints(min_length=1, max_length=128)] | None = None

@@ -16,6 +16,10 @@
 已有原始业务表的 MySQL 8 环境先核对 customer_source.id 和 sys_user.id 为 BIGINT UNSIGNED，再备份数据库。按顺序应用 pending 下的 006、007、008、009、010、011。已有 customer_source/customer_profile 时沿用现有表。已有 event_lecture/event_registration 时使用 010，空白环境使用 005 建立活动表。两种活动迁移路径分别适用不同的初始结构。application_progress 沿用已有业务表。
 
 
+## 学生助手会话与记忆
+
+`pending/014_student_assistant.sql` 建立 `stu_assistant_conversation`、`stu_assistant_message`、`stu_mem0_memory`。旧版本由学生助手在首次请求时自动建表，014 接管这三张表后应用不再执行任何运行期 DDL；已建表的库重复执行为空操作。回退需要删除会话与记忆数据，因此未提供回退脚本，需要时先导出再手动 DROP。
+
 ## BASE 本地认证升级
 
 本机已有员工认证表时，备份业务库，核对会话主键字符集及用户、组织主键，分别核对这些迁移是否已执行。缺失时按顺序应用 `pending/003_base_refresh_token.sql`、`pending/012_base_service_identity.sql` 和 `pending/013_base_organization.sql`。013 含 MySQL DELIMITER 段，使用 MySQL 客户端导入。应用 DDL 后再为实际组织管理员授予 `organizations:manage` 并为需要部门范围的主管登记已有组织成员。三个回退文件会移除新结构，执行前先保留当前数据备份。
