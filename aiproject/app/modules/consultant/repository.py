@@ -3,6 +3,8 @@ from app.modules.consultant.errors import ConflictError
 from sqlalchemy.orm import Session
 
 from app.modules.consultant.models import CrmFollowUp, CrmLead
+from app.modules.consultant.status_events import LeadStatusEvent
+from app.modules.statistics.periods import beijing_now
 from app.modules.consultant.schemas import LeadCreate, LeadListParams, LeadUpdate
 from app.shared.utils.time_util import now_naive
 
@@ -24,6 +26,10 @@ class ConsultantRepository:
 
     def get_lead(self, lead_id: int) -> CrmLead | None:
         return self.db.get(CrmLead, lead_id)
+
+    def lock_lead(self, lead_id: int) -> CrmLead | None:
+        return self.db.scalar(select(CrmLead).where(CrmLead.id == lead_id).with_for_update()
+                              .execution_options(populate_existing=True))
 
     def list_leads(self, params: LeadListParams) -> tuple[list[CrmLead], int]:
         stmt = select(CrmLead)
@@ -56,6 +62,9 @@ class ConsultantRepository:
         lead.status = status
         lead.lost_reason = lost_reason
         lead.update_time = now_naive()
+        if status in {"signed", "lost"}:
+            self.db.add(LeadStatusEvent(lead_id=lead.id, status=status, occurred_at=beijing_now(),
+                                        reason=lost_reason if status == "lost" else None))
         self.db.commit()
         self.db.refresh(lead)
         return lead

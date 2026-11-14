@@ -92,10 +92,10 @@ def formal_employee_report(
     period = "day" if request.report_kind == "daily" else "week"
     statistics = employee_report_summary(db, principal, request.anchor or beijing_now().date(), period)
     scope = _report_department(db, principal)
-    payload, contributor_ids = _report_payload(db, statistics, scope)
+    payload, contributor_ids = _report_payload(db, statistics, scope, period)
     # The workflow is remote. Release the database snapshot before waiting for it.
     db.rollback()
-    if statistics.submitted_employee_days:
+    if contributor_ids:
         sections = formal_dify.generate_summary(request.report_kind, payload)
     else:
         sections = FormalReportSections(
@@ -121,7 +121,7 @@ def formal_employee_report(
     )
 
 
-def _report_payload(db: Session, statistics: EmployeeReportSummary, scope: str | int | None) -> tuple[str, set[int]]:
+def _report_payload(db: Session, statistics: EmployeeReportSummary, scope: str | int | None, period: str) -> tuple[str, set[int]]:
     header = json.dumps({
         "scope": {"department": statistics.department},
         "period": {"start": statistics.period_start.isoformat(), "end": statistics.period_end.isoformat()},
@@ -142,6 +142,20 @@ def _report_payload(db: Session, statistics: EmployeeReportSummary, scope: str |
             if size > _MAX_PAYLOAD_CHARS:
                 raise BusinessError(422, "报告内容超过工作流上限，请缩小报告时间或部门范围")
             rows.append(entry)
+    if period == "week":
+        start = statistics.period_start
+        for employee_id, name, department, weekly in repository.weekly_report_rows(db, start, scope):
+            record = {
+                "name": name, "department": department, "report_date": start.isoformat(),
+                "record_kind": "weekly", "content": weekly.content, "key_progress": weekly.key_progress,
+                "risks": weekly.risks, "next_plan": weekly.next_plan,
+            }
+            entry = json.dumps(record, ensure_ascii=False, separators=(",", ":"))
+            size += len(entry) + bool(rows)
+            if size > _MAX_PAYLOAD_CHARS:
+                raise BusinessError(422, "报告内容超过工作流上限，请缩小报告时间或部门范围")
+            rows.append(entry)
+            contributor_ids.add(employee_id)
     return header[:-1] + ',"employees":[' + ",".join(rows) + "]}", contributor_ids
 
 

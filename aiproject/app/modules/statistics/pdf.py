@@ -82,6 +82,13 @@ def render_report(report: dict) -> bytes:
     for key, label in SECTIONS:
         if key in body.get("sections", {}):
             story.extend([CondPageBreak(68), para(label, section_heading), para(body["sections"][key])])
+    if "submissions" in body:
+        submissions = body["submissions"]
+        story.append(para(f"应交 {submissions['expected']} 人 · 已交 {submissions['submitted']} 人 · 未交 {submissions['missing']} 人", note))
+        add_table("分部门提交情况", ["部门", "应交", "已交", "未交"], [
+            [row["department"] or "未填写部门", row["expected"], row["submitted"], row["missing"]]
+            for row in submissions["departments"]
+        ])
     if "days" in body:
         add_table(f"日报提交统计 · 累计 {body['submitted_employee_days']} 人次", ["日期", "提交人数"],
                   [[row["report_date"], row["submitted_employees"]] for row in body["days"]])
@@ -93,6 +100,25 @@ def render_report(report: dict) -> bytes:
             [STATUSES.get(row["status"], row["status"]), RISKS.get(row["risk_level"], row["risk_level"]), row["count"]]
             for row in body["items"]
         ])
+
+    for key, label in (
+        ("transitions", "签约和流失"), ("lost_reasons", "流失原因"), ("categories", "投诉分类"),
+        ("backlog", "积压账龄"), ("satisfaction", "满意度"),
+    ):
+        if key in body:
+            add_table(label, ["分类", "数量"], [[STATUSES.get(name, name), count] for name, count in body[key].items()])
+    if body.get("as_of"):
+        story.append(para(f"积压快照生成时间  {body['as_of']}", note))
+    if body.get("status_history_since"):
+        story.append(para(f"签约、流失从 {body['status_history_since']} 起开始记录", note))
+    if "eligible" in body:
+        coverage = "低于展示人数" if body.get("suppressed") else str(body["participants"])
+        story.append(para(f"统计范围 {body['eligible']} 人 · 参与自评 {coverage}", heading))
+        for key, label in (("emotion", "情绪趋势"), ("stress", "压力趋势")):
+            add_table(label, ["日期", "分类", "人数"], [[row["day"], row["label"], row["count"]] for row in body[key]])
+    for key, label in (("ai_summary", "AI 摘要"), ("suggestion", "审核建议")):
+        if body.get(key):
+            story.extend([CondPageBreak(68), para(label, section_heading), para(body[key])])
 
     def footer(canvas, doc):
         canvas.saveState()

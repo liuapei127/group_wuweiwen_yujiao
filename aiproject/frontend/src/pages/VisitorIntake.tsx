@@ -94,7 +94,7 @@ export function VisitorIntake() {
       extra={tab !== "advisor" && <Button onClick={() => void list.refetch()}>刷新</Button>}/>
     <Card>
       <Tabs activeKey={tab} onChange={key => {setAfter(0); setTab(key)}} items={[
-        ...(can('crm:read') ? [{key: 'advisor', label: '顾问资料', children: <AdvisorMaterials canWrite={can('crm:write')}/>}]: []),
+        ...(can('crm:read') ? [{key: 'advisor', label: '客户资料录入', children: <AdvisorMaterials canWrite={can('crm:write')}/>}]: []),
         {key: 'pending', label: '待认领', children: <>
           <ErrorNotice error={pending.error}/>
           <Table rowKey="visitor_id" dataSource={pending.data || []} loading={pending.isFetching}
@@ -364,29 +364,29 @@ function AdvisorMaterials({canWrite}: {canWrite: boolean}) {
       setBefore(undefined)
       setActive(item.source_id)
       void cache.invalidateQueries({queryKey: scope})
-      void message.success('顾问资料已上传')
+      void message.success('客户资料已提交')
     },
   })
   return <Space orientation="vertical" style={{width: '100%'}}>
     {canWrite && <Form form={form} layout="vertical" onFinish={values => upload.mutate(values)}>
-      <Form.Item name="raw_content" label="材料说明">
-        <Input.TextArea maxLength={16000} placeholder="可粘贴单个客户的资料"/>
+      <Form.Item name="raw_content" label="客户资料说明">
+        <Input.TextArea maxLength={16000} placeholder="可粘贴顾问收集的单个客户资料"/>
       </Form.Item>
       <Form.Item label="附件" htmlFor="advisor-material-file">
         <input id="advisor-material-file" ref={file} type="file" accept=".txt,.csv,.pdf,.xls,.xlsx"/>
       </Form.Item>
-      <Button type="primary" htmlType="submit" loading={upload.isPending}>上传顾问资料</Button>
+      <Button type="primary" htmlType="submit" loading={upload.isPending}>提交客户资料</Button>
     </Form>}
     <ErrorNotice error={upload.error || list.error}/>
     <Table<AdvisorSource> rowKey="source_id" dataSource={list.data ?? []} loading={list.isFetching} pagination={false} columns={[
-      {title: '资料', render: (_, row) => row.file_name || '文字资料'},
+      {title: '客户资料', render: (_, row) => row.file_name || '文字资料'},
       {title: '上传时间（北京时间）', dataIndex: 'submitted_at', render: beijingTime},
       {title: '初筛结果', render: (_, row) => row.screening ? screeningStatuses[row.screening.status] : '待研判'},
       {title: '操作', render: (_, row) => <Button type="link" onClick={() => setActive(row.source_id)}>查看与研判</Button>},
     ]}/>
     <HistoryPaging before={before} count={list.data?.length ?? 0} reset={() => setBefore(undefined)}
       next={() => setBefore(list.data?.at(-1)?.source_id)}/>
-    <Drawer title="顾问资料研判" open={active !== undefined} onClose={() => setActive(undefined)} size="large">
+    <Drawer title="客户资料研判" open={active !== undefined} onClose={() => setActive(undefined)} size="large">
       {active !== undefined && <AdvisorReview key={active} id={active} canWrite={canWrite}
         onSaved={() => void cache.invalidateQueries({queryKey: scope})}/>}
     </Drawer>

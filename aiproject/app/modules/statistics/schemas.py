@@ -52,3 +52,4 @@ class ScheduleWrite(BaseModel):
     kind: ScheduleKind
     run_at: time
     enabled: bool = True
+    weekly: bool | None = None

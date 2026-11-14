@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     dify_ent_chatflow_api_key: SecretStr = SecretStr('')
     dify_report_transcription_api_key: SecretStr = SecretStr('')
     dify_employee_formal_api_key: SecretStr = SecretStr('')
+    reporting_llm_base_url: str = ""
+    reporting_llm_api_key: SecretStr = SecretStr("")
+    reporting_llm_model: str = ""
     dify_timeout_seconds: int = Field(default=45,ge=5,le=120)
     # 使用仅面向公开知识的客服应用，独立于员工工作流。
     cs_public_dify_api_key: SecretStr = SecretStr('')

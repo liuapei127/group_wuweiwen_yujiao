@@ -34,3 +34,5 @@ ENT 的 Chatflow 配置见 ent.yml。Dify 负责探活和指令抽取，员工�
 员工日报的录音转写使用 Dify 的语音转文字 API。在 Dify 配置默认语音转文字模型，并在用于转写的应用中启用语音转写后发布。配置 DIFY_REPORT_TRANSCRIPTION_API_KEY 可指定该应用，留空时使用企业助手 Chatflow 密钥。浏览器在 HTTPS 或本机地址录音。
 
 ENT 32 节点版和 3 节点备用工作流使用同一动作目录。更新后依次运行 python -m scripts.build_ent_chatflow、python -m scripts.build_portal_intent_workflow 和 python -m scripts.refresh_ent_portal_chatflow，最后一步需要 PyYAML。部署时导入 local-integration/ent.yml 和 ent-portal-intent-workflow.yml。工作台「AI 助手」中的录音经 FastAPI 使用已有 Dify 语音模型，确认发送后才进入意图提取。
+
+智报中心的投诉摘要、心理群体建议和员工报告比对可复用 RPT 工作流。更新 `rpt.yml` 并发布后，沿用现有 `DIFY_EMPLOYEE_FORMAL_API_KEY`。若完整配置 `REPORTING_LLM_*` 则优先使用独立模型。

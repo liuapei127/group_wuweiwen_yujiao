@@ -4,6 +4,7 @@ import {useState, type ReactNode} from 'react'
 import {AcademicDeadlines, academicDeadlineEndpoint} from './AcademicDeadlines'
 import {PolicyCards, type PolicyData} from './WebsitePolicies'
 import {WebsiteGuide, type GuideTopic} from './WebsiteGuide'
+import {StudentWellbeing} from './Wellbeing'
 import {StudentAssistant} from './StudentAssistant'
 import {ProgressPager, ProgressTable, type Progress} from './ApplicationProgress'
 
@@ -62,6 +63,7 @@ export function Student({request, accountRecords}: {request: Request; accountRec
       {key: 'progress', label: '申请进度', children: <MyProgress request={request}/>},
       {key: 'overseas', label: '海外生活', children: <OverseasLife request={request}/>},
       {key: 'policies', label: '留学政策', children: <Policies request={request}/>},
+      {key: 'wellbeing', label: '自评与关怀', children: <StudentWellbeing request={request}/>},
       {key: 'account-records', label: '我的材料与活动', children: accountRecords},
     ]}/>
   </section>

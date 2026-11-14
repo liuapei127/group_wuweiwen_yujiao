@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.consultant.models import CrmLead
 from app.modules.feedback.models import student_feedback_ticket
-from app.modules.employee_report.models import EmployeeDailyReport
+from app.modules.employee_report.models import EmployeeDailyReport, WeeklySubmission
 from app.modules.organization.membership import managed_employees_query
 from app.modules.student_admin.models import SysUser
 
@@ -115,3 +115,13 @@ def active_department_members(db: Session, department: str) -> set[int]:
     return set(db.scalars(select(SysUser.id).where(
         SysUser.department == department, SysUser.user_type == "employee", SysUser.status == "normal",
     )))
+
+def weekly_report_rows(db: Session, start: date, department: str | int | None):
+    query = select(SysUser.id, SysUser.real_name, SysUser.department, WeeklySubmission).join(
+        WeeklySubmission, WeeklySubmission.employee_id == SysUser.id).where(
+        WeeklySubmission.week_start == start, SysUser.user_type == "employee", SysUser.status == "normal")
+    if isinstance(department, int):
+        query = query.where(SysUser.id.in_(managed_employees_query(department)))
+    elif department is not None:
+        query = query.where(SysUser.department == department)
+    return db.execute(query.order_by(SysUser.id))

@@ -35,7 +35,7 @@ class ConsultantService:
         return self.repo.patch_lead_fields(lead, payload)
 
     def update_status(self, lead_id: int, payload: LeadStatusUpdate, operator_employee_id: int):
-        lead = self.repo.get_lead(lead_id)
+        lead = self.repo.lock_lead(lead_id)
         if not lead:
             raise ValueError("意向客户不存在")
         if lead.owner_employee_id != operator_employee_id:

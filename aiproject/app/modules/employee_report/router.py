@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.core.responses import success
 from app.modules.employee_report.schemas import DailyReportCreate, DailyReportOut
 from app.modules.employee_report.service import EmployeeReportService
+from .weekly import WeeklyWrite, get_weekly, store_weekly
 from .transcription import MAX_AUDIO_BYTES, transcribe_audio
 
 router = APIRouter(prefix="/api/v1/employee-reports", tags=["企业助手-员工日报"])
@@ -47,3 +48,16 @@ def list_reports(
 async def transcribe_report(file: UploadFile, principal: EmployeePrincipal = Depends(require_employee)):
     audio = await file.read(MAX_AUDIO_BYTES + 1)
     return success({"text": await transcribe_audio(audio)})
+
+
+@router.get("/weekly")
+def my_weekly(anchor: date, db: Session = Depends(get_db), principal: EmployeePrincipal = Depends(require_employee)):
+    row = get_weekly(db, principal.employee_id, anchor)
+    if row is None:
+        return success(None)
+    return success({key: getattr(row, key) for key in ("week_start", "content", "key_progress", "risks", "next_plan", "submitted_at")})
+
+
+@router.put("/weekly")
+def save_weekly(body: WeeklyWrite, db: Session = Depends(get_db), principal: EmployeePrincipal = Depends(require_employee)):
+    return success(store_weekly(db, principal.employee_id, body))

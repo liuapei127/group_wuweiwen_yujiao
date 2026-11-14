@@ -34,10 +34,10 @@ DEMO_GRANTS = {
 }
 
 
-def read_ddl():
+def read_ddl(path=SCHEMA):
     delimiter = ";"
     buffer = []
-    for line in SCHEMA.read_text(encoding="utf-8").splitlines():
+    for line in path.read_text(encoding="utf-8").splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("--"):
             continue
@@ -126,6 +126,11 @@ def main():
             conn.commit()
         with engine.begin() as conn:
             accounts = seed_accounts(conn)
+        with engine.connect() as conn:
+            for migration in ("014_student_assistant.sql", "015_reporting_board.sql", "016_website_content.sql"):
+                for ddl in read_ddl(SCHEMA.parent / "pending" / migration):
+                    conn.exec_driver_sql(ddl)
+            conn.commit()
     finally:
         engine.dispose()
 

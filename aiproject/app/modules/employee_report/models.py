@@ -19,3 +19,15 @@ class EmployeeDailyReport(Base):
     next_plan: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(Enum("draft", "submitted"), default="submitted", nullable=False)
     create_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class WeeklySubmission(Base):
+    __tablename__ = "employee_weekly_submission"
+
+    employee_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
+    week_start: Mapped[date] = mapped_column(Date, primary_key=True)
+    content: Mapped[str] = mapped_column(Text)
+    key_progress: Mapped[str | None] = mapped_column(Text)
+    risks: Mapped[str | None] = mapped_column(Text)
+    next_plan: Mapped[str | None] = mapped_column(Text)
+    submitted_at: Mapped[datetime] = mapped_column(DateTime)

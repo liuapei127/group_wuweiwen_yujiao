@@ -23,3 +23,11 @@
 ## BASE 本地认证升级
 
 本机已有员工认证表时，备份业务库，核对会话主键字符集及用户、组织主键，分别核对这些迁移是否已执行。缺失时按顺序应用 `pending/003_base_refresh_token.sql`、`pending/012_base_service_identity.sql` 和 `pending/013_base_organization.sql`。013 含 MySQL DELIMITER 段，使用 MySQL 客户端导入。应用 DDL 后再为实际组织管理员授予 `organizations:manage` 并为需要部门范围的主管登记已有组织成员。三个回退文件会移除新结构，执行前先保留当前数据备份。
+
+## 官网栏目与卡片
+
+已有数据库在员工角色表和权限表就绪后应用 `pending/016_website_content.sql`。迁移建立官网栏目和卡片表，将首页原有文案写入并为管理员授予官网内容管理权限。
+
+## 智报中心
+
+应用 `pending/015_reporting_board.sql` 后再启动新版工作台和扫描任务。迁移建立签约流失事件、员工周报、自评与关怀表。签约和流失从迁移之日开始记录。

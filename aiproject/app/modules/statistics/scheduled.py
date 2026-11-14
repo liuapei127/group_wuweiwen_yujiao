@@ -11,6 +11,7 @@ from app.modules.auth.repository import AuthRepository
 from app.modules.organization.membership import managed_employees_query
 from app.modules.student import alerts
 
+from . import board_service, wellbeing
 from . import repository as statistics_repository
 from . import scheduled_repository as repository, service
 from .periods import beijing_now as _now, week_bounds, week_monday
@@ -46,8 +47,9 @@ def _allowed_kinds(db: Session, principal: EmployeePrincipal) -> tuple[str, ...]
 
 def _schedule_view(row):
     run_at = _scheduled_time(row["schedule_cron"], row["report_type"], _now())
+    weekly = row["schedule_cron"].split()[-1:] == ["1"] if row["report_type"] == "customer_ops" else row["report_type"] in _WEEKLY
     return {"kind": row["report_type"], "run_at": run_at.strftime("%H:%M") if run_at else "09:00",
-            "enabled": bool(row["enabled"]), "last_run_time": row["last_run_time"]}
+            "enabled": bool(row["enabled"]), "last_run_time": row["last_run_time"], "weekly": weekly}
 
 
 def preferences(db: Session, principal: EmployeePrincipal):
@@ -66,6 +68,8 @@ def preferences(db: Session, principal: EmployeePrincipal):
 def configure(db: Session, principal: EmployeePrincipal, payload: ScheduleWrite):
     if payload.kind not in _allowed_kinds(db, principal):
         raise BusinessError(403, "缺少该报表的查看权限")
+    if payload.weekly is not None and payload.kind != "customer_ops" and payload.weekly != (payload.kind in _WEEKLY):
+        raise BusinessError(422, "此报表的生成频率固定")
     if payload.run_at.tzinfo is not None or payload.run_at.second or payload.run_at.microsecond:
         raise BusinessError(422, "请选择北京时间的小时和分钟")
     try:
@@ -73,7 +77,10 @@ def configure(db: Session, principal: EmployeePrincipal, payload: ScheduleWrite)
             raise BusinessError(403, "员工账号不可用")
         previous = next((row for row in repository.own_schedules(db, principal.employee_id)
                          if row["report_type"] == payload.kind), None)
-        cron = f"{payload.run_at.minute} {payload.run_at.hour} * * {1 if payload.kind in _WEEKLY else '*'}"
+        weekly = payload.kind in _WEEKLY or bool(payload.weekly)
+        if payload.kind == "customer_ops" and payload.weekly is None and previous:
+            weekly = _schedule_view(previous)["weekly"]
+        cron = f"{payload.run_at.minute} {payload.run_at.hour} * * {1 if weekly else '*'}"
         now = _now()
         values = {"schedule_cron": cron, "enabled": int(payload.enabled), "update_time": now}
         if previous:
@@ -193,37 +200,45 @@ def _generate_due_report(db: Session, row, now: datetime) -> bool:
     )
     if kind not in _allowed_kinds(db, principal):
         return False
-    periods = jsonable_encoder(_snapshot(db, principal, kind, timing.date() - timedelta(days=1)))
+    weekly_customers = kind == "customer_ops" and row["schedule_cron"].split()[-1:] == ["1"]
+    anchor = timing.date() - timedelta(days=1)
+    snapshot = _snapshot(db, principal, kind, anchor, weekly_customers=weekly_customers)
+    periods = jsonable_encoder(snapshot)
     scope = service._report_department(db, principal) if kind != "psych_weekly" else None
     department_members = sorted(db.scalars(managed_employees_query(scope))) if isinstance(scope, int) else None
     payload = {**periods, "scope_version": 1, "department": periods.get("department"),
                "department_members": department_members,
                "student_ids": sorted(principal.student_ids) if kind == "psych_weekly" else [],
                "statistics": periods}
-    repository.record_report(db, employee_id, kind, REPORTS[kind][0], payload, now)
+    repository.record_report(db, employee_id, kind, "客户经营周报" if weekly_customers else REPORTS[kind][0], payload, now)
     db.execute(update(repository.schedules).where(repository.schedules.c.id == row["id"]).values(last_run_time=now))
     return True
 
 
 def _scheduled_time(spec: str, kind: str, now: datetime) -> datetime | None:
     parts = spec.split()
-    if len(parts) != 5 or parts[2:] != ["*", "*", "1" if kind in _WEEKLY else "*"]:
+    weekly = kind in _WEEKLY or (kind == "customer_ops" and parts[-1:] == ["1"])
+    if len(parts) != 5 or parts[2:] != ["*", "*", "1" if weekly else "*"]:
         return None
     try:
         minute, hour = map(int, parts[:2])
-        anchor = week_monday(now.date()) if kind in _WEEKLY else now.date()
+        anchor = week_monday(now.date()) if weekly else now.date()
         return now.replace(year=anchor.year, month=anchor.month, day=anchor.day, hour=hour, minute=minute, second=0)
     except ValueError:
         return None
 
 
-def _snapshot(db: Session, principal: EmployeePrincipal, kind: str, anchor):
+def _snapshot(db: Session, principal: EmployeePrincipal, kind: str, anchor, *, weekly_customers=False):
     if kind in ("daily_summary", "weekly_summary"):
         period = "day" if kind == "daily_summary" else "week"
-        return service.employee_report_summary(db, principal, anchor, period).model_dump()
+        data = service.employee_report_summary(db, principal, anchor, period).model_dump()
+        submissions = board_service.employee_board(db, principal, anchor, period, None, None, 0, 1)
+        data["submissions"] = {key: submissions[key] for key in ("expected", "submitted", "missing", "departments")}
+        return data
     if kind == "psych_weekly":
-        return alerts.weekly_alerts(db, principal, anchor)
-    start, end = week_bounds(anchor) if kind == "complaint_weekly" else (anchor, anchor)
-    data = service.operational_report(db, principal, start, end)
-    data.pop("leads_by_status" if kind == "complaint_weekly" else "complaints_by_status")
+        return wellbeing.desk_week(db, principal, anchor)
+    start, end = week_bounds(anchor) if kind == "complaint_weekly" or weekly_customers else (anchor, anchor)
+    data = board_service.operations(db, principal, "complaints" if kind == "complaint_weekly" else "customers", start, end)
+    data.pop("items", None)
+    data.pop("has_more", None)
     return data

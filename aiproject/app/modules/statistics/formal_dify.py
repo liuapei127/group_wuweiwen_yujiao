@@ -10,6 +10,10 @@ from .schemas import FormalReportKind, FormalReportSections
 
 
 def generate_summary(report_kind: FormalReportKind, report_payload: str) -> FormalReportSections:
+    return run_summary_workflow(report_kind, report_payload)
+
+
+def run_summary_workflow(report_kind: str, report_payload: str) -> FormalReportSections:
     settings = get_settings()
     key = settings.dify_employee_formal_api_key.get_secret_value().strip()
     if not key:
