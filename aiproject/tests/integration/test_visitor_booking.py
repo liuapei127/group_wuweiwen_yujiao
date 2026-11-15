@@ -30,16 +30,16 @@ def test_registered_visitors_can_manage_only_own_booking(isolated_portal):
 
         with TestClient(app) as client:
             assert client.post(reservation).status_code == 401
-            registration = {"username": " Visitor.One ", "password": password, "name": "访客一", "contact": "contact"}
+            registration = {"username": " 13900001001 ", "password": password, "name": "访客一", "contact": "contact"}
             one = client.post(identity + "/register", json=registration)
             assert one.status_code == 201
             token = one.json()["data"]["access_token"]
             assert client.post(identity + "/register", json=registration).status_code == 409
-            assert client.post(identity + "/login", json={"username": "visitor.one", "password": "wrong"}).status_code == 401
-            login = client.post(identity + "/login", json={"username": "visitor.one", "password": password})
+            assert client.post(identity + "/login", json={"username": "13900001001", "password": "wrong"}).status_code == 401
+            login = client.post(identity + "/login", json={"username": "13900001001", "password": password})
             assert login.status_code == 200
             assert login.json()["data"]["access_token"] != token
-            two = client.post(identity + "/register", json={**registration, "username": "visitor.two"})
+            two = client.post(identity + "/register", json={**registration, "username": "13900001002"})
             assert two.status_code == 201
             bearer = {"Authorization": "Bearer " + token}
             other = {"Authorization": "Bearer " + two.json()["data"]["access_token"]}
@@ -58,7 +58,7 @@ def test_registered_visitors_can_manage_only_own_booking(isolated_portal):
             assert client.post(reservation, headers=other).status_code == 200
 
             with Session(engine) as db:
-                row = db.scalar(select(VisitorAccount).where(VisitorAccount.username == "visitor.one"))
+                row = db.scalar(select(VisitorAccount).where(VisitorAccount.username == "13900001001"))
                 assert (row.name, row.contact) == ("访客一", "contact")
                 assert row.password_hash.startswith("$argon2")
                 assert db.get(VisitorSession, hashlib.sha256(token.encode()).hexdigest())

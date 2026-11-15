@@ -1,7 +1,8 @@
 import hashlib
 import re
+from base64 import b64encode
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import timedelta, timezone
 from secrets import token_hex, token_urlsafe
 
 from sqlalchemy.exc import IntegrityError
@@ -11,13 +12,17 @@ from app.core.exceptions import BusinessError
 from app.core.security import EmployeePrincipal
 from app.core.security.authorization import require_permission
 from app.modules.auth.repository import AuthRepository
-from app.modules.auth.schemas import PasswordReset
+from app.modules.auth.schemas import PasswordChange, PasswordReset
 from app.modules.student_admin.repository import StudentAdminRepository
-from app.core.security.credentials import hash_password, utc_now, verify_password
+from app.core.security.credentials import hash_password, password_for_reset, utc_now, verify_password
+from app.core.security.password_policy import reject_account_password
 
 from . import repository
+from .avatar import normalize_avatar
 from .models import VisitorAccount, VisitorSession, WebsiteStudentAccess
-from .schemas import VisitorLogin, VisitorRegister, VisitorToken, WebsiteAccountOut, WebsiteStudentCreate, WebsiteStudentUpdate
+from .schemas import (
+    VisitorLogin, VisitorRegister, VisitorToken, WebsiteAccountOut, WebsiteProfile, WebsiteStudentCreate, WebsiteStudentUpdate,
+)
 
 _SESSION_SECONDS = 3600
 _TOKEN_PATTERN = re.compile(r"visitor_[0-9a-f]{64}")
@@ -30,8 +35,9 @@ class VisitorPrincipal:
 
 
 def register(db: Session, payload: VisitorRegister) -> VisitorToken:
+    reject_account_password(payload.password, payload.username, payload.contact)
     account = VisitorAccount(
-        username=payload.username, name=payload.name, contact=payload.contact,
+        username=payload.username, name=payload.name or "未填写姓名", contact=payload.contact or payload.username,
         password_hash=hash_password(payload.password), created_at=utc_now(),
     )
     try:
@@ -42,7 +48,7 @@ def register(db: Session, payload: VisitorRegister) -> VisitorToken:
     except IntegrityError as exc:
         db.rollback()
         if repository.account_by_username(db, payload.username):
-            raise BusinessError(409, "用户名已被使用") from exc
+            raise BusinessError(409, "该手机号已注册") from exc
         raise
     except Exception:
         db.rollback()
@@ -89,6 +95,59 @@ def logout(db: Session, principal: VisitorPrincipal) -> None:
         raise
 
 
+def profile(db: Session, principal: VisitorPrincipal) -> WebsiteProfile:
+    account = repository.profile_account(db, principal.visitor_id)
+    if account is None:
+        raise BusinessError(401, "请重新登录官网")
+    return _profile(db, account, principal, repository.avatar_bytes(db, account.id))
+
+
+def change_avatar(db: Session, principal: VisitorPrincipal, content: bytes) -> WebsiteProfile:
+    image = normalize_avatar(content)
+    try:
+        account = repository.lock_website_account(db, principal.visitor_id)
+        if account is None or repository.session_visitor(db, principal.digest, utc_now(), lock=True) != account.id:
+            raise BusinessError(401, "请重新登录官网")
+        repository.save_avatar(db, account.id, image)
+        result = _profile(db, account, principal, image)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return result
+
+
+def _profile(db: Session, account: VisitorAccount, principal: VisitorPrincipal, image: bytes | None) -> WebsiteProfile:
+    return WebsiteProfile(
+        username=account.username, name=account.name, contact=account.contact,
+        created_at=account.created_at.replace(tzinfo=timezone.utc),
+        account_type="student" if website_student(db, principal) is not None else "visitor",
+        avatar_url="data:image/webp;base64," + b64encode(image).decode("ascii") if image else None,
+    )
+
+
+def change_password(db: Session, principal: VisitorPrincipal, payload: PasswordChange) -> dict[str, bool]:
+    try:
+        account = repository.lock_website_account(db, principal.visitor_id)
+        if account is None or repository.session_visitor(db, principal.digest, utc_now(), lock=True) != account.id:
+            raise BusinessError(401, "请重新登录官网")
+        if not verify_password(payload.old_password, account.password_hash):
+            raise BusinessError(400, "原密码不正确")
+        reject_account_password(payload.new_password, account.username, account.contact)
+        _replace_password(db, account, payload.new_password)
+        AuthRepository(db).audit(None, "website_password_change", account.id, {"actor_type": "website_account"})
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return {"relogin_required": True}
+
+
+def _replace_password(db: Session, account: VisitorAccount, password: str) -> None:
+    account.password_hash = hash_password(password)
+    repository.delete_website_sessions(db, account.id)
+
+
 def _issue_session(db: Session, visitor_id: int, *, student: bool = False) -> VisitorToken:
     token = "visitor_" + token_hex(32)
     db.add(VisitorSession(
@@ -118,8 +177,10 @@ def reset_website_password(
         account = repository.lock_website_account(db, visitor_id)
         if account is None:
             raise BusinessError(404, "官网账号不存在")
-        account.password_hash = hash_password(payload.new_password)
-        repository.delete_website_sessions(db, visitor_id)
+        password = password_for_reset(account.username, payload.new_password)
+        if payload.new_password is not None:
+            reject_account_password(password, account.username, account.contact)
+        _replace_password(db, account, password)
         AuthRepository(db).audit(employee.employee_id, "website_password_reset", visitor_id)
         db.commit()
     except Exception:

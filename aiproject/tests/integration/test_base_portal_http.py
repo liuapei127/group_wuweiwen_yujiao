@@ -29,6 +29,7 @@ def test_base_employee_cookies_refresh_replay_and_logout(isolated_portal, monkey
                 "ALTER TABLE ent_auth_session ADD last_used_at DATETIME",
                 "ALTER TABLE ent_auth_session ADD parent_session_id VARCHAR(36)",
                 "ALTER TABLE sys_user ADD username VARCHAR(64)",
+                "CREATE UNIQUE INDEX test_sys_user_username ON sys_user (username)",
                 "ALTER TABLE sys_user ADD password_hash VARCHAR(255)",
                 "ALTER TABLE sys_user ADD role_id INTEGER",
                 "ALTER TABLE sys_user ADD avatar_url VARCHAR(255)",
@@ -84,6 +85,19 @@ def test_base_employee_cookies_refresh_replay_and_logout(isolated_portal, monkey
             employee_login = client.post("/api/v1/auth/login", headers=origin, json=credentials)
             employee_access = {"Authorization": "Bearer " + employee_login.json()["data"]["access_token"]}
             employee_csrf = {**origin, "X-CSRF-Token": client.cookies["__Host-edu_csrf"]}
+            update_password = "/api/v1/auth/password"
+            non_ascii_password = "Abc中文123"
+            invalid = client.post(update_password, headers=employee_access, json={
+                "old_password": credentials["password"], "new_password": non_ascii_password,
+            })
+            assert invalid.status_code == 422 and non_ascii_password not in invalid.text
+            assert credentials["password"] not in invalid.text
+            assert client.post(update_password, headers=employee_access, json={
+                "old_password": credentials["password"], "new_password": credentials["username"],
+            }).status_code == 422
+            assert client.post(update_password, headers=employee_access, json={
+                "old_password": "wrong-current-password", "new_password": "Strong!23",
+            }).status_code == 400
             reset = "/api/v1/auth/users/3/password"
             next_password = {"new_password": "synthetic-new-password"}
             assert client.post(reset, headers=employee_access, json=next_password).status_code == 403
@@ -93,12 +107,43 @@ def test_base_employee_cookies_refresh_replay_and_logout(isolated_portal, monkey
                     "username": "reset-admin-test", "password": "synthetic-admin-password",
                 })
                 admin_access = {"Authorization": "Bearer " + login.json()["data"]["access_token"]}
-                invalid = admin.post(reset, headers=admin_access, json={"new_password": "secret123"})
-                assert invalid.status_code == 422 and "secret123" not in invalid.text
+                invalid = admin.post(reset, headers=admin_access, json={"new_password": "onlyletters"})
+                assert invalid.status_code == 422 and "onlyletters" not in invalid.text
                 assert admin.post(reset, headers=admin_access, json=next_password).json()["data"] == {
                     "id": 3, "sessions_revoked": True,
                 }
                 assert admin.get("/api/v1/auth/me", headers=admin_access).status_code == 200
+
+                mobile = "13900002786"
+                employee_form = {"username": mobile, "real_name": "新员工", "role_id": 1}
+                assert admin.post("/api/v1/auth/users", headers=admin_access,
+                                  json={**employee_form, "username": "invalid"}).status_code == 422
+                created = admin.post("/api/v1/auth/users", headers=admin_access, json=employee_form)
+                assert created.status_code == 200
+                assert admin.post("/api/v1/auth/users", headers=admin_access, json=employee_form).status_code == 409
+                new_id = created.json()["data"]["id"]
+                new_reset = f"/api/v1/auth/users/{new_id}/password"
+                initial_credentials = {"username": mobile, "password": mobile[-6:]}
+                with TestClient(app, base_url=origin["Origin"]) as mobile_user:
+                    signed_in = mobile_user.post("/api/v1/auth/login", headers=origin, json=initial_credentials)
+                    assert signed_in.status_code == 200
+                    profile = signed_in.json()["data"]["user"]
+                    assert profile["username"] == profile["contact_info"] == mobile
+                    access = {"Authorization": "Bearer " + signed_in.json()["data"]["access_token"]}
+                    assert mobile_user.post("/api/v1/auth/password", headers=access, json={
+                        "old_password": mobile[-6:], "new_password": "Abcd1234",
+                    }).status_code == 200
+                    personal_login = mobile_user.post("/api/v1/auth/login", headers=origin, json={
+                        "username": mobile, "password": "Abcd1234",
+                    })
+                    assert personal_login.status_code == 200
+                    assert admin.post(new_reset, headers=admin_access,
+                                      json={"new_password": "manual-test-password"}).status_code == 422
+                    reset_result = admin.post(new_reset, headers=admin_access, json={})
+                    assert reset_result.json()["data"] == {"id": new_id, "sessions_revoked": True}
+                    personal_access = {"Authorization": "Bearer " + personal_login.json()["data"]["access_token"]}
+                    assert mobile_user.get("/api/v1/auth/me", headers=personal_access).status_code == 401
+                    assert mobile_user.post("/api/v1/auth/login", headers=origin, json=initial_credentials).status_code == 200
 
             assert client.get("/api/v1/auth/me", headers=employee_access).status_code == 401
             assert client.post("/api/v1/auth/refresh", headers=employee_csrf).status_code == 401

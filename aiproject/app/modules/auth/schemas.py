@@ -1,5 +1,8 @@
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
+from app.core.security.password_policy import UserChosenPassword
+from app.shared.types.phone import MobileNumber
+
 class Input(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
@@ -9,14 +12,13 @@ class Login(Input):
 
 class PasswordChange(Input):
     old_password: str = Field(min_length=1,max_length=256)
-    new_password: str = Field(min_length=12,max_length=128)
+    new_password: UserChosenPassword
 
 class PasswordReset(Input):
-    new_password: str = Field(min_length=12,max_length=128)
+    new_password: UserChosenPassword | None = None
 
 class UserCreate(Input):
-    username: str = Field(min_length=3,max_length=64,pattern=r'^[a-zA-Z0-9_.-]+$')
-    password: str = Field(min_length=12,max_length=128)
+    username: MobileNumber
     real_name: str = Field(min_length=1,max_length=64)
     role_id: int = Field(gt=0)
     department: str | None = Field(default=None,max_length=128)

@@ -30,15 +30,15 @@ def test_visitor_intake_preserves_sources_and_isolates_advisors(isolated_portal,
     material_url = "/api/v1/visitor/materials"
     try:
         with TestClient(app) as client:
-            def register(name):
+            def register(name, phone):
                 r = client.post("/api/v1/visitors/register", json={
-                    "username": name, "password": "test-password",
+                    "username": phone, "password": "test-password",
                     "name": name, "contact": "private-contact",
                 })
                 assert r.status_code == 201
                 return {"Authorization": "Bearer " + r.json()["data"]["access_token"]}
 
-            one, two = register("first-visitor"), register("second-visitor")
+            one, two = register("first-visitor", "13900001005"), register("second-visitor", "13900001006")
             assert client.get(base + "/pending", headers=one).status_code == 401
             assert client.get(base + "/pending", headers={"Authorization": "Bearer ordinary"}).status_code == 403
 

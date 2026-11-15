@@ -7,7 +7,23 @@ from app.modules.auth.models import accounts, role_permissions, roles
 from app.modules.auth.repository import student_info
 from app.modules.student_admin.models import SysUser
 
-from .models import VisitorAccount, VisitorSession, WebsiteStudentAccess
+from .models import VisitorAccount, VisitorAvatar, VisitorSession, WebsiteStudentAccess
+
+
+def profile_account(db: Session, visitor_id: int) -> VisitorAccount | None:
+    return db.get(VisitorAccount, visitor_id)
+
+
+def avatar_bytes(db: Session, visitor_id: int) -> bytes | None:
+    return db.scalar(select(VisitorAvatar.image).where(VisitorAvatar.visitor_id == visitor_id))
+
+
+def save_avatar(db: Session, visitor_id: int, image: bytes) -> None:
+    avatar = db.get(VisitorAvatar, visitor_id)
+    if avatar is None:
+        db.add(VisitorAvatar(visitor_id=visitor_id, image=image))
+    else:
+        avatar.image = image
 
 
 def account_by_username(db: Session, username: str) -> VisitorAccount | None:

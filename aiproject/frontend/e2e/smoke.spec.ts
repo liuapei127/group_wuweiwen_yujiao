@@ -19,6 +19,12 @@ test('visitor can sign in, reserve and cancel through the website', async ({page
     route.fulfill({json: {code: 0, data: {access_token: 'visitor-test', account_type: 'visitor'}}}))
   await page.route('**/api/v1/visitors/me', route =>
     route.fulfill({json: {code: 0, data: {account_type: 'visitor'}}}))
+  const visitorProfile = {
+    username: 'visitor', name: '测试游客', contact: '13900009101',
+    account_type: 'visitor', created_at: '2026-11-15T07:00:00Z', avatar_url: null,
+  }
+  await page.route('**/api/v1/visitors/profile', route =>
+    route.fulfill({json: {code: 0, data: visitorProfile}}))
   await page.route('**/api/v1/visitor/**', async route => {
     const {pathname} = new URL(route.request().url())
     const current = {...event, current_participants: status === 'registered' ? 1 : 0, reservation_status: status}
@@ -31,9 +37,14 @@ test('visitor can sign in, reserve and cancel through the website', async ({page
     } else if (pathname.endsWith('/events')) await reply([current])
     else await reply([])
   })
-  await page.goto('/website')
-  await expect(page.getByLabel('用户名')).toHaveCount(0)
-  const loginButton = page.getByRole('button', {name: '登录 / 注册'})
+  await page.goto('/website/visitor/services')
+  await expect(page).toHaveURL(/website$/)
+  await expect(page.getByRole('dialog', {name: '官网登录'})).toBeVisible()
+  await expect(page.getByRole('region', {name: '游客服务'})).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog', {name: '官网登录'})).toBeHidden()
+  await expect(page.getByLabel('手机号或原用户名')).toBeHidden()
+  const loginButton = page.getByRole('button', {name: /^登\s*录$/})
   await loginButton.click()
   const loginDialog = page.getByRole('dialog', {name: '官网登录'})
   await expect(loginDialog).toBeVisible()
@@ -42,15 +53,48 @@ test('visitor can sign in, reserve and cancel through the website', async ({page
   await expect(loginDialog).toBeHidden()
   await expect(loginButton).toBeFocused()
   await loginButton.click()
-  await loginDialog.getByLabel('用户名').fill('visitor')
+  await loginDialog.getByLabel('手机号或原用户名').fill('visitor')
   await loginDialog.getByLabel('密码').fill('test-password')
   await loginDialog.getByRole('button', {name: /^登\s*录$/}).click()
   await expect(loginDialog).toBeHidden()
+  await expect(page).toHaveURL(/website\/visitor$/)
+  await expect(page.getByRole('region', {name: '游客服务'})).toHaveCount(0)
+  await page.getByRole('button', {name: '查看活动和资料'}).click()
+  await expect(page).toHaveURL(/website\/visitor\/services$/)
+  const services = page.getByRole('region', {name: '游客服务'})
+  await expect(services).toBeVisible()
+  await expect(page.getByRole('button', {name: '修改密码', exact: true})).toHaveCount(0)
+  await expect(page.getByRole('button', {name: '退出登录', exact: true})).toHaveCount(0)
+  await page.getByRole('button', {name: /个人信息/}).click()
+  const account = page.getByRole('dialog', {name: '个人信息'})
+  await expect(account.getByText('测试游客', {exact: true})).toBeVisible()
+  await expect(account.getByRole('button', {name: '更换头像'})).toBeVisible()
+  await expect(account.getByRole('button', {name: '退出登录'})).toBeVisible()
+  await account.getByRole('button', {name: '修改密码'}).click()
+  const changePassword = page.getByRole('dialog', {name: '修改密码'})
+  await expect(changePassword).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(changePassword).toBeHidden()
+  await expect(page.getByRole('heading', {name: /粤教国际教育|活动与资料/})).toHaveCount(0)
+  await expect(page.getByRole('navigation', {name: '官网导航'})).toHaveCount(0)
+  await expect(page.getByRole('link', {name: /^(关于粤教|留学项目|留学生活)$/})).toHaveCount(0)
+  await expect(services.getByRole('tablist')).toHaveAttribute('aria-orientation','vertical')
+  await expect(services.getByRole('tab')).toHaveText([
+    '服务指引', '活动预约', '我的预约', '材料提交', '课程与项目', '留学政策', '讲座视频',
+  ])
+  await page.getByRole('tab', {name: '讲座视频'}).press('Enter')
+  await expect(page.getByText('讲座回看', {exact: true})).toBeVisible()
+  await page.reload()
+  await expect(services).toBeVisible()
+  await page.getByRole('tab', {name: '活动预约'}).click()
   await page.getByRole('button', {name: /^预\s*约$/}).click()
   await page.getByRole('tab', {name: '我的预约'}).click()
   await expect(page.getByRole('tabpanel').getByText('已预约', {exact: true})).toBeVisible()
   await page.getByRole('tabpanel').getByRole('button', {name: '取消预约'}).click()
   await expect(page.getByRole('tabpanel').getByText('已取消', {exact: true})).toBeVisible()
+  await page.getByRole('button', {name: '返回官网'}).click()
+  await expect(page).toHaveURL(/website\/visitor$/)
+  await expect(page.getByRole('heading', {name: /粤教国际教育/})).toBeVisible()
 })
 
 
@@ -140,6 +184,10 @@ test('website sends a student to student services after same-entry login', async
     json: {code: 0, data: {account_type: 'student', access_token: 'website-test'}},
   }))
   await page.route('**/api/v1/visitors/me', route => route.fulfill(reply))
+  await page.route('**/api/v1/visitors/profile', route => route.fulfill({json: {code: 0, data: {
+    username: 'website-test', name: '测试学生', contact: '13900009102',
+    account_type: 'student', created_at: '2026-11-15T07:00:00Z', avatar_url: null,
+  }}}))
   await page.route('**/api/v1/student/**', route => {
     const path = new URL(route.request().url()).pathname
     const data = path.endsWith('/policies') ? {
@@ -166,9 +214,9 @@ test('website sends a student to student services after same-entry login', async
   })
   await page.goto('/website/visitor')
   await expect(page).toHaveURL(/website$/)
-  await page.getByRole('button', {name: '登录 / 注册'}).click()
+  await page.getByRole('button', {name: /^登\s*录$/}).click()
   const loginDialog = page.getByRole('dialog', {name: '官网登录'})
-  await loginDialog.getByLabel('用户名').fill('website-test')
+  await loginDialog.getByLabel('手机号或原用户名').fill('website-test')
   await loginDialog.getByLabel('密码').fill('test-password')
   await loginDialog.getByRole('button', {name: /^登\s*录$/}).click()
   await expect(page).toHaveURL(/website\/student$/)
@@ -176,13 +224,13 @@ test('website sends a student to student services after same-entry login', async
   await expect(page.getByRole('tab', {name: '投诉反馈'})).toBeVisible()
   await expect(page.getByText('留学地区：德国')).toBeVisible()
   await expect(page.getByRole('button', {name: '查看考务'})).toBeVisible()
-  await page.getByRole('tab', {name: '申请进度'}).click()
+  await page.getByRole('tab', {name: '申请进度'}).press('Enter')
   await expect(page.getByText('示例大学', {exact: true})).toBeVisible()
   await expect(page.getByText('等待审核', {exact: true})).toBeVisible()
-  await page.getByRole('tab', {name: '留学政策'}).click()
+  await page.getByRole('tab', {name: '留学政策'}).press('Enter')
   await expect(page.getByText('德国职业培训签证', {exact: true})).toBeVisible()
   await expect(page.getByRole('link', {name: '查看官方说明'})).toHaveAttribute('href', /make-it-in-germany/)
-  await page.getByRole('tab', {name: '我的材料与活动'}).click()
+  await page.getByRole('tab', {name: '我的材料与活动'}).press('Enter')
   await page.getByRole('tab', {name: '我的预约'}).click()
   await expect(page.getByText('原预约讲座', {exact: true})).toBeVisible()
   await page.getByRole('tab', {name: '材料提交'}).click()

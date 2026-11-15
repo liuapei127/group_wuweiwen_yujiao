@@ -23,8 +23,8 @@ def test_visitor_can_submit_partial_material_and_only_read_own_progress(isolated
                 assert response.status_code == 201
                 return {"Authorization": "Bearer " + response.json()["data"]["access_token"]}
 
-            own = login("own-material")
-            other = login("other-material")
+            own = login("13900001003")
+            other = login("13900001004")
             assert client.post(url, headers=own, data={"raw_content": "  "}).status_code == 422
             assert client.post(url, headers=own, files={"file": ("file.exe", b"x")}).status_code == 422
             uploaded = client.post(url, headers=own, files={"file": ("scan.pdf", file_content)})

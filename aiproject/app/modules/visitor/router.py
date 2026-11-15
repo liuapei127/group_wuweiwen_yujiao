@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -9,12 +9,13 @@ from app.core.database import get_db
 from app.core.exceptions import BusinessError
 from app.core.responses import success
 from app.core.security import EmployeePrincipal, require_employee
-from app.modules.auth.schemas import PasswordReset
+from app.modules.auth.schemas import PasswordChange, PasswordReset
 from app.modules.customer_service.capacity import CsCapacityExceeded, CsChatCapacity
 
 from app.shared.constants.study_policies import study_policies
 
 from . import service
+from .avatar import MAX_UPLOAD_BYTES
 from .catalog import CourseWrite, list_courses, save_course, staff_courses
 from .schemas import VisitorLogin, VisitorRegister, WebsiteIdentity, WebsiteStudentCreate, WebsiteStudentUpdate
 
@@ -36,11 +37,11 @@ def require_visitor(
 Principal = Annotated[service.VisitorPrincipal, Depends(require_visitor)]
 
 
-async def _authenticate_request(request: Request, operation, db: Session, payload):
+async def _authenticate_request(request: Request, operation, *args):
     client_ip = request.client.host if request.client else "unknown"
     try:
         async with _AUTH_CAPACITY.slot(client_ip):
-            return success(await run_in_threadpool(operation, db, payload))
+            return success(await run_in_threadpool(operation, *args))
     except CsCapacityExceeded as exc:
         raise BusinessError(429, exc.message) from exc
 
@@ -55,6 +56,11 @@ async def login(body: VisitorLogin, db: Database, request: Request):
     return await _authenticate_request(request, service.login, db, body)
 
 
+@router.post("/password")
+async def change_password(body: PasswordChange, db: Database, principal: Principal, request: Request):
+    return await _authenticate_request(request, service.change_password, db, principal, body)
+
+
 @router.post("/logout")
 def logout(db: Database, principal: Principal):
     service.logout(db, principal)
@@ -65,6 +71,18 @@ def logout(db: Database, principal: Principal):
 def me(db: Database, principal: Principal):
     student_id = service.website_student(db, principal)
     return success(WebsiteIdentity(account_type="student" if student_id is not None else "visitor"))
+
+
+@router.get("/profile")
+def profile(db: Database, principal: Principal, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    return success(service.profile(db, principal))
+
+
+@router.put("/avatar")
+def update_avatar(file: Annotated[UploadFile, File()], db: Database, principal: Principal, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    return success(service.change_avatar(db, principal, file.file.read(MAX_UPLOAD_BYTES + 1)))
 
 
 @router.get("/policies")

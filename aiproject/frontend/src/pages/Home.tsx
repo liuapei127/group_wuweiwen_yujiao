@@ -1,11 +1,12 @@
 import {useState} from 'react'
-import {Link} from 'react-router-dom'
-import {Alert,App,Button,Card,Descriptions,Form,Input,Space,Statistic,Tag,Typography} from 'antd'
+import {Link,useNavigate} from 'react-router-dom'
+import {Button,Card,Descriptions,Space,Statistic,Tag,Typography} from 'antd'
 import {ArrowRightOutlined,RobotOutlined,TeamOutlined,FileTextOutlined,AuditOutlined,CheckSquareOutlined,CustomerServiceOutlined,BellOutlined,TrophyOutlined} from '@ant-design/icons'
 import {useQuery} from '@tanstack/react-query'
-import {api,type Row} from '../lib/api'
+import {api} from '../lib/api'
 import {useAuth} from '../auth'
 import {ErrorNotice,PageTitle} from '../components/shared'
+import {PasswordChangeDialog} from '../components/PasswordChangeDialog'
 import {navigation,navGroups,permissionNames} from '../navigation'
 const metricNames:Record<string,string>={customers:'本人客户',reports_today:'今日日报',leaves_pending:'待审批请假',todos_open:'未完成待办',tickets_open:'待处理工单',notifications:'站内通知',authorized_students:'授权学生'}
 const kpiIcons=[<TeamOutlined/>,<FileTextOutlined/>,<AuditOutlined/>,<CheckSquareOutlined/>,<CustomerServiceOutlined/>,<BellOutlined/>,<TrophyOutlined/>]
@@ -65,4 +66,33 @@ export function Dashboard(){
     </div>
   </>
 }
-export function Account(){const {user,logout}=useAuth();const {message}=App.useApp();const [form]=Form.useForm();const [busy,setBusy]=useState(false);const [error,setError]=useState<any>();async function change(values:Row){setBusy(true);setError(null);try{await api('/api/v1/auth/password',{method:'POST',body:{old_password:values.old_password,new_password:values.new_password}});void message.success('密码已更新，请重新登录');await logout()}catch(e){setError(e)}finally{setBusy(false)}}return <><PageTitle title="我的账号" description="查看登录身份与授权范围，维护自己的登录密码。"/><div className="two-column"><Card title="员工信息"><Descriptions column={1} items={[{key:'name',label:'姓名',children:user?.real_name},{key:'username',label:'登录账号',children:user?.username},{key:'role',label:'当前角色',children:user?.role_name},{key:'department',label:'部门',children:user?.department||'—'},{key:'contact',label:'联系方式',children:user?.contact_info||'—'},{key:'scope',label:'授权学生数量',children:user?.student_ids.length||0}]}/><Typography.Title level={5}>我的权限</Typography.Title><Space wrap>{user?.permissions.map(p=><Tag key={p}>{permissionNames[p]||p}</Tag>)}</Space></Card><Card title="修改密码"><Alert type="info" showIcon title="修改密码后所有登录会话都会失效，需要重新登录。" style={{marginBottom:20}}/><ErrorNotice error={error}/><Form form={form} layout="vertical" onFinish={v=>void change(v)}><Form.Item name="old_password" label="原密码" rules={[{required:true,message:'请输入原密码'}]}><Input.Password autoComplete="current-password"/></Form.Item><Form.Item name="new_password" label="新密码" rules={[{required:true,min:12,message:'请输入至少12个字符的新密码'}]}><Input.Password autoComplete="new-password"/></Form.Item><Form.Item name="confirm_password" label="确认新密码" dependencies={['new_password']} rules={[{required:true,message:'请再次输入新密码'},({getFieldValue})=>({validator:(_,v)=>!v||v===getFieldValue('new_password')?Promise.resolve():Promise.reject(new Error('两次密码不一致'))})]}><Input.Password autoComplete="new-password"/></Form.Item><Button type="primary" htmlType="submit" loading={busy}>更新密码</Button></Form></Card></div></>}
+export function Account() {
+  const {user,logout} = useAuth()
+  const navigate = useNavigate()
+  const [changingPassword,setChangingPassword] = useState(false)
+
+  return <>
+    <PageTitle title="我的账号" description="查看登录身份与授权范围，维护自己的登录密码。"/>
+    <div className="two-column">
+      <Card title="员工信息">
+        <Descriptions column={1} items={[
+          {key:'name',label:'姓名',children:user?.real_name},
+          {key:'username',label:'登录账号',children:user?.username},
+          {key:'role',label:'当前角色',children:user?.role_name},
+          {key:'department',label:'部门',children:user?.department||'—'},
+          {key:'contact',label:'联系方式',children:user?.contact_info||'—'},
+          {key:'scope',label:'授权学生数量',children:user?.student_ids.length||0},
+        ]}/>
+        <Typography.Title level={5}>我的权限</Typography.Title>
+        <Space wrap>{user?.permissions.map(p=><Tag key={p}>{permissionNames[p]||p}</Tag>)}</Space>
+      </Card>
+      <Card title="账号安全">
+        <Button type="primary" onClick={()=>setChangingPassword(true)}>修改密码</Button>
+      </Card>
+    </div>
+    {changingPassword && <PasswordChangeDialog username={user?.username} contact={user?.contact_info}
+      submit={passwords=>api('/api/v1/auth/password',{method:'POST',body:passwords})}
+      onClose={()=>setChangingPassword(false)}
+      onChanged={()=>void logout().catch(()=>undefined).then(()=>navigate('/login',{replace:true}))}/>}
+  </>
+}

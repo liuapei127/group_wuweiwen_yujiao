@@ -3,6 +3,9 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
+from app.core.security.password_policy import UserChosenPassword
+from app.shared.types.phone import MobileNumber
+
 
 class VisitorLogin(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -26,13 +29,22 @@ class VisitorLogin(BaseModel):
 
 
 class VisitorRegister(VisitorLogin):
-    password: str = Field(min_length=8, max_length=128)
-    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
-    contact: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+    username: MobileNumber
+    password: UserChosenPassword
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None = None
+    contact: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)] | None = None
 
 
 class WebsiteIdentity(BaseModel):
     account_type: Literal["visitor", "student"] = "visitor"
+
+
+class WebsiteProfile(WebsiteIdentity):
+    username: str
+    name: str
+    contact: str
+    created_at: datetime
+    avatar_url: str | None = None
 
 
 class VisitorToken(WebsiteIdentity):

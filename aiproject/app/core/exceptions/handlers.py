@@ -14,6 +14,10 @@ async def business_error_handler(request: Request, exc: BusinessError):
 async def validation_error_handler(request: Request, exc: RequestValidationError):
     route = request.scope.get("route")
     if request.method == "POST" and getattr(route, "path", None) in {
+        "/api/v1/visitors/register",
+        "/api/v1/visitors/password",
+        "/api/v1/auth/password",
+        "/api/v1/auth/users",
         "/api/v1/auth/users/{user_id}/password",
         "/api/v1/enterprise/website-accounts/{visitor_id}/password",
     }:

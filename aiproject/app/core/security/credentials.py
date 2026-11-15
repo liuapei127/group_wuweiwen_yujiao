@@ -1,10 +1,14 @@
 """Password hashing and strictly scoped JWTs; secrets never enter a model prompt."""
+import re
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 import jwt
 from pwdlib import PasswordHash
 from jwt import InvalidTokenError
 from fastapi import HTTPException
+
+from app.core.exceptions import BusinessError
+from app.shared.types.phone import MOBILE_PATTERN
 
 password_hasher = PasswordHash.recommended()
 _DUMMY_HASH = password_hasher.hash('dummy-password-for-timing-only')
@@ -16,6 +20,16 @@ def utc_now():
 
 def hash_password(password):
     return password_hasher.hash(password)
+
+
+def password_for_reset(username: str, requested: str | None) -> str:
+    if re.fullmatch(MOBILE_PATTERN, username):
+        if requested is not None:
+            raise BusinessError(422, "手机号账号的密码自动重置为手机号后 6 位")
+        return username[-6:]
+    if requested is None:
+        raise BusinessError(422, "旧账号请手动设置新密码")
+    return requested
 
 
 def verify_password(password, hashed):

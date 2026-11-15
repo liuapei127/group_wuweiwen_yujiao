@@ -1,14 +1,16 @@
+import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.core.security import EmployeePrincipal
+from app.core.security.credentials import hash_password, utc_now
 from app.modules.auth import service as auth_service
 from app.modules.auth.models import audit_log, role_permissions, roles
 from app.modules.student_admin.models import SysUser
 from app.modules.todo.models import todo_item
-from app.modules.visitor.models import VisitorAccount
+from app.modules.visitor.models import VisitorAccount, WebsiteStudentAccess
 from app.modules.visitor import repository as visitor_repository
 from app.modules.visitor import router as visitor_router
 from tests.integration.test_ent_portal_routes import isolated_portal
@@ -35,7 +37,7 @@ def test_website_account_keeps_credentials_and_routes_by_authorized_student_acce
     student_api = "/api/v1/student"
     operator = {"Authorization": "Bearer operator"}
     teacher = {"Authorization": "Bearer teacher"}
-    credentials = {"username": "visitor-one", "password": "test-visitor-password"}
+    credentials = {"username": "13900002001", "password": "test-visitor-password"}
 
     def bearer(response):
         return {"Authorization": "Bearer " + response.json()["data"]["access_token"]}
@@ -109,7 +111,7 @@ def test_website_account_keeps_credentials_and_routes_by_authorized_student_acce
             with Session(engine) as db:
                 original_hash = db.scalar(select(VisitorAccount.password_hash).where(VisitorAccount.username == credentials["username"]))
 
-            accounts = client.get(management, params={"keyword": "visitor-one"}, headers=operator).json()["data"]
+            accounts = client.get(management, params={"keyword": "13900002001"}, headers=operator).json()["data"]
             visitor_id = accounts[0]["id"]
             assert "password_hash" not in accounts[0]
             update = f"{management}/{visitor_id}/student-access"
@@ -255,14 +257,14 @@ def test_website_account_keeps_credentials_and_routes_by_authorized_student_acce
             assert {item["title"] for item in client.get(inbox, headers=active).json()["data"]} == {"请假审批结果", "投诉处理结果"}
 
             second = client.post(website + "/register", json={
-                **credentials, "username": "visitor-two", "name": "另一位", "contact": "电话",
+                **credentials, "username": "13900002002", "name": "另一位", "contact": "电话",
             })
             assert second.status_code == 201
-            second_id = client.get(management, params={"keyword": "visitor-two"}, headers=operator).json()["data"][0]["id"]
+            second_id = client.get(management, params={"keyword": "13900002002"}, headers=operator).json()["data"][0]["id"]
             second_access = f"{management}/{second_id}/student-access"
             assert client.put(second_access, json=change, headers=operator).status_code == 409
             assert client.put(second_access, json={"student_id": 23, "enabled": True}, headers=operator).status_code == 200
-            second_login = client.post(website + "/login", json={**credentials, "username": "visitor-two"})
+            second_login = client.post(website + "/login", json={**credentials, "username": "13900002002"})
             assert client.get(leave_url, headers=bearer(second_login)).json()["data"] == []
             assert client.get(complaint_url, headers=bearer(second_login)).json()["data"] == []
             assert client.get(inbox, headers=bearer(second_login)).json()["data"] == []
@@ -297,7 +299,7 @@ def test_staff_can_enroll_unlinked_visitor_and_keep_website_credentials(isolated
     monkeypatch.setattr(auth_service.AuthService, "authenticate", lambda self, token: staff)
     monkeypatch.setattr(visitor_router, "_AUTH_CAPACITY", visitor_router.CsChatCapacity(4, 2, 10))
     staff_headers = {"Authorization": "Bearer staff"}
-    credentials = {"username": "new-student", "password": "test-website-password"}
+    credentials = {"username": "13900002003", "password": "test-website-password"}
     auth = "/api/v1/visitors"
     management = "/api/v1/enterprise/website-accounts"
 
@@ -421,8 +423,8 @@ def test_admin_resets_website_password_and_revokes_all_sessions(isolated_portal,
     monkeypatch.setattr(visitor_router, "_AUTH_CAPACITY", visitor_router.CsChatCapacity(4, 2, 10))
     admin = {"Authorization": "Bearer admin"}
     staff = {"Authorization": "Bearer staff"}
-    credentials = {"username": "reset-website-test", "password": "original-test-password"}
-    new_password = "renewed-test-password"
+    credentials = {"username": "13900002004", "password": "original-test-password"}
+    new_password = credentials["username"][-6:]
 
     def bearer(response):
         return {"Authorization": "Bearer " + response.json()["data"]["access_token"]}
@@ -430,19 +432,28 @@ def test_admin_resets_website_password_and_revokes_all_sessions(isolated_portal,
     try:
         with Session(engine) as db:
             db.add(SysUser(id=21, real_name="测试学生", user_type="student", status="normal"))
+            db.add(VisitorAccount(username="legacy-visitor", name="旧账号", contact="旧联系方式",
+                                  password_hash=hash_password("legacy-test-password"), created_at=utc_now()))
             db.commit()
 
         with TestClient(app) as client:
-            signup = client.post(website + "/register", json={**credentials, "name": "测试学生", "contact": "测试"})
+            registration = credentials.copy()
+            bad_phone = client.post(website + "/register", json={**registration, "username": "bad-phone"})
+            assert bad_phone.status_code == 422 and credentials["password"] not in bad_phone.text
+            assert client.post(website + "/register", json={**registration, "password": "123456"}).status_code == 422
+            signup = client.post(website + "/register", json=registration)
             assert signup.status_code == 201
-            visitor_id = client.get(management, headers=admin).json()["data"][0]["id"]
+            account = client.get(management, headers=admin, params={"keyword": credentials["username"]}).json()["data"][0]
+            assert account["contact"] == credentials["username"]
+            assert account["name"] == "未填写姓名"
+            visitor_id = account["id"]
             reset = f"{management}/{visitor_id}/password"
-            assert client.post(reset, headers=bearer(signup), json={"new_password": new_password}).status_code == 401
-            assert client.post(reset, headers=staff, json={"new_password": new_password}).status_code == 403
-            invalid = client.post(reset, headers=admin, json={"new_password": "secret123"})
-            assert invalid.status_code == 422 and "secret123" not in invalid.text
+            assert client.post(reset, headers=bearer(signup), json={}).status_code == 401
+            assert client.post(reset, headers=staff, json={}).status_code == 403
+            invalid = client.post(reset, headers=admin, json={"new_password": "onlyletters"})
+            assert invalid.status_code == 422 and "onlyletters" not in invalid.text
             assert client.post(f"{management}/{visitor_id + 1000}/password", headers=admin,
-                               json={"new_password": new_password}).status_code == 404
+                               json={}).status_code == 404
             enabled = client.put(f"{management}/{visitor_id}/student-access", headers=admin,
                                  json={"student_id": 21, "enabled": True})
             assert enabled.status_code == 200
@@ -451,7 +462,8 @@ def test_admin_resets_website_password_and_revokes_all_sessions(isolated_portal,
             assert login_one.status_code == login_two.status_code == 200
             assert login_one.json()["data"]["account_type"] == "student"
 
-            changed = client.post(reset, headers=admin, json={"new_password": new_password})
+            assert client.post(reset, headers=admin, json={"new_password": "manual-test-password"}).status_code == 422
+            changed = client.post(reset, headers=admin, json={})
             assert changed.status_code == 200
             assert changed.json()["data"] == {"id": visitor_id, "sessions_revoked": True}
             assert new_password not in changed.text
@@ -461,10 +473,68 @@ def test_admin_resets_website_password_and_revokes_all_sessions(isolated_portal,
             authenticated = client.post(website + "/login", json={**credentials, "password": new_password})
             assert authenticated.status_code == 200
             assert authenticated.json()["data"]["account_type"] == "student"
+            legacy_login = client.post(website + "/login", json={
+                "username": "legacy-visitor", "password": "legacy-test-password",
+            })
+            assert legacy_login.status_code == 200
+            legacy_account = client.get(management, headers=admin, params={"keyword": "legacy-visitor"}).json()["data"][0]
+            legacy_reset = f"{management}/{legacy_account['id']}/password"
+            assert client.post(legacy_reset, headers=admin, json={}).status_code == 422
+            assert client.post(legacy_reset, headers=admin, json={"new_password": "legacy-reset-password"}).status_code == 200
+            assert client.get(website + "/me", headers=bearer(legacy_login)).status_code == 401
 
         with Session(engine) as db:
-            row = db.execute(select(audit_log).where(audit_log.c.action == "website_password_reset")).mappings().one()
+            row = db.execute(select(audit_log).where(audit_log.c.action == "website_password_reset",
+                                                    audit_log.c.target == str(visitor_id))).mappings().one()
             assert row["actor_id"] == 10 and row["target"] == str(visitor_id)
             assert row["details"] == "{}"
+    finally:
+        engine.dispose()
+
+
+
+@pytest.mark.parametrize("is_student", [False, True])
+def test_website_account_can_change_its_own_password(isolated_portal, monkeypatch, is_student):
+    app, engine = isolated_portal("trusted_jwt")
+    monkeypatch.setattr(visitor_router, "_AUTH_CAPACITY", visitor_router.CsChatCapacity(4, 2, 10))
+    website = "/api/v1/visitors"
+    registration = {"username": "13900003018", "password": "guest-pass", "name": "测试客户"}
+
+    def bearer(response):
+        return {"Authorization": "Bearer " + response.json()["data"]["access_token"]}
+
+    try:
+        with TestClient(app) as client:
+            for invalid in ("12345678", "Abcd 123", "Abcd中文23", "Abcd\u200b123", "A1" * 65):
+                rejected = client.post(website + "/register", json={**registration, "password": invalid})
+                assert rejected.status_code == 422
+                assert all("input" not in entry for entry in rejected.json()["detail"])
+            signup = client.post(website + "/register", json=registration)
+            assert signup.status_code == 201
+            first = bearer(signup)
+            if is_student:
+                with Session(engine) as db:
+                    visitor_id = db.scalar(select(VisitorAccount.id).where(
+                        VisitorAccount.username == registration["username"],
+                    ))
+                    db.add(SysUser(id=55, real_name="测试学生", user_type="student", status="normal"))
+                    db.flush()
+                    db.add(WebsiteStudentAccess(visitor_id=visitor_id, student_id=55, enabled=True))
+                    db.commit()
+            credentials = {key: registration[key] for key in ("username", "password")}
+            second = bearer(client.post(website + "/login", json=credentials))
+            endpoint = website + "/password"
+            new = {"old_password": credentials["password"], "new_password": "Abcd1234"}
+            assert client.post(endpoint, json=new).status_code == 401
+            assert client.post(endpoint, headers=first, json={**new, "old_password": "incorrect"}).status_code == 400
+            assert client.post(endpoint, headers=first, json={**new, "new_password": "onlyletters"}).status_code == 422
+            changed = client.post(endpoint, headers=first, json=new)
+            assert changed.status_code == 200 and changed.json()["data"] == {"relogin_required": True}
+            for prior in (first, second):
+                assert client.get(website + "/me", headers=prior).status_code == 401
+            assert client.post(website + "/login", json=credentials).status_code == 401
+            login = client.post(website + "/login", json={**credentials, "password": new["new_password"]})
+            assert login.status_code == 200
+            assert login.json()["data"]["account_type"] == ("student" if is_student else "visitor")
     finally:
         engine.dispose()

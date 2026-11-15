@@ -10,6 +10,42 @@
   background: #F4F8F6;
 }
 
+.visitor-site--services { display: flex; flex-direction: column; }
+.visitor-services-page.visitor-section {
+  flex: 1;
+  width: 100%;
+  padding-block: 40px;
+  border-bottom: 0;
+}
+.visitor-site .visitor-services-tabs > .ant-tabs-nav {
+  align-self: flex-start;
+  flex: 0 0 184px;
+  margin: 0 !important;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.visitor-services-tabs > .ant-tabs-nav .ant-tabs-nav-list { width: 100%; }
+.visitor-services-tabs > .ant-tabs-nav .ant-tabs-tab {
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+.visitor-services-tabs > .ant-tabs-nav .ant-tabs-tab-active { background: var(--brand-100); }
+.visitor-services-tabs > .ant-tabs-nav .ant-tabs-tab-active .ant-tabs-tab-btn { font-weight: 650; }
+.visitor-services-tabs > .ant-tabs-nav .ant-tabs-ink-bar { display: none; }
+.visitor-services-tabs.ant-tabs-left > .ant-tabs-body-holder {
+  min-width: 0;
+  margin-inline-start: 0;
+  border-inline-start: 0;
+}
+.visitor-services-tabs.ant-tabs-left > .ant-tabs-body-holder > .ant-tabs-body > .ant-tabs-content {
+  min-width: 0;
+  padding-inline-start: 24px;
+  overflow-wrap: anywhere;
+}
+
 /* ---------- 官网导航 ---------- */
 .visitor-header {
   max-width: 1200px;
@@ -91,7 +127,7 @@
   outline: 2px solid var(--brand-600);
   outline-offset: 2px;
 }
-.visitor-header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.visitor-header-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .visitor-header--public .visitor-header-actions .ant-btn {
   height: 38px;
   padding-inline: 17px;
@@ -341,6 +377,14 @@
 .visitor-programs .ant-card-head-title { font-size: 16px; font-weight: 600; }
 .visitor-programs .ant-card-body { padding: 22px 24px; font-size: 14px; line-height: 1.8; color: var(--ink-2); }
 
+.website-account-avatar.ant-avatar {
+  background: var(--brand-100);
+  color: var(--brand-700);
+}
+.website-account-trigger .anticon-down { color: var(--ink-3); font-size: 10px; }
+.website-account-picture { display: flex; gap: 16px; align-items: center; padding-block: 12px 22px; }
+.website-account-picture .ant-typography { margin: 5px 0 0; font-size: 12px; }
+
 .visitor-login .ant-modal-title { font-size: 20px; }
 .visitor-login .ant-form { padding-top: 12px; }
 .visitor-login-actions { display: grid; gap: 4px; }
@@ -403,6 +447,21 @@
   .visitor-header--public:has(.visitor-header-actions .ant-btn-default) {
     grid-template-areas: "brand brand" "navigation navigation" "actions actions";
   }
+  .visitor-header--public.visitor-header--services:has(.visitor-header-actions .ant-btn-default) {
+    grid-template-columns: 1fr;
+    grid-template-areas: "brand" "actions";
+  }
+  .visitor-header--services .visitor-header-actions { justify-self: start; }
+  .visitor-services-page.visitor-section { padding: 20px 12px; }
+  .visitor-site .visitor-services-tabs > .ant-tabs-nav { flex-basis: 96px; padding: 4px; }
+  .visitor-services-tabs > .ant-tabs-nav .ant-tabs-tab { padding-inline: 7px; font-size: 13px; }
+  .visitor-services-tabs.ant-tabs-left > .ant-tabs-body-holder > .ant-tabs-body > .ant-tabs-content {
+    padding-inline-start: 12px;
+  }
+  .visitor-services-page .ant-list-item { align-items: flex-start; flex-wrap: wrap; gap: 8px; }
+  .visitor-services-page .ant-list-item-action { margin-inline-start: 0; }
+  .visitor-services-page .ant-card-head, .visitor-services-page .ant-card-body { padding-inline: 14px; }
+  .visitor-services-page .visitor-upload input[type="file"] { min-width: 0; max-width: 100%; }
   .visitor-section, .visitor-intro { padding-inline: 18px; }
   .visitor-section { padding-block: 40px; }
   .visitor-section h2.ant-typography { font-size: 22px; }

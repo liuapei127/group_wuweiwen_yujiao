@@ -7,7 +7,10 @@ from sqlalchemy.exc import IntegrityError, OperationalError, ProgrammingError
 from fastapi import HTTPException
 from app.core.config import get_settings
 from app.core.exceptions import BusinessError
-from app.core.security.credentials import require_auth_config, hash_password, verify_password, issue_token, decode_token, utc_now
+from app.core.security.credentials import (
+    decode_token, hash_password, issue_token, password_for_reset, require_auth_config, utc_now, verify_password,
+)
+from app.core.security.password_policy import reject_account_password
 from app.core.security.rbac import PERMISSIONS
 from app.core.security import base_session
 from app.core.security.base_jwt import ACCESS_TOKEN_USE, BaseTokenError, verify_expired_access, verify_token
@@ -156,14 +159,27 @@ class AuthService:
         self.repo.revoke(p.employee_id,p.session_id);self.repo.audit(p.employee_id,'logout',p.employee_id);self.db.commit()
         return {'logged_out':True}
 
-    def change_password(self,body,p):
+    def change_password(self, body, principal):
         self.db.rollback()
-        self.repo.lock_account_id(p.employee_id)
-        row=self.repo.account(user_id=p.employee_id)
-        if not row or not verify_password(body.old_password,row['password_hash']):raise BusinessError(400,'原密码不正确')
-        self.repo.update_account(p.employee_id,{'password_hash':hash_password(body.new_password),'update_time':utc_now()})
-        self._revoke_all(p.employee_id);self.repo.audit(p.employee_id,'password_change',p.employee_id);self.db.commit()
-        return {'relogin_required':True}
+        employee_id = principal.employee_id
+        try:
+            self.repo.lock_account_id(employee_id)
+            if not self.repo.active_session(principal.session_id, employee_id):
+                raise BusinessError(401, '登录已失效，请重新登录')
+            account = self._employee(employee_id)
+            if not verify_password(body.old_password, account['password_hash']):
+                raise BusinessError(400, '原密码不正确')
+            reject_account_password(body.new_password, account['username'], account['contact_info'])
+            self.repo.update_account(employee_id, {
+                'password_hash': hash_password(body.new_password), 'update_time': utc_now(),
+            })
+            self._revoke_all(employee_id)
+            self.repo.audit(employee_id, 'password_change', employee_id)
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+        return {'relogin_required': True}
 
     def _role(self,role_id):
         role=self.repo.role(role_id)
@@ -181,13 +197,18 @@ class AuthService:
     def create_user(self,body,p):
         self._role(body.role_id)
         try:
-            values=body.model_dump(exclude={'password'})
-            values.update(password_hash=hash_password(body.password),user_type='employee',create_time=utc_now(),update_time=utc_now())
+            values = body.model_dump()
+            now = utc_now()
+            values.update(
+                contact_info=body.contact_info or body.username,
+                password_hash=hash_password(body.username[-6:]),
+                user_type='employee', create_time=now, update_time=now,
+            )
             rid=self.repo.create_account(values)
             self.repo.audit(p.employee_id,'user_create',rid,{'username':body.username,'role_id':body.role_id})
             self.db.commit();return {'id':rid}
         except IntegrityError:
-            self.db.rollback();raise BusinessError(409,'账号已存在') from None
+            self.db.rollback();raise BusinessError(409,'该手机号已被用作员工账号') from None
 
     def update_user(self,user_id,body,p):
         self.db.rollback()
@@ -205,8 +226,11 @@ class AuthService:
         self.db.rollback()
         try:
             self.repo.lock_account_id(user_id)
-            self._employee(user_id)
-            self.repo.update_account(user_id, {'password_hash': hash_password(body.new_password), 'update_time': utc_now()})
+            account = self._employee(user_id)
+            password = password_for_reset(account['username'], body.new_password)
+            if body.new_password is not None:
+                reject_account_password(password, account['username'], account['contact_info'])
+            self.repo.update_account(user_id, {'password_hash': hash_password(password), 'update_time': utc_now()})
             self._revoke_all(user_id)
             self.repo.audit(p.employee_id, 'password_reset', user_id)
             self.db.commit()
