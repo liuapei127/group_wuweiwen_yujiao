@@ -5,10 +5,12 @@ from __future__ import annotations
 import logging
 
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from app.core.exceptions import BusinessError
 
 from . import assistant_chat, assistant_dify, assistant_mem0, assistant_store
+from .idempotency import replay_cache
 
 logger = logging.getLogger(__name__)
 
@@ -80,14 +82,25 @@ async def run_turn(
         except BusinessError as exc:
             # Dify down / misconfigured → keep student flows working on local brain.
             logger.warning("stu dify failed, local fallback: %s", exc)
-            result = assistant_chat.handle_chat(
-                db,
-                student_id=student_id,
-                message=text,
-                history=history_with_memory,
-                mock_country=mock_country,
-                memory_notes=memories,
-            )
+            cache = replay_cache()
+            # Dify forwards the query and history. Its callback does not carry mock_country.
+            key = cache.key(student_id, text, history_with_memory)
+
+            def local_fallback() -> dict:
+                result, _ = cache.remember(
+                    key,
+                    lambda: assistant_chat.handle_chat(
+                        db,
+                        student_id=student_id,
+                        message=text,
+                        history=history_with_memory,
+                        mock_country=mock_country,
+                        memory_notes=memories,
+                    ),
+                )
+                return result
+
+            result = await run_in_threadpool(local_fallback)
             result = dict(result)
             result.setdefault("data", {})
             if isinstance(result.get("data"), dict):

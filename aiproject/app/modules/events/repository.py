@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.orm import Session
 
 from app.modules.visitor.models import VisitorAccount
@@ -13,11 +13,27 @@ def event(db: Session, event_id: int, *, lock: bool) -> EventLecture | None:
     return db.scalar(stmt.with_for_update() if lock else stmt)
 
 
-def upcoming(db: Session, now: datetime, offset: int, limit: int) -> list[EventLecture]:
-    stmt = select(EventLecture).where(EventLecture.start_time > now, EventLecture.status == "upcoming", EventLecture.max_participants.is_not(None)).order_by(
-        EventLecture.start_time, EventLecture.id
-    ).offset(offset).limit(limit)
-    return list(db.scalars(stmt))
+def upcoming(
+    db: Session, now: datetime, offset: int, limit: int, *,
+    before: datetime | None = None, keyword: str = "", event_type: str | None = None,
+    available_only: bool = False,
+) -> list[EventLecture]:
+    stmt = select(EventLecture).where(
+        EventLecture.start_time > now, EventLecture.status == "upcoming",
+        EventLecture.max_participants.is_not(None),
+    )
+    if before is not None:
+        stmt = stmt.where(EventLecture.start_time <= before)
+    if keyword:
+        stmt = stmt.where(or_(
+            EventLecture.event_name.contains(keyword, autoescape=True),
+            EventLecture.description.contains(keyword, autoescape=True),
+        ))
+    if event_type:
+        stmt = stmt.where(EventLecture.event_type.in_((event_type, "hybrid")))
+    if available_only:
+        stmt = stmt.where(EventLecture.current_participants < EventLecture.max_participants)
+    return list(db.scalars(stmt.order_by(EventLecture.start_time, EventLecture.id).offset(offset).limit(limit)))
 
 
 def staff_events(db: Session, organizer_id: int | None, before_id: int | None, limit: int) -> list[EventLecture]:

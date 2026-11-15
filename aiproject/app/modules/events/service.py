@@ -55,6 +55,16 @@ def upcoming_events(db: Session, customer_id: int, offset: int, limit: int) -> l
     ]
 
 
+def public_schedule(
+    db: Session, *, days: int, keyword: str = "", event_type: str | None = None,
+) -> list[EventLecture]:
+    now = _event_now()
+    return repository.upcoming(
+        db, now, 0, 10, before=now + timedelta(days=days), keyword=keyword,
+        event_type=event_type, available_only=True,
+    )
+
+
 def visitor_reservations(
     db: Session, customer_id: int, before_id: int | None, limit: int,
 ) -> list[VisitorReservationOut]:

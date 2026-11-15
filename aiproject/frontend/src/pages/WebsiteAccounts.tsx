@@ -3,6 +3,7 @@ import {App, Button, Card, Input, Modal, Select, Space, Table, Tag, Typography} 
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {useAuth} from '../auth'
 import {ErrorNotice, PageTitle} from '../components/shared'
+import {PasswordResetDialog} from '../components/PasswordResetDialog'
 import {api, query} from '../lib/api'
 
 type Account = {
@@ -21,6 +22,7 @@ export function WebsiteAccounts() {
   const [keyword, setKeyword] = useState('')
   const [after, setAfter] = useState(0)
   const [selected, select] = useState<Account>()
+  const [passwordTarget, setPasswordTarget] = useState<Account>()
   const [studentId, setStudentId] = useState<number>()
   const [studentKeyword, setStudentKeyword] = useState('')
   const [create, setCreate] = useState(false)
@@ -71,21 +73,24 @@ export function WebsiteAccounts() {
   }
 
   return <>
-    <PageTitle title="官网账号" description="为官网账号创建或关联学生档案，开通或关闭学生身份。"
+    <PageTitle title="官网账号" description="重置官网账号密码，创建或关联学生档案并管理学生身份。"
       extra={<Input.Search aria-label="搜索官网账号" placeholder="搜索官网用户名或姓名" maxLength={64}
         onSearch={value => {setAfter(0); setKeyword(value.trim())}} allowClear/>}/>
     <ErrorNotice error={accounts.error}/>
     <Card>
       <Table rowKey="id" dataSource={accounts.data || []} loading={accounts.isFetching} pagination={false}
-        scroll={{x: 645}} locale={{emptyText: '暂无官网账号'}} columns={[
+        scroll={{x: 765}} locale={{emptyText: '暂无官网账号'}} columns={[
           {title: '官网账号', dataIndex: 'username'},
           {title: '姓名', dataIndex: 'name'},
           {title: '联系方式', dataIndex: 'contact'},
           {title: '官网身份', render: (_, account) => <Tag>{account.student_enabled ? '学生已开通' : '游客'}</Tag>},
           {title: '学生档案编号', render: (_, account) => account.student_id ?? '—'},
-          {title: '操作', render: (_, account) => <Button type="link" onClick={() => open(account)}>
-            {account.student_enabled ? '关闭学生身份' : '开通学生身份'}
-          </Button>},
+          {title: '操作', width: 232, render: (_, account) => <Space wrap size={0}>
+            <Button type="link" onClick={() => open(account)}>
+              {account.student_enabled ? '关闭学生身份' : '开通学生身份'}
+            </Button>
+            <Button type="link" onClick={() => setPasswordTarget(account)}>重置密码</Button>
+          </Space>},
         ]}/>
       <Space style={{marginTop: 12}}>
         <Button disabled={!after || accounts.isFetching} onClick={() => setAfter(0)}>返回首批</Button>
@@ -127,5 +132,7 @@ export function WebsiteAccounts() {
       </> : <Typography.Paragraph>关联学生档案 {selected?.student_id}</Typography.Paragraph>}
       <ErrorNotice error={update.error}/>
     </Modal>
+    {passwordTarget && <PasswordResetDialog accountType="官网" username={passwordTarget.username}
+      path={endpoint + '/' + passwordTarget.id + '/password'} onClose={() => setPasswordTarget(undefined)}/>}
   </>
 }

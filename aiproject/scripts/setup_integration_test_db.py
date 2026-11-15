@@ -127,7 +127,7 @@ def main():
         with engine.begin() as conn:
             accounts = seed_accounts(conn)
         with engine.connect() as conn:
-            for migration in ("014_student_assistant.sql", "015_reporting_board.sql", "016_website_content.sql"):
+            for migration in ("014_student_assistant.sql", "015_reporting_board.sql", "016_website_content.sql", "017_customer_chat_session.sql"):
                 for ddl in read_ddl(SCHEMA.parent / "pending" / migration):
                     conn.exec_driver_sql(ddl)
             conn.commit()

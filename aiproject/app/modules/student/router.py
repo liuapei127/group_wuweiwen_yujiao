@@ -93,7 +93,7 @@ async def student_assistant_run(body: StudentAssistantRequest, request: Request,
     bucket = f"student:{student_id}"
     cache = replay_cache()
     history = [turn.model_dump() for turn in (body.history or [])]
-    key = cache.key(student_id, body.query, history)
+    key = cache.key(student_id, body.query, history, mock_country=body.mock_country)
 
     def run() -> dict:
         # Dify 失败重试会重复提交请假/投诉，同一轮请求只执行一次。

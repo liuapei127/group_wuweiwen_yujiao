@@ -6,9 +6,15 @@ import {WebsitePolicies} from './WebsitePolicies'
 import {WebsiteGuide, type GuideTopic} from './WebsiteGuide'
 import {WebsiteAssistant} from './WebsiteAssistant'
 import {publicWebsiteContentPath, websiteContentQueryKey, type WebsiteSection} from '../lib/websiteContent'
-import {Alert, App, Button, Card, Form, Input, List, Space, Tabs, Tag, Typography} from 'antd'
-import {ArrowRightOutlined} from '@ant-design/icons'
+import {Alert, App, Button, Card, Form, Input, List, Modal, Space, Tabs, Tag, Typography} from 'antd'
+import {ArrowRightOutlined, MessageOutlined} from '@ant-design/icons'
 import {useQuery, useQueryClient} from '@tanstack/react-query'
+
+type CustomerChatReply = {answer: string; session_id?: string; reservation_changed?: boolean}
+
+function customerChatBody(query: string, sessionId?: string) {
+  return sessionId ? {query, session_id: sessionId} : {query, start_session: true}
+}
 
 type Activity = {
   id: number; event_name: string; description?: string; location: string | null; start_time: string; end_time: string | null
@@ -27,127 +33,84 @@ const publicTopics: GuideTopic[] = [
 ]
 
 
-/* ---------- 首屏轮播：内置矢量插画，纯展示，无接口、无外部图片依赖 ---------- */
-const heroSlides = [
-  {
-    key: 'sg', tag: '升学路径', title: '新加坡国际本硕升学',
-    desc: '面向不同学历阶段的升学规划与就业衔接',
-    art: (
-      <svg viewBox="0 0 440 320" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        <rect width="440" height="320" fill="#0A4A44" />
-        <circle cx="350" cy="72" r="44" fill="#7EE0CB" opacity=".14" />
-        <circle cx="350" cy="72" r="25" fill="#7EE0CB" opacity=".22" />
-        <g fill="#FFFFFF" opacity=".10">
-          <rect x="18" y="156" width="46" height="114" rx="3" />
-          <rect x="72" y="124" width="38" height="146" rx="3" />
-          <rect x="118" y="170" width="54" height="100" rx="3" />
-          <rect x="180" y="100" width="34" height="170" rx="3" />
-          <rect x="222" y="100" width="34" height="170" rx="3" />
-          <rect x="264" y="100" width="34" height="170" rx="3" />
-          <rect x="306" y="146" width="42" height="124" rx="3" />
-          <rect x="356" y="172" width="60" height="98" rx="3" />
-        </g>
-        <path d="M174 86h132l-10 14H184z" fill="#7EE0CB" opacity=".55" />
-        <g stroke="#7EE0CB" strokeWidth="1" opacity=".32">
-          <line x1="197" y1="112" x2="197" y2="270" />
-          <line x1="239" y1="112" x2="239" y2="270" />
-          <line x1="281" y1="112" x2="281" y2="270" />
-        </g>
-        <rect y="270" width="440" height="50" fill="#062F2C" opacity=".6" />
-        <g stroke="#7EE0CB" strokeWidth="1" opacity=".20">
-          <line x1="0" y1="284" x2="440" y2="284" />
-          <line x1="0" y1="300" x2="440" y2="300" />
-          <line x1="0" y1="314" x2="440" y2="314" />
-        </g>
-      </svg>
-    ),
-  },
-  {
-    key: 'de', tag: '职业培训', title: '中德精英人才共建计划',
-    desc: '双元制培训、语言准备与企业岗位匹配',
-    art: (
-      <svg viewBox="0 0 440 320" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        <rect width="440" height="320" fill="#0C4B48" />
-        <circle cx="168" cy="142" r="86" fill="none" stroke="#7EE0CB" strokeWidth="16" strokeDasharray="20 14" opacity=".32" />
-        <circle cx="168" cy="142" r="54" fill="none" stroke="#7EE0CB" strokeWidth="2" opacity=".55" />
-        <circle cx="168" cy="142" r="18" fill="#7EE0CB" opacity=".45" />
-        <circle cx="316" cy="214" r="46" fill="none" stroke="#7EE0CB" strokeWidth="10" strokeDasharray="12 10" opacity=".28" />
-        <g fill="#FFFFFF" opacity=".09">
-          <rect x="252" y="96" width="70" height="112" rx="4" />
-          <rect x="330" y="128" width="56" height="80" rx="4" />
-          <rect x="392" y="152" width="40" height="56" rx="4" />
-        </g>
-        <g stroke="#7EE0CB" strokeWidth="1.5" opacity=".40">
-          <line x1="252" y1="86" x2="252" y2="96" />
-          <line x1="330" y1="112" x2="330" y2="128" />
-          <path d="M230 142h74" opacity=".5" />
-        </g>
-        <g fill="#7EE0CB" opacity=".30">
-          <circle cx="64" cy="62" r="4" /><circle cx="392" cy="62" r="4" />
-          <circle cx="64" cy="258" r="4" /><circle cx="392" cy="258" r="4" />
-        </g>
-        <rect y="270" width="440" height="50" fill="#062F2C" opacity=".6" />
-      </svg>
-    ),
-  },
-  {
-    key: 'talk', tag: '线下活动', title: '讲座预约与顾问咨询',
-    desc: '查看场次与名额，提交材料并由顾问跟进',
-    art: (
-      <svg viewBox="0 0 440 320" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        <rect width="440" height="320" fill="#0A4843" />
-        <rect x="58" y="42" width="324" height="158" rx="10" fill="#FFFFFF" opacity=".07" />
-        <rect x="58" y="42" width="324" height="158" rx="10" fill="none" stroke="#7EE0CB" strokeWidth="1.5" opacity=".35" />
-        <rect x="88" y="72" width="170" height="12" rx="6" fill="#7EE0CB" opacity=".50" />
-        <rect x="88" y="98" width="230" height="8" rx="4" fill="#FFFFFF" opacity=".18" />
-        <rect x="88" y="118" width="196" height="8" rx="4" fill="#FFFFFF" opacity=".14" />
-        <rect x="88" y="138" width="214" height="8" rx="4" fill="#FFFFFF" opacity=".12" />
-        <rect x="44" y="212" width="46" height="26" rx="5" fill="#FFFFFF" opacity=".12" />
-        <rect x="106" y="212" width="46" height="26" rx="5" fill="#FFFFFF" opacity=".12" />
-        <rect x="168" y="212" width="46" height="26" rx="5" fill="#FFFFFF" opacity=".12" />
-        <rect x="230" y="212" width="46" height="26" rx="5" fill="#FFFFFF" opacity=".12" />
-        <rect x="292" y="212" width="46" height="26" rx="5" fill="#FFFFFF" opacity=".12" />
-        <rect x="354" y="212" width="46" height="26" rx="5" fill="#FFFFFF" opacity=".12" />
-        <rect x="44" y="252" width="46" height="26" rx="5" fill="#FFFFFF" opacity=".08" />
-        <rect x="106" y="252" width="46" height="26" rx="5" fill="#FFFFFF" opacity=".08" />
-        <rect x="168" y="252" width="46" height="26" rx="5" fill="#FFFFFF" opacity=".08" />
-        <rect x="230" y="252" width="46" height="26" rx="5" fill="#FFFFFF" opacity=".08" />
-        <rect x="292" y="252" width="46" height="26" rx="5" fill="#FFFFFF" opacity=".08" />
-        <rect x="354" y="252" width="46" height="26" rx="5" fill="#FFFFFF" opacity=".08" />
-        <circle cx="330" cy="176" r="13" fill="#7EE0CB" opacity=".45" />
-        <path d="M310 200h40l-6-14h-28z" fill="#7EE0CB" opacity=".35" />
-      </svg>
-    ),
-  },
+/* 官网栏目接口不可用时用静态内容兜底，保证导航与页面始终完整 */
+const fallbackSections: WebsiteSection[] = [
+  {id: -1, anchor: 'about', title: '关于粤教', cards: [
+    {id: -11, title: '留学与升学服务', content: '了解新加坡升学和德国职业培训项目。注册后可预约讲座、提交手头已有的材料，由顾问跟进。'},
+    {id: -12, title: '数字化服务', content: '官网集中提供政策、课程和活动查询。顾问工作台汇总材料和跟进记录，方便顾问核对资料和补录。'},
+  ]},
+  {id: -2, anchor: 'programs', title: '留学项目', cards: [
+    {id: -21, title: '新加坡国际本硕升学计划', content: '提供面向不同学历阶段的升学路径，以及酒店和航空方向的就业项目。'},
+    {id: -22, title: '中德精英人才共建计划', content: '了解德国双元制职业培训和企业匹配流程，项目包含语言学习与岗位准备。'},
+  ]},
+  {id: -3, anchor: 'services', title: '我们的服务', cards: [
+    {id: -31, title: '一对一顾问咨询', content: '从预算、学制到专业方向，顾问会与你一起确认适合的项目与院校范围。'},
+    {id: -32, title: '材料与进度跟进', content: '注册后可提交已有材料、预约线下讲座，并随时查看处理进度。'},
+  ]},
 ]
 
-function HeroCarousel() {
+/* ---------- 首屏：全幅照片背景轮播 ---------- */
+const heroSlides = [
+  {key: 'graduate', image: '/hero-1.webp', label: '毕业与升学'},
+  {key: 'campus', image: '/hero-2.webp', label: '国际校园'},
+  {key: 'consult', image: '/hero-3.webp', label: '顾问咨询'},
+]
+
+/* 栏目专属背景图：按 anchor 优先匹配；接口返回自定义栏目时按顺序兜底 */
+const sectionArtList = ['/section-about.webp', '/section-programs.webp', '/section-life.webp']
+const sectionArtByAnchor: Record<string, string> = {
+  about: sectionArtList[0],
+  programs: sectionArtList[1],
+  life: sectionArtList[2],
+  living: sectionArtList[2],
+  services: sectionArtList[2],
+}
+const artFor = (anchor: string, index: number) => sectionArtByAnchor[anchor] ?? sectionArtList[index % sectionArtList.length]
+
+function HeroBanner({onOpenAssistant}: {onOpenAssistant: () => void}) {
   const [active, setActive] = useState(0)
   useEffect(() => {
-    const timer = window.setInterval(() => setActive(value => (value + 1) % heroSlides.length), 5000)
+    const timer = window.setInterval(() => setActive(value => (value + 1) % heroSlides.length), 6000)
     return () => window.clearInterval(timer)
   }, [])
-  return <div className="hero-carousel" role="region" aria-label="项目展示轮播">
-    {heroSlides.map((slide, index) => <div key={slide.key}
-      className={'hero-slide' + (index === active ? ' is-active' : '')}
-      aria-hidden={index !== active}>
-      <div className="hero-slide-art">{slide.art}</div>
-      <div className="hero-slide-shade" />
-      <div className="hero-slide-copy">
-        <span className="hero-slide-tag">{slide.tag}</span>
-        <div className="hero-slide-title">{slide.title}</div>
-        <div className="hero-slide-desc">{slide.desc}</div>
-      </div>
-    </div>)}
-    <div className="hero-carousel-counter">{String(active + 1).padStart(2, "0")} / {String(heroSlides.length).padStart(2, "0")}</div>
-    <div className="hero-carousel-dots">
-      {heroSlides.map((slide, index) => <button key={slide.key} type="button"
-        className={'hero-dot' + (index === active ? ' is-active' : '')}
-        aria-label={'切换到第 ' + (index + 1) + ' 张：' + slide.title}
-        aria-current={index === active}
-        onClick={() => setActive(index)} />)}
+  // 预取下一张，轮播切换不闪白；同一时刻只加载当前图
+  useEffect(() => {
+    const next = new Image()
+    next.src = heroSlides[(active + 1) % heroSlides.length].image
+  }, [active])
+  return <section className="visitor-intro">
+    <div className="hero-backdrop" aria-hidden="true">
+      <img key={heroSlides[active].key} src={heroSlides[active].image} alt="" />
     </div>
-  </div>
+    <div className="hero-overlay" aria-hidden="true" />
+    <div className="visitor-intro-inner">
+      <div className="hero-copy">
+        <span className="intro-eyebrow">YOUR NEXT CHAPTER STARTS HERE</span>
+        <h1 className="hero-title">
+          <span className="hero-title-main">粤教国际教育</span>
+          <span className="hero-title-accent">留学与升学服务</span>
+        </h1>
+        <p className="hero-desc">从今天的选择，到世界的舞台。<br />与你一起，找到适合自己的国际升学之路。</p>
+        <div className="hero-actions">
+          <Button type="primary" className="hero-cta-primary" href="#programs">
+            探索留学项目 <ArrowRightOutlined />
+          </Button>
+          <Button className="hero-cta-ghost" onClick={onOpenAssistant}>
+            与升学助手聊聊 <MessageOutlined />
+          </Button>
+        </div>
+        <div className="hero-carousel-nav">
+          {heroSlides.map((slide, index) => <button key={slide.key} type="button"
+            className={'hero-dot' + (index === active ? ' is-active' : '')}
+            aria-label={'切换到第 ' + (index + 1) + ' 张：' + slide.label}
+            aria-current={index === active}
+            onClick={() => setActive(index)} />)}
+          <span className="hero-carousel-count">{String(active + 1).padStart(2, "0")} / {String(heroSlides.length).padStart(2, "0")}</span>
+          <span className="hero-carousel-label">{heroSlides[active].label}</span>
+        </div>
+      </div>
+    </div>
+  </section>
 }
 
 const storageKey = 'yujiao-visitor-token'
@@ -208,9 +171,10 @@ export function Visitor() {
   useEffect(() => {
     if (hasContent && current.hash) document.getElementById(current.hash.slice(1))?.scrollIntoView()
   }, [hasContent, current.hash])
+  const [authOpen, setAuthOpen] = useState(false)
   const [register, setRegister] = useState(false)
+  const [assistantOpen, setAssistantOpen] = useState(false)
   const [authBusy, setAuthBusy] = useState(false)
-  const [form] = Form.useForm<Credentials>()
   const {message} = App.useApp()
   const cache = useQueryClient()
 
@@ -222,6 +186,11 @@ export function Visitor() {
     void navigate('/website', {replace: true})
   }
 
+  function openLogin() {
+    setRegister(false)
+    setAuthOpen(true)
+  }
+
   async function signIn(values: Credentials) {
     setAuthBusy(true)
     try {
@@ -230,9 +199,9 @@ export function Visitor() {
       )
       sessionStorage.setItem(storageKey, result.access_token)
       cache.setQueryData(['visitor', 'identity', result.access_token], {account_type: result.account_type})
+      setAuthOpen(false)
       setToken(result.access_token)
       void navigate(result.account_type === 'student' ? '/website/student' : '/website/visitor', {replace: true})
-      form.resetFields()
     } catch (error) {
       void message.error((error as Error).message)
     } finally {
@@ -260,7 +229,7 @@ export function Visitor() {
     return <main className="visitor-site"><section className="visitor-section">
       <Alert type="error" showIcon title={identityExpired ? '官网登录已失效' : identity.error.message}/>
       <Space style={{marginTop: 12}}>
-        <Button onClick={clearSession}>返回登录</Button>
+        <Button onClick={() => {clearSession(); openLogin()}}>返回登录</Button>
         {!identityExpired && <Button onClick={() => void identity.refetch()}>重试</Button>}
       </Space>
     </section></main>
@@ -285,42 +254,28 @@ export function Visitor() {
     </main>
   }
   return <main className="visitor-site">
-    <header className="visitor-header">
+    <header className="visitor-header visitor-header--public">
       <div className="visitor-header-left">
         <a href="/website" className="visitor-logo">粤教教育服务</a>
         <nav className="visitor-nav" aria-label="官网导航">
-          {sections.data?.map(section => <a key={section.id} href={'#' + section.anchor}>{section.title}</a>)}
-          <a href="#visitor-services">游客服务</a>
+          {(sections.data?.length ? sections.data : fallbackSections).map(section => <a key={section.id} href={'#' + section.anchor}>{section.title}</a>)}
         </nav>
       </div>
       <div className="visitor-header-actions">
         {token ? <>
           <Button href="#visitor-services">查看活动和资料</Button>
           <Button type="primary" loading={authBusy} onClick={() => void signOut()}>退出登录</Button>
-        </> : <Button type="primary" href="#visitor-services">登录 / 注册</Button>}
+        </> : <Button type="primary" aria-haspopup="dialog" onClick={openLogin}>登录</Button>}
       </div>
     </header>
 
-    <section className="visitor-intro">
-      <div className="visitor-intro-inner">
-        <div className="visitor-intro-copy">
-          <span className="intro-eyebrow">粤教教育服务 · 留学与升学</span>
-          <Typography.Title>了解留学项目，<br />预约线下讲座</Typography.Title>
-          <Typography.Paragraph>查看新加坡和德国项目，向顾问提交已有材料，跟踪处理进度。</Typography.Paragraph>
-          {sections.data?.some(section => section.anchor === 'programs') &&
-            <a className="intro-text-link" href="#programs">了解留学项目 <ArrowRightOutlined /></a>}
-          <div className="intro-trust">新加坡升学 · 德国双元制 · 顾问一对一跟进</div>
-        </div>
-        <HeroCarousel />
-      </div>
-    </section>
+    <HeroBanner onOpenAssistant={() => setAssistantOpen(true)} />
 
-    {sections.isError && <section className="visitor-section">
-      <Alert type="warning" showIcon title="官网栏目暂时无法加载" action={
-        <Button size="small" onClick={() => void sections.refetch()}>重试</Button>
-      }/>
-    </section>}
-    {sections.data?.map(section => <section key={section.id} id={section.anchor} className="visitor-section">
+    {sections.isError && <p className="visitor-content-note">
+      栏目内容暂以默认版本展示。<button type="button" onClick={() => void sections.refetch()}>重新加载</button>
+    </p>}
+    {(sections.data?.length ? sections.data : fallbackSections).map((section, sectionIndex) => <section key={section.id} id={section.anchor} className="visitor-section">
+      <div className="visitor-section-art" aria-hidden="true" style={{backgroundImage: `url(${artFor(section.anchor, sectionIndex)})`}}/>
       <Typography.Title level={2}>{section.title}</Typography.Title>
       <div className="visitor-programs">
         {section.cards.map(card => <Card key={card.id} title={card.title}>
@@ -329,43 +284,48 @@ export function Visitor() {
       </div>
     </section>)}
 
-    <section id="visitor-services" className="visitor-section">
-      <Typography.Title level={2}>游客服务</Typography.Title>
-      {!token && <>
-        <Alert
-          type="info"
-          showIcon
-          style={{marginBottom: 16}}
-          title="学生助手需要登录"
-          description="请假、查进度、投诉、对话记忆都在登录后的学生页。请先用官网账号登录；未开通学生权限时只会看到游客服务。"
-        />
-        <WebsiteGuide topics={publicTopics}/>
-      </>}
-      {token ? <VisitorServices token={token} expire={expire}/> : <Card className="visitor-login" title={register ? '注册游客账号' : '官网登录'}>
-        <Form key={String(register)} form={form} layout="vertical" preserve={false} onFinish={v => void signIn(v)}>
-          <Form.Item label="用户名" name="username" rules={[{required: true}]}>
-            <Input autoComplete="username" maxLength={64}/>
+    {token && <section id="visitor-services" className="visitor-section">
+      <Typography.Title level={2}>活动与资料</Typography.Title>
+      <VisitorServices token={token} expire={expire}/>
+    </section>}
+
+    <Modal
+      className="visitor-login"
+      title={register ? '注册游客账号' : '官网登录'}
+      open={authOpen}
+      onCancel={() => setAuthOpen(false)}
+      footer={null}
+      centered
+      width={440}
+      destroyOnHidden
+      closable={!authBusy}
+      keyboard={!authBusy}
+      mask={{closable: !authBusy}}
+    >
+      <Form<Credentials> key={String(register)} name="website-auth" layout="vertical" onFinish={v => void signIn(v)}>
+        <Form.Item label="用户名" name="username" rules={[{required: true}]}>
+          <Input autoComplete="username" maxLength={64}/>
+        </Form.Item>
+        <Form.Item label="密码" name="password" rules={[{required: true, min: register ? 8 : 1}]}>
+          <Input.Password autoComplete={register ? 'new-password' : 'current-password'} maxLength={128}/>
+        </Form.Item>
+        {register && <>
+          <Form.Item label="姓名" name="name" rules={[{required: true, whitespace: true}]}>
+            <Input maxLength={64}/>
           </Form.Item>
-          <Form.Item label="密码" name="password" rules={[{required: true, min: register ? 8 : 1}]}>
-            <Input.Password autoComplete={register ? 'new-password' : 'current-password'} maxLength={128}/>
+          <Form.Item label="联系方式" name="contact" rules={[{required: true, whitespace: true}]}>
+            <Input maxLength={128}/>
           </Form.Item>
-          {register && <>
-            <Form.Item label="姓名" name="name" rules={[{required: true, whitespace: true}]}>
-              <Input maxLength={64}/>
-            </Form.Item>
-            <Form.Item label="联系方式" name="contact" rules={[{required: true, whitespace: true}]}>
-              <Input maxLength={128}/>
-            </Form.Item>
-          </>}
-          <Space wrap>
-            <Button type="primary" htmlType="submit" loading={authBusy}>{register ? '注册' : '登录'}</Button>
-            <Button type="link" disabled={authBusy} onClick={() => {form.resetFields(); setRegister(!register)}}>
-              {register ? '已有账号，去登录' : '注册游客账号'}
-            </Button>
-          </Space>
-        </Form>
-      </Card>}
-    </section>
+        </>}
+        <div className="visitor-login-actions">
+          <Button type="primary" htmlType="submit" loading={authBusy}>{register ? '注册' : '登录'}</Button>
+          <Button type="link" disabled={authBusy} onClick={() => setRegister(value => !value)}>
+            {register ? '已有账号，去登录' : '注册游客账号'}
+          </Button>
+        </div>
+      </Form>
+    </Modal>
+
     <footer className="visitor-footer">
       <div className="visitor-footer-inner">
         <div>
@@ -373,12 +333,43 @@ export function Visitor() {
           <p>新加坡升学 · 德国职业培训 · 数字化顾问服务</p>
         </div>
         <div className="visitor-footer-links">
-          {sections.data?.map(section => <a key={section.id} href={'#' + section.anchor}>{section.title}</a>)}
-          <a href="#visitor-services">游客服务</a>
+          {(sections.data?.length ? sections.data : fallbackSections).map(section => <a key={section.id} href={'#' + section.anchor}>{section.title}</a>)}
         </div>
         <span>© 2026 粤教教育服务 · 具体安排以顾问确认的信息为准</span>
       </div>
     </footer>
+    <WebsiteAssistant
+      key={token || "guest"}
+      title="粤教升学助手"
+      hints={['德国项目', '新加坡项目', '如何报名活动']}
+      intro={'你好，我是粤教升学助手。选国家和院校，一般可以按三步走：先看预算与学制，再看专业方向和院校匹配，最后确认签证与就业政策。\n\n如果有比较心仪的院校，或者更看重预算、学制还是专业排名？告诉我一个侧重点，我就能帮你把范围收窄。'}
+      open={assistantOpen}
+      onOpenChange={setAssistantOpen}
+      ask={async (query, _history, sessionId) => {
+        const path = token ? '/api/cs/visitor/chat' : '/api/cs/chat'
+        const send = (id?: string) => visitorApi<CustomerChatReply>(path, token, 'POST', customerChatBody(query, id))
+        try {
+          const reply = await send(sessionId).catch(error => {
+            if (error instanceof VisitorApiError && error.status === 404 && sessionId) return send()
+            throw error
+          })
+          if (reply.reservation_changed) {
+            void cache.invalidateQueries({queryKey: ['visitor', 'activities']})
+            void cache.invalidateQueries({queryKey: ['visitor', 'bookings']})
+          }
+          return reply
+        } catch (error) {
+          if (error instanceof VisitorApiError && error.status === 401 && token) {
+            expire()
+            throw error
+          }
+          const text = query.toLowerCase()
+          const hit = publicTopics.find(topic => topic.keywords.some(word => text.includes(word)))
+          return {answer: '（在线客服暂未连接，以下为常见问题指引）\n' + (hit
+            ? hit.answer
+            : '你可以注册账号后由顾问跟进，或直接问我：活动预约、材料提交、留学项目、留学政策。')}
+        }
+      }} />
   </main>
 }
 
@@ -449,16 +440,9 @@ function VisitorServices({token, expire}: {token: string; expire: () => void}) {
     }
   }
 
-  return <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
+  return <>
+    <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
     {key: 'guide', label: '服务指引', children: <>
-      <WebsiteAssistant
-        title="登录客服"
-        hints={['活动怎么预约', '材料怎么交', '有哪些留学项目']}
-        intro="这里是游客客服。请假、投诉、学籍进度请到学生页使用学生助手。"
-        ask={(query) => visitorApi<{answer: string}>('/api/cs/visitor/chat', token, 'POST', {query}).catch(error => {
-        if (error instanceof VisitorApiError && error.status === 401) expire()
-        throw error
-      })}/>
       <WebsiteGuide topics={publicTopics} open={setActiveTab}/>
     </>},
     {key: 'events', label: '活动预约', children: <>
@@ -531,6 +515,26 @@ function VisitorServices({token, expire}: {token: string; expire: () => void}) {
       <Tag>待开放</Tag> <a href="#lecture-video">讲座视频占位链接</a>
     </Card>},
   ]}/>
+    <WebsiteAssistant
+      title="登录客服"
+      hints={['活动怎么预约', '材料怎么交', '有哪些留学项目']}
+      intro="这里是游客客服。请假、投诉、学籍进度请到学生页使用学生助手。"
+      ask={async (query, _history, sessionId) => {
+        const send = (id?: string) => visitorApi<CustomerChatReply>(
+          '/api/cs/visitor/chat', token, 'POST', customerChatBody(query, id),
+        )
+        const reply = await send(sessionId).catch(error => {
+          if (error instanceof VisitorApiError && error.status === 401) expire()
+          if (error instanceof VisitorApiError && error.status === 404 && sessionId) return send()
+          throw error
+        })
+        if (reply.reservation_changed) {
+          void cache.invalidateQueries({queryKey: ['visitor', 'activities']})
+          void cache.invalidateQueries({queryKey: ['visitor', 'bookings']})
+        }
+        return reply
+      }}/>
+  </>
 }
 
 function VisitorError({error}: {error: Error | null}) {

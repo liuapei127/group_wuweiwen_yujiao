@@ -14,8 +14,9 @@ from app.modules.student.router import (
 )
 from app.modules.todo.router import router as todo_router
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from app.core.exceptions import BusinessError
-from app.core.exceptions.handlers import business_error_handler
+from app.core.exceptions.handlers import business_error_handler, validation_error_handler
 
 from app.ai.nl2sql.router import router as nl2sql_router
 from app.modules.consultant.router import router as consultant_router
@@ -33,6 +34,7 @@ from app.modules.system.router import router as system_router
 
 def register_routers(app: FastAPI) -> None:
     app.add_exception_handler(BusinessError, business_error_handler)
+    app.add_exception_handler(RequestValidationError, validation_error_handler)
     app.include_router(base_jwks_router)
     app.include_router(auth_router)
     app.include_router(portal_router)

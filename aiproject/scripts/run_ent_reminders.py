@@ -5,7 +5,9 @@ import time
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.core.security.base_session import purge_expired_families
+from app.core.security.credentials import utc_now
 from app.modules.auth.service_identity import purge_expired_sessions
+from app.modules.customer_service.repository import purge_expired_chat_sessions
 from app.modules.organization.membership import clear_expired_primary
 from app.modules.todo.reminders import scan_reminders
 from app.modules.student.service import scan_academic_reminders
@@ -18,6 +20,7 @@ def main():
     args=parser.parse_args()
     if args.interval<5:parser.error("interval 至少 5 秒")
     next_base_cleanup = 0.0
+    next_cs_cleanup = 0.0
     while True:
         result = {}
         failures = []
@@ -46,6 +49,14 @@ def main():
         except Exception as exc:
             logging.exception("过期数据清理失败")
             failures.append(exc)
+        if time.monotonic() >= next_cs_cleanup:
+            try:
+                with SessionLocal() as db:
+                    result["expired_customer_chats_removed"] = purge_expired_chat_sessions(db, utc_now())
+                next_cs_cleanup = time.monotonic() + 3600
+            except Exception as exc:
+                logging.exception("客服会话清理失败")
+                failures.append(exc)
         print(result, flush=True)
         if args.once:
             if failures:

@@ -28,7 +28,7 @@ class AuthService:
         try:
             if self.repo.failed_attempts(key)>=10:raise HTTPException(429,'登录尝试过多，请15分钟后重试')
             row = self.repo.account(username=body.username.strip())
-            if use_base and row:
+            if row:
                 user_id = row['id']
                 self.db.rollback()
                 self.repo.lock_account_id(user_id)
@@ -203,11 +203,17 @@ class AuthService:
 
     def reset_password(self,user_id,body,p):
         self.db.rollback()
-        self.repo.lock_account_id(user_id)
-        self._employee(user_id)
-        self.repo.update_account(user_id,{'password_hash':hash_password(body.new_password),'update_time':utc_now()})
-        self._revoke_all(user_id);self.repo.audit(p.employee_id,'password_reset',user_id);self.db.commit()
-        return {'id':user_id,'sessions_revoked':True}
+        try:
+            self.repo.lock_account_id(user_id)
+            self._employee(user_id)
+            self.repo.update_account(user_id, {'password_hash': hash_password(body.new_password), 'update_time': utc_now()})
+            self._revoke_all(user_id)
+            self.repo.audit(p.employee_id, 'password_reset', user_id)
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+        return {'id': user_id, 'sessions_revoked': True}
 
     def set_scope(self,user_id,body,p):
         self._employee(user_id)

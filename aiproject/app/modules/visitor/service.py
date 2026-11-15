@@ -11,6 +11,7 @@ from app.core.exceptions import BusinessError
 from app.core.security import EmployeePrincipal
 from app.core.security.authorization import require_permission
 from app.modules.auth.repository import AuthRepository
+from app.modules.auth.schemas import PasswordReset
 from app.modules.student_admin.repository import StudentAdminRepository
 from app.core.security.credentials import hash_password, utc_now, verify_password
 
@@ -51,11 +52,14 @@ def register(db: Session, payload: VisitorRegister) -> VisitorToken:
 
 def login(db: Session, payload: VisitorLogin) -> VisitorToken:
     account = repository.account_by_username(db, payload.username)
-    if not verify_password(payload.password, account.password_hash if account else None) or account is None:
+    initial_hash = account.password_hash if account else None
+    if not verify_password(payload.password, initial_hash) or account is None:
         raise BusinessError(401, "用户名或密码不正确")
     try:
         locked = repository.lock_website_account(db, account.id)
-        if locked is None:
+        if locked is None or (
+            locked.password_hash != initial_hash and not verify_password(payload.password, locked.password_hash)
+        ):
             raise BusinessError(401, "用户名或密码不正确")
         repository.delete_expired_for_visitor(db, locked.id, utc_now())
         access = repository.student_access(db, locked.id, lock=True)
@@ -104,6 +108,24 @@ def list_accounts(
     require_permission(employee, "website-accounts:manage")
     return [_website_account(account, access) for account, access in
             repository.list_website_accounts(db, keyword, after_id, limit)]
+
+
+def reset_website_password(
+    db: Session, employee: EmployeePrincipal, visitor_id: int, payload: PasswordReset
+) -> dict[str, int | bool]:
+    require_permission(employee, "website-accounts:manage")
+    try:
+        account = repository.lock_website_account(db, visitor_id)
+        if account is None:
+            raise BusinessError(404, "官网账号不存在")
+        account.password_hash = hash_password(payload.new_password)
+        repository.delete_website_sessions(db, visitor_id)
+        AuthRepository(db).audit(employee.employee_id, "website_password_reset", visitor_id)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return {"id": visitor_id, "sessions_revoked": True}
 
 
 def change_student_access(

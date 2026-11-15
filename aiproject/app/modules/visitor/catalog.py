@@ -71,6 +71,19 @@ def list_courses(db: Session, keyword: str, after_id: int, limit: int) -> Course
     return CoursePage(items=[CourseOut.model_validate(row) for row in rows], next_after_id=next_id)
 
 
+def matching_courses(db: Session, terms: list[str], limit: int = 5) -> list[CourseOut]:
+    fields = [getattr(_courses.c, name) for name in CourseOut.model_fields]
+    stmt = select(*fields).where(_courses.c.status == 1)
+    for term in terms:
+        stmt = stmt.where(or_(*(
+            field.contains(term, autoescape=True)
+            for field in (_courses.c.project_name, _courses.c.category,
+                          _courses.c.target_audience, _courses.c.description)
+        )))
+    return [CourseOut.model_validate(row) for row in
+            db.execute(stmt.order_by(_courses.c.id).limit(limit)).mappings()]
+
+
 def staff_courses(db: Session, keyword: str, after_id: int, limit: int) -> StaffCoursePage:
     rows, next_id = _catalog_rows(db, keyword, after_id, limit, public=False)
     return StaffCoursePage(items=[StaffCourse.model_validate(row) for row in rows], next_after_id=next_id)

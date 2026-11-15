@@ -1,27 +1,50 @@
 import {useEffect, useRef, useState} from 'react'
-import {Alert, Button, Input, Space, Typography} from 'antd'
 import {useMutation} from '@tanstack/react-query'
+import {Drawer} from 'antd'
+import {ArrowUpOutlined, CloseOutlined, CustomerServiceOutlined, ReloadOutlined, RobotOutlined} from '@ant-design/icons'
 
 export type AssistantTurn = {role: 'user' | 'assistant'; content: string}
-type Ask = (query: string, history: AssistantTurn[]) => Promise<{answer: string}>
+type Ask = (query: string, history: AssistantTurn[], sessionId?: string) => Promise<{answer: string; session_id?: string}>
 
+/**
+ * 官网客服可通过右下角按钮或首屏入口打开右侧抽屉。
+ * open / onOpenChange 可选；传入即为受控模式（由首屏按钮打开），
+ * 不传则组件自己管理开关（登录后页面使用）。
+ */
 export function WebsiteAssistant({
   title,
   ask,
   hints = [],
-  intro = '直接说你想了解的事。涉及请假、投诉、学籍进度请先登录学生账号。',
+  intro = '你好，我是粤教升学助手。关于留学项目、活动预约和材料提交，都可以问我。',
+  open,
+  onOpenChange,
 }: {
   title: string
   ask: Ask
   hints?: string[]
   intro?: string
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
+  const [innerOpen, setInnerOpen] = useState(false)
   const [question, setQuestion] = useState('')
   const [history, setHistory] = useState<AssistantTurn[]>([])
-  const bottom = useRef<HTMLDivElement>(null)
+  const session = useRef<string | undefined>(undefined)
+  const generation = useRef(0)
+  const thread = useRef<HTMLDivElement>(null)
+  const input = useRef<HTMLInputElement>(null)
+  const isOpen = open ?? innerOpen
+
+  function setOpen(value: boolean) {
+    onOpenChange?.(value)
+    if (open === undefined) setInnerOpen(value)
+  }
+
   const result = useMutation({
-    mutationFn: (query: string) => ask(query, history),
-    onSuccess: (data, query) => {
+    mutationFn: ({query}: {query: string; generation: number}) => ask(query, history, session.current),
+    onSuccess: (data, {query, generation: sentAt}) => {
+      if (generation.current !== sentAt) return
+      if (data.session_id) session.current = data.session_id
       setHistory(prev => [
         ...prev.slice(-20),
         {role: 'user', content: query},
@@ -32,84 +55,94 @@ export function WebsiteAssistant({
   })
 
   useEffect(() => {
-    bottom.current?.scrollIntoView({behavior: 'smooth', block: 'end'})
-  }, [history, result.isPending])
+    const messages = thread.current
+    if (isOpen && messages) messages.scrollTop = messages.scrollHeight
+  }, [isOpen, history, result.isPending])
 
   function send(raw: string) {
     const query = raw.trim()
     if (!query || result.isPending) return
-    result.mutate(query)
+    result.mutate({query, generation: generation.current})
   }
 
-  return (
-    <section className="assistant-panel" aria-label={title}>
-      <header className="assistant-panel__head">
-        <div>
-          <Typography.Title level={4} style={{margin: 0}}>{title}</Typography.Title>
-          <Typography.Paragraph type="secondary" style={{margin: '6px 0 0'}}>
-            {intro}
-          </Typography.Paragraph>
-        </div>
-        {history.length > 0 && (
-          <Button type="text" onClick={() => { setHistory([]); result.reset() }}>清空对话</Button>
-        )}
-      </header>
+  function reset() {
+    generation.current += 1
+    session.current = undefined
+    setHistory([])
+    setQuestion('')
+    result.reset()
+  }
 
-      <div className="assistant-panel__thread" role="log" aria-live="polite">
-        {history.length === 0 && !result.isPending && (
-          <div className="assistant-bubble assistant-bubble--bot assistant-bubble--intro">
-            {intro}
-          </div>
-        )}
-        {history.map((turn, index) => (
-          <div
-            key={`${turn.role}-${index}-${turn.content.slice(0, 12)}`}
-            className={`assistant-bubble assistant-bubble--${turn.role === 'user' ? 'me' : 'bot'}`}
-          >
-            <span className="assistant-bubble__role">{turn.role === 'user' ? '我' : '助手'}</span>
-            <div className="assistant-bubble__text">{turn.content}</div>
-          </div>
-        ))}
-        {result.isPending && (
-          <div className="assistant-bubble assistant-bubble--bot assistant-bubble--pending">
-            正在理解你的意思…
-          </div>
-        )}
-        <div ref={bottom}/>
+  return <>
+    <button type="button" className="assistant-launcher"
+      aria-label={'打开' + title} title={'打开' + title} aria-haspopup="dialog" aria-expanded={isOpen}
+      tabIndex={isOpen ? -1 : undefined} onClick={() => setOpen(true)}>
+      <CustomerServiceOutlined />
+      <span className="assistant-launcher__pulse" />
+    </button>
+
+    <Drawer
+      placement="right"
+      size="min(100%, 420px)"
+      open={isOpen}
+      onClose={() => setOpen(false)}
+      afterOpenChange={opened => {
+        if (opened && window.matchMedia('(pointer: fine)').matches) {
+          input.current?.focus({preventScroll: true})
+        }
+      }}
+      closable={false}
+      mask={{closable: true}}
+      styles={{
+        header: {background: 'var(--brand-900)', borderBottom: 0},
+        body: {display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0},
+        mask: {background: 'rgba(6, 31, 28, .42)'},
+      }}
+      title={<div className="assistant-widget__head">
+        <span className="assistant-widget__mark"><RobotOutlined /></span>
+        <div>
+          <div className="assistant-widget__title">{title}</div>
+          <div className="assistant-widget__sub">智能客服 · 在线</div>
+        </div>
+      </div>}
+      extra={<div className="assistant-widget__tools">
+        <button type="button" aria-label="清空对话" title="清空对话" onClick={reset}><ReloadOutlined /></button>
+        <button type="button" aria-label="关闭客服" title="关闭" onClick={() => setOpen(false)}><CloseOutlined /></button>
+      </div>}
+    >
+      <div ref={thread} className="assistant-widget__thread" role="log" aria-live="polite">
+        <div className="assistant-msg assistant-msg--bot">{intro}</div>
+        {history.map((turn, index) => <div
+          key={`${turn.role}-${index}-${turn.content.slice(0, 12)}`}
+          className={'assistant-msg assistant-msg--' + (turn.role === 'user' ? 'me' : 'bot')}>
+          <span className="assistant-msg__role">{turn.role === 'user' ? '我' : '助手'}</span>
+          <div className="assistant-msg__text">{turn.content}</div>
+        </div>)}
+        {result.isPending && <div className="assistant-msg assistant-msg--bot assistant-msg--pending">
+          正在为你查询 <i /><i /><i />
+        </div>}
+        {result.error && <div className="assistant-msg assistant-msg--error">{result.error.message}</div>}
       </div>
 
-      {hints.length > 0 && (
-        <div className="assistant-panel__hints">
-          {hints.map(item => (
-            <button key={item} type="button" className="assistant-hint" disabled={result.isPending}
-              onClick={() => send(item)}>
-              {item}
-            </button>
-          ))}
-        </div>
-      )}
+      {hints.length > 0 && <div className="assistant-widget__hints">
+        {hints.map(item => <button key={item} type="button" disabled={result.isPending}
+          onClick={() => send(item)}>{item}</button>)}
+      </div>}
 
-      {result.error && <Alert type="error" showIcon title={result.error.message} style={{marginBottom: 12}}/>}
-
-      <Space.Compact style={{width: '100%'}}>
-        <Input.TextArea
-          aria-label="输入要办的事"
-          value={question}
-          maxLength={1000}
-          autoSize={{minRows: 2, maxRows: 5}}
-          placeholder="例如：病假，2026-11-17 到 2026-11-19，身体不适要看病"
-          onChange={event => setQuestion(event.target.value)}
-          onPressEnter={event => {
-            if (!event.shiftKey) {
+      <div className="assistant-widget__composer">
+        <input ref={input} aria-label="输入想了解的问题" value={question} maxLength={1000}
+          placeholder="输入你想了解的问题…" onChange={event => setQuestion(event.target.value)}
+          onKeyDown={event => {
+            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
               event.preventDefault()
               send(question)
             }
-          }}
-        />
-        <Button type="primary" loading={result.isPending} onClick={() => send(question)}>
-          发送
-        </Button>
-      </Space.Compact>
-    </section>
-  )
+          }} />
+        <button type="button" className="assistant-widget__send" aria-label="发送"
+          disabled={!question.trim() || result.isPending} onClick={() => send(question)}>
+          <ArrowUpOutlined />
+        </button>
+      </div>
+    </Drawer>
+  </>
 }

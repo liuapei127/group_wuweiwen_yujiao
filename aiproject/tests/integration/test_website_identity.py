@@ -402,3 +402,69 @@ def test_staff_can_enroll_unlinked_visitor_and_keep_website_credentials(isolated
             assert db.scalar(select(audit_log.c.actor_id).where(audit_log.c.action == "website_student_access")) == 10
     finally:
         engine.dispose()
+
+def test_admin_resets_website_password_and_revokes_all_sessions(isolated_portal, monkeypatch):
+    app, engine = isolated_portal("trusted_jwt")
+    actors = {
+        "admin": EmployeePrincipal(10, frozenset({"website-accounts:manage"}), role_code="admin"),
+        "staff": EmployeePrincipal(11, role_code="employee"),
+    }
+
+    def authenticate(self, token):
+        if token not in actors:
+            raise HTTPException(401, "登录无效")
+        return actors[token]
+
+    monkeypatch.setattr(auth_service.AuthService, "authenticate", authenticate)
+    website = "/api/v1/visitors"
+    management = "/api/v1/enterprise/website-accounts"
+    monkeypatch.setattr(visitor_router, "_AUTH_CAPACITY", visitor_router.CsChatCapacity(4, 2, 10))
+    admin = {"Authorization": "Bearer admin"}
+    staff = {"Authorization": "Bearer staff"}
+    credentials = {"username": "reset-website-test", "password": "original-test-password"}
+    new_password = "renewed-test-password"
+
+    def bearer(response):
+        return {"Authorization": "Bearer " + response.json()["data"]["access_token"]}
+
+    try:
+        with Session(engine) as db:
+            db.add(SysUser(id=21, real_name="测试学生", user_type="student", status="normal"))
+            db.commit()
+
+        with TestClient(app) as client:
+            signup = client.post(website + "/register", json={**credentials, "name": "测试学生", "contact": "测试"})
+            assert signup.status_code == 201
+            visitor_id = client.get(management, headers=admin).json()["data"][0]["id"]
+            reset = f"{management}/{visitor_id}/password"
+            assert client.post(reset, headers=bearer(signup), json={"new_password": new_password}).status_code == 401
+            assert client.post(reset, headers=staff, json={"new_password": new_password}).status_code == 403
+            invalid = client.post(reset, headers=admin, json={"new_password": "secret123"})
+            assert invalid.status_code == 422 and "secret123" not in invalid.text
+            assert client.post(f"{management}/{visitor_id + 1000}/password", headers=admin,
+                               json={"new_password": new_password}).status_code == 404
+            enabled = client.put(f"{management}/{visitor_id}/student-access", headers=admin,
+                                 json={"student_id": 21, "enabled": True})
+            assert enabled.status_code == 200
+            login_one = client.post(website + "/login", json=credentials)
+            login_two = client.post(website + "/login", json=credentials)
+            assert login_one.status_code == login_two.status_code == 200
+            assert login_one.json()["data"]["account_type"] == "student"
+
+            changed = client.post(reset, headers=admin, json={"new_password": new_password})
+            assert changed.status_code == 200
+            assert changed.json()["data"] == {"id": visitor_id, "sessions_revoked": True}
+            assert new_password not in changed.text
+            for login in (login_one, login_two):
+                assert client.get(website + "/me", headers=bearer(login)).status_code == 401
+            assert client.post(website + "/login", json=credentials).status_code == 401
+            authenticated = client.post(website + "/login", json={**credentials, "password": new_password})
+            assert authenticated.status_code == 200
+            assert authenticated.json()["data"]["account_type"] == "student"
+
+        with Session(engine) as db:
+            row = db.execute(select(audit_log).where(audit_log.c.action == "website_password_reset")).mappings().one()
+            assert row["actor_id"] == 10 and row["target"] == str(visitor_id)
+            assert row["details"] == "{}"
+    finally:
+        engine.dispose()

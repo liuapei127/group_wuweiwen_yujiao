@@ -1,3 +1,5 @@
+import {prepareSessionWorker} from './auth-session-worker'
+
 export type Row = Record<string, any>
 export class ApiError extends Error {
   status: number
@@ -33,11 +35,12 @@ export function refreshSession(): Promise<boolean> {
   if (!csrf()) return Promise.resolve(false)
   const version = sessionVersion
   const run = async () => {
+    await prepareSessionWorker()
     if (version !== sessionVersion) return false
     const value = csrf()
     if (!value) return false
     const response = await fetch('/api/v1/auth/refresh', {
-      method: 'POST', headers: {'X-CSRF-Token': value}, signal: AbortSignal.timeout(30000),
+      method: 'POST', headers: {'X-CSRF-Token': value}, keepalive: true, signal: AbortSignal.timeout(30000),
     })
     if (!response.ok) return false
     const data = await response.json()
@@ -55,6 +58,9 @@ export function query(params: Row) {
   return q.size ? '?' + q.toString() : ''
 }
 export async function api<T = any>(path: string, options: {method?: string; body?: unknown; timeout?: number; renewed?: boolean} = {}): Promise<T> {
+  if ((options.method || 'GET') === 'POST' && (path === '/api/v1/auth/login' || path === '/api/v1/auth/logout')) {
+    await prepareSessionWorker()
+  }
   const token = getToken()
   let response: Response
   try {

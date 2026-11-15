@@ -9,6 +9,7 @@ from app.core.database import get_db
 from app.core.exceptions import BusinessError
 from app.core.responses import success
 from app.core.security import EmployeePrincipal, require_employee
+from app.modules.auth.schemas import PasswordReset
 from app.modules.customer_service.capacity import CsCapacityExceeded, CsChatCapacity
 
 from app.shared.constants.study_policies import study_policies
@@ -89,6 +90,11 @@ def list_accounts(
     after_id: Annotated[int, Query(ge=0)] = 0, limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ):
     return success(service.list_accounts(db, employee, keyword.strip(), after_id, limit))
+
+
+@staff_router.post("/{visitor_id}/password")
+def reset_password(visitor_id: int, payload: PasswordReset, db: Database, employee: Employee):
+    return success(service.reset_website_password(db, employee, visitor_id, payload))
 
 
 @staff_router.get("/students")
