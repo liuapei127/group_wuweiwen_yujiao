@@ -24,7 +24,7 @@ export async function ready(request:APIRequestContext){
 }
 export async function login(page:Page,account:Account){
   await page.goto('/')
-  await page.getByLabel('员工账号').fill(account.username)
+  await page.getByLabel('员工手机号').fill(account.username)
   await page.getByLabel('登录密码').fill(account.password)
   const [response]=await Promise.all([page.waitForResponse(r=>r.request().method()==='POST'&&r.url().endsWith('/api/v1/auth/login')),page.getByRole('button',{name:'登录工作台'}).click()])
   expect(response.status(),'账号需要真实登录成功').toBe(200)

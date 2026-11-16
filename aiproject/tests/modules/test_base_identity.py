@@ -193,8 +193,8 @@ def test_student_can_be_identified_but_existing_login_rejects(db, monkeypatch):
     password_hash = hash_password(PASSWORD)
     _role(db, 3, "student", "学生")
     _role(db, 1, "employee", "员工")
-    _user(db, 60, "student.login", "student", role_id=3, password_hash=password_hash)
-    _user(db, 61, "employee.login", "employee", role_id=1, password_hash=password_hash)
+    _user(db, 60, "13900002160", "student", role_id=3, password_hash=password_hash)
+    _user(db, 61, "13900002161", "employee", role_id=1, password_hash=password_hash)
     db.commit()
     student = resolve_identity(db, 60)
     assert student.user_type == "student" and student.ent_login_allowed is False
@@ -206,10 +206,10 @@ def test_student_can_be_identified_but_existing_login_rejects(db, monkeypatch):
     )
     monkeypatch.setattr(auth_service, "get_settings", lambda: settings)
     with pytest.raises(HTTPException) as denied:
-        AuthService(db).login(Login(username="student.login", password=PASSWORD), "127.0.0.1")
+        AuthService(db).login(Login(username="13900002160", password=PASSWORD), "127.0.0.1")
     assert denied.value.status_code == 401
     assert db.scalar(select(func.count()).select_from(sessions)) == 0
-    result = AuthService(db).login(Login(username="employee.login", password=PASSWORD), "127.0.0.1")
+    result = AuthService(db).login(Login(username="13900002161", password=PASSWORD), "127.0.0.1")
     assert jwt.get_unverified_header(result["access_token"])["alg"] == "HS256"
     assert resolve_identity(db, 61).user_type == "employee"
     assert db.scalar(select(func.count()).select_from(login_attempts)) == 1

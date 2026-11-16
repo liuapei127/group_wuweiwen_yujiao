@@ -33,9 +33,10 @@ def test_website_profile_and_avatar_belong_to_authenticated_account(isolated_por
             assert own.status_code == 200 and own.headers["cache-control"] == "no-store"
             profile = own.json()["data"]
             assert profile["username"] == profile["contact"] == "13900009101"
-            assert profile["name"] == "未填写姓名"
+            assert profile["name"] == "" and profile["nickname"] is None
             assert profile["account_type"] == "visitor" and profile["avatar_url"] is None
-            assert set(profile) == {"username", "name", "contact", "account_type", "created_at", "avatar_url"}
+            assert profile["version"] is None
+            assert set(profile) == {"username", "name", "nickname", "contact", "account_type", "created_at", "avatar_url", "version"}
 
             uploaded = client.put(base + "/avatar", headers=first, files=avatar_file("blue"))
             assert uploaded.status_code == 200
@@ -45,6 +46,19 @@ def test_website_profile_and_avatar_belong_to_authenticated_account(isolated_por
                 assert avatar.format == "WEBP" and avatar.size == (256, 256)
             assert client.get(base + "/profile", headers=first).json()["data"]["avatar_url"] == url
             assert client.get(base + "/profile", headers=second).json()["data"]["avatar_url"] is None
+
+            fields = {"nickname": " 新昵称 ", "name": " 新姓名 ", "contact": " contact@example.test "}
+            assert client.put(base + "/profile", json=fields).status_code == 401
+            assert client.put(base + "/profile", headers=first, json={**fields, "username": "13900009102"}).status_code == 422
+            saved = client.put(base + "/profile", headers=first, json=fields)
+            assert saved.status_code == 200 and saved.headers["cache-control"] == "no-store"
+            expected = {**profile, "nickname": "新昵称", "name": "新姓名", "contact": "contact@example.test", "avatar_url": url}
+            assert saved.json()["data"] == expected
+            assert client.get(base + "/profile", headers=first).json()["data"] == expected
+            other = client.get(base + "/profile", headers=second).json()["data"]
+            assert other["name"] == "" and other["contact"] == "13900009102" and other["nickname"] is None
+            blank = client.put(base + "/profile", headers=first, json={**fields, "name": "   "})
+            assert blank.status_code == 200 and blank.json()["data"]["name"] == ""
 
             bogus = {"file": ("forged.png", b"<svg></svg>", "image/png")}
             assert client.put(base + "/avatar", headers=first, files=bogus).status_code == 422
@@ -56,6 +70,7 @@ def test_website_profile_and_avatar_belong_to_authenticated_account(isolated_por
             assert replaced.status_code == 200 and replaced.json()["data"]["avatar_url"] != url
             assert client.post(base + "/logout", headers=first).status_code == 200
             assert client.get(base + "/profile", headers=first).status_code == 401
+            assert client.put(base + "/profile", headers=first, json=fields).status_code == 401
             logged_in = client.post(base + "/login", json={"username": "13900009101", "password": "Test!4567"})
             fresh = {"Authorization": "Bearer " + logged_in.json()["data"]["access_token"]}
             assert client.get(base + "/profile", headers=fresh).json()["data"]["avatar_url"] == replaced.json()["data"]["avatar_url"]

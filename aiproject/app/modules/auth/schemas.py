@@ -7,7 +7,7 @@ class Input(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
 class Login(Input):
-    username: str = Field(min_length=1,max_length=64)
+    username: MobileNumber
     password: str = Field(min_length=1,max_length=256)
 
 class PasswordChange(Input):

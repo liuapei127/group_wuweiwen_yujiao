@@ -8,7 +8,10 @@ from app.core.security.authorization import require_permission
 
 from . import repository
 from .models import EventLecture, EventRegistration
-from .schemas import EventCreate, EventOut, RegistrationOut, StaffRegistrationOut, VisitorEventOut, VisitorReservationOut
+from .schemas import (
+    EventCreate, EventDetails, EventOut, RegistrationOut, StaffRegistrationOut, VisitorEventOut,
+    VisitorReservationOut,
+)
 
 
 _BEIJING = timezone(timedelta(hours=8))
@@ -34,8 +37,11 @@ def _staff_event(db: Session, event_id: int, principal: EmployeePrincipal, *, lo
 
 def create_event(db: Session, payload: EventCreate, principal: EmployeePrincipal) -> EventOut:
     require_permission(principal, "events:manage")
+    now = _event_now()
+    if payload.is_published and payload.start_time <= now:
+        raise BusinessError(422, "发布活动时，开始时间必须晚于当前北京时间")
     try:
-        row = EventLecture(**payload.model_dump(), organizer_id=principal.employee_id, create_time=_event_now())
+        row = EventLecture(**payload.model_dump(), organizer_id=principal.employee_id, create_time=now)
         db.add(row)
         db.flush()
         result = EventOut.model_validate(row)
@@ -44,6 +50,57 @@ def create_event(db: Session, payload: EventCreate, principal: EmployeePrincipal
         db.rollback()
         raise
     return result
+
+
+def update_event(db: Session, event_id: int, payload: EventDetails, principal: EmployeePrincipal) -> EventOut:
+    require_permission(principal, "events:manage")
+    try:
+        row = _staff_event(db, event_id, principal, lock=True)
+        if payload.max_participants < row.current_participants:
+            raise BusinessError(409, "名额上限不能低于已用名额")
+        if row.is_published and payload.start_time != row.start_time and payload.start_time <= _event_now():
+            raise BusinessError(422, "已发布活动的新开始时间必须晚于当前北京时间")
+        for field, value in payload.model_dump().items():
+            setattr(row, field, value)
+        db.flush()
+        result = EventOut.model_validate(row)
+        db.commit()
+        return result
+    except Exception:
+        db.rollback()
+        raise
+
+
+def set_publication(db: Session, event_id: int, is_published: bool, principal: EmployeePrincipal) -> EventOut:
+    require_permission(principal, "events:manage")
+    try:
+        row = _staff_event(db, event_id, principal, lock=True)
+        if is_published and not row.is_published:
+            if row.status != "upcoming" or row.start_time <= _event_now():
+                raise BusinessError(409, "只有尚未开始的活动可以发布")
+            if row.max_participants is None:
+                raise BusinessError(409, "请先设置预约名额")
+        row.is_published = is_published
+        db.flush()
+        result = EventOut.model_validate(row)
+        db.commit()
+        return result
+    except Exception:
+        db.rollback()
+        raise
+
+
+def delete_event(db: Session, event_id: int, principal: EmployeePrincipal) -> None:
+    require_permission(principal, "events:manage")
+    try:
+        row = _staff_event(db, event_id, principal, lock=True)
+        if row.current_participants or repository.has_registrations(db, event_id):
+            raise BusinessError(409, "该活动已有预约记录，请下架以保留预约历史")
+        db.delete(row)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
 
 def upcoming_events(db: Session, customer_id: int, offset: int, limit: int) -> list[VisitorEventOut]:
@@ -89,6 +146,8 @@ def reserve(db: Session, event_id: int, *, customer_id: int) -> RegistrationOut:
         event = _require_event(db, event_id)
         row = repository.booking_for_customer(db, event_id, customer_id)
         if row is None or row.status == "cancelled":
+            if not event.is_published:
+                raise BusinessError(409, "活动未发布，无法预约")
             if event.status != "upcoming" or event.start_time <= _event_now():
                 raise BusinessError(409, "活动已开始，无法预约")
             if event.max_participants is None:

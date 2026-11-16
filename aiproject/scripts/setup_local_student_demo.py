@@ -113,10 +113,10 @@ def main() -> None:
         else:
             print(f"Reusing existing schema in {settings.db_name} ({count} tables)")
 
-    username = "stu_demo"
+    username = "19900001203"
     password = "StuDemo_123456"
-    teacher_user = "teacher_demo"
-    teacher_pass = "Teacher_123456"
+    teacher_user = "19900001105"
+    teacher_pass = teacher_user[-6:]
 
     with engine.begin() as conn:
         student_role = ensure_role(conn, "student", "学生")

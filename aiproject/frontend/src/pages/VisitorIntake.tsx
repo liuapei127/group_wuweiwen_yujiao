@@ -1,9 +1,9 @@
 import {useRef, useState} from 'react'
-import {Link} from 'react-router-dom'
+import {Link, useNavigate, useSearchParams} from 'react-router-dom'
 import {Alert, App, Button, Card, Descriptions, Drawer, Empty, Form, Input, Modal, Select, Space, Table, Tabs, Tag, Typography} from 'antd'
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {useAuth} from '../auth'
-import {ActionModal, ErrorNotice, FormFields, PageTitle, type ActionSpec, type Field} from '../components/shared'
+import {ErrorNotice, FormFields, PageTitle, type Field} from '../components/shared'
 import {api, download, query} from '../lib/api'
 
 type Visitor = {visitor_id: number; registered_at: string}
@@ -54,11 +54,14 @@ export function beijingTime(value: string) {
 
 export function VisitorIntake() {
   const {user, can} = useAuth()
+  const navigate = useNavigate()
   const {message} = App.useApp()
   const cache = useQueryClient()
-  const [tab, setTab] = useState('pending')
+  const [params, setParams] = useSearchParams()
+  const requested = Number(params.get('visitor'))
+  const visitorId = Number.isSafeInteger(requested) && requested > 0 ? requested : undefined
+  const [tab, setTab] = useState(visitorId ? 'assigned' : 'pending')
   const [after, setAfter] = useState(0)
-  const [selected, select] = useState<AssignedVisitor>()
   const [claiming, setClaiming] = useState<Visitor>()
   const access = can('visitor-intake:write')
   const scope = [user?.id, 'visitor-intake']
@@ -70,16 +73,32 @@ export function VisitorIntake() {
     queryKey: [...scope, 'assigned', after], enabled: tab === 'assigned',
     queryFn: () => api<AssignedVisitor[]>(endpoint + '/assigned' + query({after_id: after, limit: pageSize})),
   })
+  const selectedKey = [...scope, 'selected', visitorId]
+  const detail = useQuery({
+    queryKey: selectedKey, enabled: visitorId !== undefined,
+    queryFn: () => api<AssignedVisitor>(endpoint + '/' + visitorId),
+  })
+  const selected = detail.data
   const list = tab === 'pending' ? pending : assigned
+
+  function openFollowup(visitor: AssignedVisitor) {
+    cache.setQueryData([...scope, 'selected', visitor.visitor_id], visitor)
+    setParams({visitor: String(visitor.visitor_id)}, {replace: true})
+  }
   const claim = useMutation({
     mutationFn: (visitor: Visitor) => api<AssignedVisitor>(endpoint + '/' + visitor.visitor_id + '/claim', {method: 'POST'}),
     onSuccess: visitor => {
       setClaiming(undefined)
       setAfter(0)
       setTab('assigned')
-      select(visitor)
       void cache.invalidateQueries({queryKey: scope})
-      void message.success('已认领游客')
+      void cache.invalidateQueries({queryKey: [user?.id, 'crm-customers']})
+      if (!visitor.crm_lead_id) void message.info('已跟进，等待管理员关联客户档案')
+      if (can('crm:read')) {
+        void navigate(visitor.crm_lead_id ? '/customers/' + visitor.crm_lead_id : '/customers')
+      } else {
+        openFollowup(visitor)
+      }
     },
     onError: () => void pending.refetch(),
   })
@@ -101,7 +120,7 @@ export function VisitorIntake() {
               {title: '游客编号', dataIndex: 'visitor_id'},
               {title: '注册时间（北京时间）', dataIndex: 'registered_at', render: beijingTime},
               ...(access ? [{title: '操作', render: (_: unknown, row: Visitor) =>
-                <Button type="link" onClick={() => openClaim(row)}>认领</Button>}] : []),
+                <Button type="link" onClick={() => openClaim(row)}>跟进该游客</Button>}] : []),
             ]}/>
         </>},
         {key: 'assigned', label: '我已认领', children: <>
@@ -113,7 +132,9 @@ export function VisitorIntake() {
               {title: '联系方式', dataIndex: 'contact'},
               {title: '最近联系（北京时间）', dataIndex: 'last_contact_at',
                 render: value => value ? beijingTime(value) : <Tag>待联系</Tag>},
-              {title: '操作', render: (_, row) => <Button type="link" onClick={() => select(row)}>查看跟进</Button>},
+              {title: '操作', render: (_, row) => row.crm_lead_id && can('crm:read')
+                ? <Link to={'/customers/' + row.crm_lead_id}>客户详情</Link>
+                : <Button type="link" onClick={() => openFollowup(row)}>查看跟进</Button>},
             ]}/>
         </>},
       ]}/>
@@ -123,17 +144,18 @@ export function VisitorIntake() {
           onClick={() => setAfter(list.data?.at(-1)?.visitor_id ?? after)}>查看更多</Button>
       </Space>
     </Card>
-    <Modal title="认领游客" open={!!claiming} onCancel={() => setClaiming(undefined)} closable={!claim.isPending}
+    <Modal title="跟进该游客" open={!!claiming} onCancel={() => setClaiming(undefined)} closable={!claim.isPending}
       cancelButtonProps={{disabled: claim.isPending}} mask={{closable: !claim.isPending}}
       onOk={() => {if (claiming) claim.mutate(claiming)}} confirmLoading={claim.isPending}
-      okText="确认认领">
+      okText="确认跟进">
       <ErrorNotice error={claim.error}/>
-      <p>认领后，游客 {claiming?.visitor_id} 会进入你的跟进名单。</p>
+      <p>游客 {claiming?.visitor_id} 将进入你的跟进名单。</p>
     </Modal>
-    <Drawer title={selected ? selected.name + ' · 跟进记录' : '跟进记录'} open={!!selected}
-      onClose={() => select(undefined)} size="large">
-      {selected && <IntakeDetail key={selected.visitor_id} visitor={selected} canWrite={access} scope={scope}
-        onUpdate={update => select(current => current?.visitor_id === selected.visitor_id ? {...current, ...update} : current)}/>}
+    <Drawer title={selected ? selected.name + ' · 跟进记录' : '跟进记录'} open={visitorId !== undefined}
+      onClose={() => setParams({}, {replace: true})} size="large" loading={detail.isLoading}>
+      <ErrorNotice error={detail.error}/>
+      {selected && !detail.error && <IntakeDetail key={selected.visitor_id} visitor={selected} canWrite={access} scope={scope}
+        onUpdate={update => cache.setQueryData<AssignedVisitor>(selectedKey, {...selected, ...update})}/>}
     </Drawer>
   </>
 }
@@ -146,7 +168,6 @@ function IntakeDetail({visitor, canWrite, scope, onUpdate}: {
   const cache = useQueryClient()
   const {message} = App.useApp()
   const {can} = useAuth()
-  const [leadAction, setLeadAction] = useState<ActionSpec | null>(null)
   const [beforeCall, setBeforeCall] = useState<number>()
   const [beforeMaterial, setBeforeMaterial] = useState<number>()
   const [target, setTarget] = useState<number | 'manual'>('manual')
@@ -264,30 +285,11 @@ function IntakeDetail({visitor, canWrite, scope, onUpdate}: {
             }}/>
         </>}
         {visitor.crm_lead_id && can('crm:read') &&
-          <Link to="/customers">已建档 · 客户编号 {visitor.crm_lead_id}</Link>}
-        {!visitor.crm_lead_id && details.data?.screening?.status === 'potential_match' && canWrite && can('crm:write') &&
-          <Button onClick={() => {
-            const sourceId = details.data?.source_id
-            if (!sourceId) return
-            setLeadAction({
-              title: '确认意向并建立客户档案', path: base + '/lead', method: 'POST',
-              fields: [
-                {name: 'customer_name', label: '客户姓名', initial: visitor.name, required: true},
-                {name: 'contact_info', label: '联系方式', initial: visitor.contact, required: true},
-                {name: 'intended_major', label: '意向专业'},
-                {name: 'remark', label: '回访后的意向确认', kind: 'textarea', required: true},
-              ],
-              transform: values => ({...values, source_id: sourceId}),
-              successText: '客户档案已建立，历史通话已同步',
-            })
-          }}>意向客户建档</Button>}
+          <Link to={'/customers/' + visitor.crm_lead_id}>打开客户详情 · {visitor.crm_lead_id}</Link>}
+        {!visitor.crm_lead_id && <Alert showIcon type="info" title="尚未关联客户档案，请联系管理员"/>}
       </Space>
     </Card>
-    <ActionModal action={leadAction} onClose={() => setLeadAction(null)} onSuccess={result => {
-      if (result && typeof result === 'object' && 'id' in result && typeof result.id === 'number') {
-        onUpdate({crm_lead_id: result.id})
-      }
-    }}/>
+
   </Space>
 }
 

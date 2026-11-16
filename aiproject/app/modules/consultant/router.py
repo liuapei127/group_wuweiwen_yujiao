@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -12,10 +14,12 @@ from app.modules.consultant.schemas import (
     LeadDetailOut,
     LeadListParams,
     LeadOut,
+    LeadStatus,
     LeadStatusUpdate,
     LeadUpdate,
 )
 from app.modules.consultant.service import ConsultantService
+from app.modules.consultant.customer_service import list_managed_customers, save_legacy_lead
 
 router = APIRouter(prefix="/api/v1/consultant", tags=["企业助手-意向客户"])
 
@@ -30,6 +34,8 @@ def create_lead(
     svc: ConsultantService = Depends(_svc),
     principal: EmployeePrincipal = Depends(require_employee),
 ):
+    if principal.role_code != "admin":
+        raise HTTPException(status_code=403, detail="顾问只能补充已有客户档案")
     if payload.owner_employee_id is None:
         payload = payload.model_copy(update={"owner_employee_id": principal.employee_id})
     if payload.owner_employee_id != principal.employee_id:
@@ -68,6 +74,20 @@ def list_leads(
     )
 
 
+@router.get("/customers", summary="我的客户及待关联档案的游客")
+def list_customers(
+    keyword: str | None = None,
+    status: LeadStatus | Literal["pending_binding"] | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    principal: EmployeePrincipal = Depends(require_employee),
+):
+    return success(list_managed_customers(
+        db, principal, keyword=keyword, status=status, page=page, page_size=page_size,
+    ))
+
+
 @router.get("/leads/{lead_id}", summary="客户详情含跟进 ENT-02")
 def lead_detail(
     lead_id: int,
@@ -100,7 +120,7 @@ def patch_lead(
         raise HTTPException(status_code=404, detail="客户不存在")
     if lead.owner_employee_id != principal.employee_id:
         raise HTTPException(status_code=403, detail="无权修改该客户")
-    row = svc.update_lead(lead_id, payload)
+    row = save_legacy_lead(svc.db, lead_id, principal, payload)
     return success(LeadOut.model_validate(row))
 
 

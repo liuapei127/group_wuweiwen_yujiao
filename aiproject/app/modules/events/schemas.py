@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, NaiveDatetime, model_validator
 
 
-class EventCreate(BaseModel):
+class EventDetails(BaseModel):
     """活动起止时间使用北京时间。"""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
@@ -23,6 +23,16 @@ class EventCreate(BaseModel):
         return self
 
 
+class EventCreate(EventDetails):
+    is_published: bool = True
+
+
+class EventPublication(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    is_published: bool
+
+
 class EventOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -34,6 +44,7 @@ class EventOut(BaseModel):
     location: str | None
     max_participants: int | None
     current_participants: int
+    is_published: bool
 
 
 class RegistrationOut(BaseModel):

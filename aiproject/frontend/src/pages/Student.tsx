@@ -1,4 +1,6 @@
-import {Alert, Button, Card, Form, Input, Space, Table, Tabs, Tag, Typography} from 'antd'
+import {Alert, Button, Card, Form, Input, Space, Table, Tag, Typography} from 'antd'
+import {BellOutlined, BookOutlined, CalendarOutlined, ClockCircleOutlined, FolderOpenOutlined,
+  GlobalOutlined, HeartOutlined, LineChartOutlined, MessageOutlined, RobotOutlined} from '@ant-design/icons'
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {useState, type ReactNode} from 'react'
 import {AcademicDeadlines, academicDeadlineEndpoint} from './AcademicDeadlines'
@@ -25,6 +27,23 @@ const studentTopics: GuideTopic[] = [
   {key: 'notifications', label: '站内通知', keywords: ['通知', '消息', '审批'], answer: '查阅请假审批或投诉处理结果。'},
 ]
 
+/* 一级导航图标：只影响展示，不参与任何业务逻辑 */
+const tabIcons: Record<string, ReactNode> = {
+  guide: <RobotOutlined/>, leaves: <CalendarOutlined/>, complaints: <MessageOutlined/>,
+  notifications: <BellOutlined/>, deadlines: <ClockCircleOutlined/>, progress: <LineChartOutlined/>,
+  overseas: <GlobalOutlined/>, policies: <BookOutlined/>, wellbeing: <HeartOutlined/>,
+  'account-records': <FolderOpenOutlined/>,
+}
+
+/* 一级导航分组：仅决定菜单的分组与顺序，Tab key 与内容保持原样 */
+const navGroups: {title: string; keys: string[]}[] = [
+  {title: '概览', keys: ['guide']},
+  {title: '申请与学业', keys: ['progress', 'deadlines', 'policies']},
+  {title: '日常事务', keys: ['leaves', 'complaints', 'notifications']},
+  {title: '海外支持', keys: ['overseas', 'wellbeing']},
+  {title: '我的记录', keys: ['account-records']},
+]
+
 const statuses: Record<string, string> = {
   pending: '待处理', approved: '已通过', rejected: '已拒绝',
   cancelled: '已取消', processing: '处理中', resolved: '已解决', closed: '已关闭',
@@ -44,28 +63,71 @@ export function Student({request, accountRecords}: {request: Request; accountRec
   }).data?.items?.[0]
   const country = profile.data?.abroad_country
   const destination = country === 'Singapore' ? '新加坡' : country === 'Germany' ? '德国' : country
-  return <section className="visitor-section">
-    <Typography.Title level={2}>学生服务</Typography.Title>
-    {destination && <Typography.Paragraph>留学地区：{destination}</Typography.Paragraph>}
-    <ResultNotice error={profile.error}/>
-    {nextDeadline && <Alert type="warning" showIcon title={nextDeadline.title}
-      description={'截止时间（北京时间）' + nextDeadline.deadline.slice(0, 16).replace('T', ' ')}
-      action={<Button onClick={() => setActiveTab('deadlines')}>查看考务</Button>}/>}
-    <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
-      {key: 'guide', label: '学生助手', children: <>
-        <StudentAssistant request={request}/>
-        <WebsiteGuide topics={studentTopics} open={setActiveTab}/>
-      </>},
-      {key: 'leaves', label: '请假申请', children: <Leaves request={request}/>},
-      {key: 'complaints', label: '投诉反馈', children: <Complaints request={request}/>},
-      {key: 'notifications', label: '站内通知', children: <StudentNotifications request={request}/>},
-      {key: 'deadlines', label: '考务提醒', children: <AcademicDeadlines request={request}/>},
-      {key: 'progress', label: '申请进度', children: <MyProgress request={request}/>},
-      {key: 'overseas', label: '海外生活', children: <OverseasLife request={request}/>},
-      {key: 'policies', label: '留学政策', children: <Policies request={request}/>},
-      {key: 'wellbeing', label: '自评与关怀', children: <StudentWellbeing request={request}/>},
-      {key: 'account-records', label: '我的材料与活动', children: accountRecords},
-    ]}/>
+  /* children 与 Tab key 完全沿用原实现，只把「标签的呈现方式」换成左侧分组导航 */
+  const tabs: {key: string; label: string; children: ReactNode}[] = [
+    {key: 'guide', label: '学生助手', children: <>
+      <StudentAssistant request={request}/>
+      <WebsiteGuide topics={studentTopics} open={setActiveTab}/>
+    </>},
+    {key: 'leaves', label: '请假申请', children: <Leaves request={request}/>},
+    {key: 'complaints', label: '投诉反馈', children: <Complaints request={request}/>},
+    {key: 'notifications', label: '站内通知', children: <StudentNotifications request={request}/>},
+    {key: 'deadlines', label: '考务提醒', children: <AcademicDeadlines request={request}/>},
+    {key: 'progress', label: '申请进度', children: <MyProgress request={request}/>},
+    {key: 'overseas', label: '海外生活', children: <OverseasLife request={request}/>},
+    {key: 'policies', label: '留学政策', children: <Policies request={request}/>},
+    {key: 'wellbeing', label: '自评与关怀', children: <StudentWellbeing request={request}/>},
+    {key: 'account-records', label: '我的材料与活动', children: accountRecords},
+  ]
+  const current = tabs.find(tab => tab.key === activeTab) ?? tabs[0]
+  return <section className="visitor-section student-page">
+    <div className="student-shell">
+      <aside className="student-side" aria-label="学生服务导航">
+        {navGroups.map(group => <div className="student-nav-group" key={group.title}>
+          <div className="student-nav-label">{group.title}</div>
+          {group.keys.map(key => {
+            const tab = tabs.find(item => item.key === key)!
+            return <button type="button" key={key}
+              className={'student-nav-item' + (activeTab === key ? ' active' : '')}
+              aria-current={activeTab === key ? 'page' : undefined}
+              onClick={() => setActiveTab(key)}>
+              <span className="student-nav-icon">{tabIcons[key]}</span>{tab.label}
+            </button>
+          })}
+        </div>)}
+        <div className="student-side-foot">10 项服务按业务域分组，点击左侧即可切换。</div>
+      </aside>
+      <div className="student-main">
+        <header className="student-head">
+          <div>
+            <span className="student-eyebrow">学生服务中心</span>
+            <h1>学生服务</h1>
+            <p>{destination ? '留学地区：' + destination : '在这里办理请假、查看进度与考务提醒'}</p>
+          </div>
+          <span className="student-head-meta">当前模块 · <b>{current.label}</b></span>
+        </header>
+        <ResultNotice error={profile.error}/>
+        {nextDeadline && <Alert type="warning" showIcon title={nextDeadline.title}
+          description={'截止时间（北京时间）' + nextDeadline.deadline.slice(0, 16).replace('T', ' ')}
+          action={<Button onClick={() => setActiveTab('deadlines')}>查看考务</Button>}/>}
+        <div className="student-panel">{current.children}</div>
+        {activeTab === 'account-records' && <div className="student-helper-grid">
+          <section className="student-helper">
+            <h4>活动与材料提示</h4>
+            <ul>
+              <li>讲座名额有限，预约后请留意站内通知与签到时间。</li>
+              <li>材料可先提交已有版本，顾问确认后再补正式清单。</li>
+              <li>申请有更新时，可在「申请进度」查看当前阶段与下一步。</li>
+            </ul>
+          </section>
+          <section className="student-helper student-helper--dark">
+            <h4>需要帮助？</h4>
+            <p>不确定该预约哪场讲座、或材料怎么交，可以直接问学生助手。</p>
+            <Button onClick={() => setActiveTab('guide')}>去问学生助手</Button>
+          </section>
+        </div>}
+      </div>
+    </div>
   </section>
 }
 

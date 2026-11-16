@@ -1,10 +1,30 @@
-import {useEffect, useRef, useState} from 'react'
+import {Fragment, useEffect, useRef, useState} from 'react'
 import {useMutation} from '@tanstack/react-query'
 import {Drawer} from 'antd'
-import {ArrowUpOutlined, CloseOutlined, CustomerServiceOutlined, ReloadOutlined, RobotOutlined} from '@ant-design/icons'
+import {CloseOutlined, CustomerServiceOutlined, MessageOutlined, ReloadOutlined, RobotOutlined, SendOutlined, SmileOutlined, UserOutlined} from '@ant-design/icons'
 
-export type AssistantTurn = {role: 'user' | 'assistant'; content: string}
+export type AssistantTurn = {role: 'user' | 'assistant'; content: string; at?: string}
 type Ask = (query: string, history: AssistantTurn[], sessionId?: string) => Promise<{answer: string; session_id?: string}>
+
+function clock() {
+  return new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit', hour12: false})
+}
+
+/** 单条 IM 消息：头像 + 带小尖角的气泡 + 时间。用户消息靠右、客服消息靠左。 */
+function ChatRow({side, text, typing}: {side: 'bot' | 'me'; text?: string; typing?: boolean}) {
+  return <div className={'wa-row wa-row--' + side}>
+    <span className={'wa-avatar wa-avatar--' + side} aria-hidden="true">
+      {side === 'bot' ? <RobotOutlined /> : <UserOutlined />}
+    </span>
+    <div className="wa-bubble-wrap">
+      <div className="wa-bubble">
+        {typing
+          ? <span className="wa-typing" aria-label="对方正在输入"><i /><i /><i /></span>
+          : text}
+      </div>
+    </div>
+  </div>
+}
 
 /**
  * 官网客服可通过右下角按钮或首屏入口打开右侧抽屉。
@@ -29,6 +49,8 @@ export function WebsiteAssistant({
   const [innerOpen, setInnerOpen] = useState(false)
   const [question, setQuestion] = useState('')
   const [history, setHistory] = useState<AssistantTurn[]>([])
+  const [sessionStart, setSessionStart] = useState(clock)
+  const [hintsOn, setHintsOn] = useState(true)
   const session = useRef<string | undefined>(undefined)
   const generation = useRef(0)
   const thread = useRef<HTMLDivElement>(null)
@@ -45,10 +67,11 @@ export function WebsiteAssistant({
     onSuccess: (data, {query, generation: sentAt}) => {
       if (generation.current !== sentAt) return
       if (data.session_id) session.current = data.session_id
+      const at = clock()
       setHistory(prev => [
         ...prev.slice(-20),
-        {role: 'user', content: query},
-        {role: 'assistant', content: data.answer},
+        {role: 'user', content: query, at},
+        {role: 'assistant', content: data.answer, at},
       ])
       setQuestion('')
     },
@@ -70,7 +93,14 @@ export function WebsiteAssistant({
     session.current = undefined
     setHistory([])
     setQuestion('')
+    setSessionStart(clock())
+    setHintsOn(true)
     result.reset()
+  }
+
+  function insertEmoji() {
+    setQuestion(prev => (prev + '😊').slice(0, 1000))
+    input.current?.focus({preventScroll: true})
   }
 
   return <>
@@ -82,6 +112,7 @@ export function WebsiteAssistant({
     </button>
 
     <Drawer
+      className="wa-drawer"
       placement="right"
       size="min(100%, 420px)"
       open={isOpen}
@@ -94,54 +125,63 @@ export function WebsiteAssistant({
       closable={false}
       mask={{closable: true}}
       styles={{
-        header: {background: 'var(--brand-900)', borderBottom: 0},
+        header: {background: 'var(--brand-900)', borderBottom: 0, padding: '13px 16px'},
         body: {display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0},
         mask: {background: 'rgba(6, 31, 28, .42)'},
       }}
-      title={<div className="assistant-widget__head">
-        <span className="assistant-widget__mark"><RobotOutlined /></span>
-        <div>
-          <div className="assistant-widget__title">{title}</div>
-          <div className="assistant-widget__sub">智能客服 · 在线</div>
+      title={<div className="wa-head">
+        <span className="wa-head__avatar"><RobotOutlined /><i className="wa-head__online" /></span>
+        <div className="wa-head__meta">
+          <div className="wa-head__title">{title}</div>
+          <div className="wa-head__status">在线 · 通常几秒内回复</div>
         </div>
       </div>}
-      extra={<div className="assistant-widget__tools">
+      extra={<div className="wa-tools">
         <button type="button" aria-label="清空对话" title="清空对话" onClick={reset}><ReloadOutlined /></button>
         <button type="button" aria-label="关闭客服" title="关闭" onClick={() => setOpen(false)}><CloseOutlined /></button>
       </div>}
     >
-      <div ref={thread} className="assistant-widget__thread" role="log" aria-live="polite">
-        <div className="assistant-msg assistant-msg--bot">{intro}</div>
-        {history.map((turn, index) => <div
-          key={`${turn.role}-${index}-${turn.content.slice(0, 12)}`}
-          className={'assistant-msg assistant-msg--' + (turn.role === 'user' ? 'me' : 'bot')}>
-          <span className="assistant-msg__role">{turn.role === 'user' ? '我' : '助手'}</span>
-          <div className="assistant-msg__text">{turn.content}</div>
-        </div>)}
-        {result.isPending && <div className="assistant-msg assistant-msg--bot assistant-msg--pending">
-          正在为你查询 <i /><i /><i />
-        </div>}
-        {result.error && <div className="assistant-msg assistant-msg--error">{result.error.message}</div>}
+      <div ref={thread} className="wa-thread" role="log" aria-live="polite" aria-label="客服对话记录">
+        <div className="wa-time"><span>今天 {sessionStart}</span></div>
+        <ChatRow side="bot" text={intro} />
+        {history.map((turn, index) => <Fragment key={`${turn.role}-${index}-${turn.content.slice(0, 12)}`}>
+          {turn.role === 'user' && turn.at && <div className="wa-time"><span>{turn.at}</span></div>}
+          <ChatRow side={turn.role === 'user' ? 'me' : 'bot'} text={turn.content} />
+        </Fragment>)}
+        {result.isPending && <ChatRow side="bot" typing />}
+        {result.error && <div className="wa-system" role="alert">{result.error.message}</div>}
       </div>
 
-      {hints.length > 0 && <div className="assistant-widget__hints">
-        {hints.map(item => <button key={item} type="button" disabled={result.isPending}
-          onClick={() => send(item)}>{item}</button>)}
+      {hints.length > 0 && hintsOn && <div className="wa-hints">
+        <div className="wa-hints__label"><MessageOutlined /> 猜你想问</div>
+        <div className="wa-hints__list">
+          {hints.map(item => <button key={item} type="button" disabled={result.isPending}
+            onClick={() => send(item)}>{item}</button>)}
+        </div>
       </div>}
 
-      <div className="assistant-widget__composer">
-        <input ref={input} aria-label="输入想了解的问题" value={question} maxLength={1000}
-          placeholder="输入你想了解的问题…" onChange={event => setQuestion(event.target.value)}
-          onKeyDown={event => {
-            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-              event.preventDefault()
-              send(question)
-            }
-          }} />
-        <button type="button" className="assistant-widget__send" aria-label="发送"
-          disabled={!question.trim() || result.isPending} onClick={() => send(question)}>
-          <ArrowUpOutlined />
-        </button>
+      <div className="wa-composer">
+        <div className="wa-composer__tools">
+          <button type="button" aria-label="插入表情" title="插入表情" onClick={insertEmoji}><SmileOutlined /></button>
+          {hints.length > 0 && <button type="button" className={hintsOn ? 'is-on' : ''}
+            aria-label="切换猜你想问" aria-pressed={hintsOn} title="猜你想问"
+            onClick={() => setHintsOn(value => !value)}><MessageOutlined /></button>}
+          <span className="wa-composer__tip">Enter 发送</span>
+        </div>
+        <div className="wa-composer__row">
+          <input ref={input} aria-label="输入想了解的问题" value={question} maxLength={1000}
+            placeholder="输入你想了解的问题…" onChange={event => setQuestion(event.target.value)}
+            onKeyDown={event => {
+              if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                event.preventDefault()
+                send(question)
+              }
+            }} />
+          <button type="button" className="wa-send" aria-label="发送"
+            disabled={!question.trim() || result.isPending} onClick={() => send(question)}>
+            <SendOutlined />
+          </button>
+        </div>
       </div>
     </Drawer>
   </>

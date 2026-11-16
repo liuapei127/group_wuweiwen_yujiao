@@ -12,6 +12,8 @@ from app.modules.auth import service as auth_service
 from app.modules.events import service
 from app.modules.events.models import EventLecture, EventRegistration
 from app.modules.events.schemas import EventCreate
+from app.modules.visitor.router import require_visitor
+from app.modules.visitor.service import VisitorPrincipal
 from tests.integration.test_ent_portal_routes import isolated_portal
 
 
@@ -67,6 +69,88 @@ def test_reservation_cancel_and_staff_check_in(monkeypatch, isolated_portal):
                 service.cancel(db, event_id, customer_id=102)
             assert attended.value.status_code == 409
             assert db.get(EventLecture, event_id).current_participants == 1
+    finally:
+        engine.dispose()
+
+
+def test_event_management_controls_booking_visibility(monkeypatch, isolated_portal):
+    app, engine = isolated_portal("trusted_jwt")
+    principals = {
+        "organizer": ORGANIZER,
+        "other": EmployeePrincipal(12, PERMISSIONS),
+        "admin": EmployeePrincipal(13, PERMISSIONS, role_code="admin"),
+        "check-in-only": EmployeePrincipal(11, frozenset({"events:check_in"})),
+    }
+    monkeypatch.setattr(auth_service.AuthService, "authenticate", lambda self, token: principals[token])
+    app.dependency_overrides[require_visitor] = lambda: VisitorPrincipal(101, "test")
+    events = "/api/v1/enterprise/events"
+    visitor_events = "/api/v1/visitor/events"
+    organizer = {"Authorization": "Bearer organizer"}
+    admin = {"Authorization": "Bearer admin"}
+    try:
+        with TestClient(app) as client:
+            draft = client.post(events, json={**EVENT, "is_published": False}, headers=organizer)
+            assert draft.status_code == 200
+            event = draft.json()["data"]
+            assert event["is_published"] is False
+            event_path = f"{events}/{event['id']}"
+            publication = f"{event_path}/publication"
+            reservation = f"{visitor_events}/{event['id']}/reservation"
+            assert client.get(visitor_events).json()["data"] == []
+            assert client.post(reservation).status_code == 409
+
+            updated = {**EVENT, "event_name": "更新后的留学讲座", "location": "新报告厅"}
+            for token in ("other", "check-in-only"):
+                forbidden = {"Authorization": f"Bearer {token}"}
+                assert client.put(event_path, json=updated, headers=forbidden).status_code == 403
+                assert client.patch(publication, json={"is_published": True}, headers=forbidden).status_code == 403
+                assert client.delete(event_path, headers=forbidden).status_code == 403
+            assert client.put(event_path, json=updated, headers=admin).status_code == 200
+            assert client.patch(publication, json={"is_published": True}, headers=admin).status_code == 200
+            [visible] = client.get(visitor_events).json()["data"]
+            assert visible["event_name"] == updated["event_name"]
+            assert visible["location"] == updated["location"]
+            assert client.patch(publication, json={"is_published": False}, headers=admin).status_code == 200
+            assert client.get(visitor_events).json()["data"] == []
+            assert client.post(reservation).status_code == 409
+            assert client.delete(event_path, headers=admin).status_code == 200
+            assert client.get(events, headers=admin).json()["data"] == []
+    finally:
+        engine.dispose()
+
+
+def test_event_management_preserves_reservations_and_checks_start_time(monkeypatch, isolated_portal):
+    app, engine = isolated_portal("trusted_jwt")
+    monkeypatch.setattr(auth_service.AuthService, "authenticate", lambda self, token: ORGANIZER)
+    app.dependency_overrides[require_visitor] = lambda: VisitorPrincipal(101, "test")
+    events = "/api/v1/enterprise/events"
+    visitor_events = "/api/v1/visitor/events"
+    organizer = {"Authorization": "Bearer organizer"}
+    past_event = {**EVENT, "start_time": "2000-01-01T09:00:00", "end_time": "2000-01-01T11:00:00"}
+    try:
+        with TestClient(app) as client:
+            assert client.post(events, json=past_event, headers=organizer).status_code == 422
+            draft_id = client.post(events, json={**past_event, "is_published": False},
+                                   headers=organizer).json()["data"]["id"]
+            assert client.patch(f"{events}/{draft_id}/publication", json={"is_published": True},
+                                headers=organizer).status_code == 409
+
+            event_id = client.post(events, json={**EVENT, "max_participants": 2},
+                                   headers=organizer).json()["data"]["id"]
+            event_path = f"{events}/{event_id}"
+            reservation = f"{visitor_events}/{event_id}/reservation"
+            assert client.post(reservation).status_code == 200
+            app.dependency_overrides[require_visitor] = lambda: VisitorPrincipal(102, "test")
+            assert client.post(reservation).status_code == 200
+            assert client.put(event_path, json=EVENT, headers=organizer).status_code == 409
+            assert client.patch(f"{event_path}/publication", json={"is_published": False},
+                                headers=organizer).status_code == 200
+            assert client.get(visitor_events).json()["data"] == []
+            assert client.delete(reservation).status_code == 200
+            app.dependency_overrides[require_visitor] = lambda: VisitorPrincipal(101, "test")
+            assert client.delete(reservation).status_code == 200
+            assert client.delete(event_path, headers=organizer).status_code == 409
+            assert len(client.get(f"{event_path}/registrations", headers=organizer).json()["data"]) == 2
     finally:
         engine.dispose()
 

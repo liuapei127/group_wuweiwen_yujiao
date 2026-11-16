@@ -3,7 +3,7 @@ import {expect,test} from '@playwright/test'
 test('login page shows workspace branding (UI-only scope)',async({page})=>{
   await page.goto('/')
   await expect(page.getByRole('heading',{name:'登录你的工作空间'})).toBeVisible()
-  await expect(page.getByLabel('员工账号')).toBeVisible()
+  await expect(page.getByLabel('员工手机号')).toBeVisible()
   await expect(page.getByLabel('登录密码')).toBeVisible()
   await expect(page.getByRole('button',{name:'登录工作台'})).toBeVisible()
 })
@@ -20,7 +20,7 @@ test('visitor can sign in, reserve and cancel through the website', async ({page
   await page.route('**/api/v1/visitors/me', route =>
     route.fulfill({json: {code: 0, data: {account_type: 'visitor'}}}))
   const visitorProfile = {
-    username: 'visitor', name: '测试游客', contact: '13900009101',
+    username: '13900009101', name: '测试游客', contact: '13900009101',
     account_type: 'visitor', created_at: '2026-11-15T07:00:00Z', avatar_url: null,
   }
   await page.route('**/api/v1/visitors/profile', route =>
@@ -43,7 +43,7 @@ test('visitor can sign in, reserve and cancel through the website', async ({page
   await expect(page.getByRole('region', {name: '游客服务'})).toHaveCount(0)
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog', {name: '官网登录'})).toBeHidden()
-  await expect(page.getByLabel('手机号或原用户名')).toBeHidden()
+  await expect(page.getByLabel('手机号', {exact: true})).toBeHidden()
   const loginButton = page.getByRole('button', {name: /^登\s*录$/})
   await loginButton.click()
   const loginDialog = page.getByRole('dialog', {name: '官网登录'})
@@ -53,7 +53,7 @@ test('visitor can sign in, reserve and cancel through the website', async ({page
   await expect(loginDialog).toBeHidden()
   await expect(loginButton).toBeFocused()
   await loginButton.click()
-  await loginDialog.getByLabel('手机号或原用户名').fill('visitor')
+  await loginDialog.getByLabel('手机号', {exact: true}).fill('13900009101')
   await loginDialog.getByLabel('密码').fill('test-password')
   await loginDialog.getByRole('button', {name: /^登\s*录$/}).click()
   await expect(loginDialog).toBeHidden()
@@ -68,7 +68,11 @@ test('visitor can sign in, reserve and cancel through the website', async ({page
   await page.getByRole('button', {name: /个人信息/}).click()
   const account = page.getByRole('dialog', {name: '个人信息'})
   await expect(account.getByText('测试游客', {exact: true})).toBeVisible()
+  await expect(account.getByRole('button', {name: '更换头像'})).toHaveCount(0)
+  await account.getByRole('button', {name: '编辑资料'}).click()
   await expect(account.getByRole('button', {name: '更换头像'})).toBeVisible()
+  await account.getByRole('button', {name: '取消编辑'}).click()
+  await expect(account.getByRole('button', {name: '更换头像'})).toHaveCount(0)
   await expect(account.getByRole('button', {name: '退出登录'})).toBeVisible()
   await account.getByRole('button', {name: '修改密码'}).click()
   const changePassword = page.getByRole('dialog', {name: '修改密码'})
@@ -185,7 +189,7 @@ test('website sends a student to student services after same-entry login', async
   }))
   await page.route('**/api/v1/visitors/me', route => route.fulfill(reply))
   await page.route('**/api/v1/visitors/profile', route => route.fulfill({json: {code: 0, data: {
-    username: 'website-test', name: '测试学生', contact: '13900009102',
+    username: '13900009102', name: '测试学生', contact: '13900009102',
     account_type: 'student', created_at: '2026-11-15T07:00:00Z', avatar_url: null,
   }}}))
   await page.route('**/api/v1/student/**', route => {
@@ -216,7 +220,7 @@ test('website sends a student to student services after same-entry login', async
   await expect(page).toHaveURL(/website$/)
   await page.getByRole('button', {name: /^登\s*录$/}).click()
   const loginDialog = page.getByRole('dialog', {name: '官网登录'})
-  await loginDialog.getByLabel('手机号或原用户名').fill('website-test')
+  await loginDialog.getByLabel('手机号', {exact: true}).fill('13900009102')
   await loginDialog.getByLabel('密码').fill('test-password')
   await loginDialog.getByRole('button', {name: /^登\s*录$/}).click()
   await expect(page).toHaveURL(/website\/student$/)

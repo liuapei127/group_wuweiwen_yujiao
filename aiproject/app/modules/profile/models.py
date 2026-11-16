@@ -48,6 +48,8 @@ class CustomerSource(Base):
     raw_content: Mapped[Optional[str]] = mapped_column(Text, comment="原始文本内容")
     file_url: Mapped[Optional[str]] = mapped_column(String(512), comment="文件存储地址")
     file_name: Mapped[Optional[str]] = mapped_column(String(255), comment="原始文件名")
+    lead_id: Mapped[int | None] = mapped_column(BigInteger().with_variant(BIGINT(unsigned=True), "mysql"), ForeignKey("crm_lead.id"))
+    file_content: Mapped[bytes | None] = mapped_column(LargeBinary().with_variant(MEDIUMBLOB(), "mysql"), deferred=True)
     parse_status: Mapped[ParseStatus] = mapped_column(Enum(ParseStatus, values_callable=lambda x: [e.value for e in x]), nullable=False, default=ParseStatus.pending, comment="解析状态")
     parse_result: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, comment="解析结果JSON")
     parse_error: Mapped[Optional[str]] = mapped_column(Text, comment="解析失败原因")
@@ -64,6 +66,7 @@ class CustomerProfile(Base):
     __tablename__ = "customer_profile"
     __table_args__ = (
         Index("idx_source_id", "source_id"),
+        Index("idx_customer_profile_lead", "lead_id", "id"),
         Index("idx_match_result", "match_result"),
         Index("idx_matched_product", "matched_product"),
     )
@@ -72,6 +75,8 @@ class CustomerProfile(Base):
     customer_name: Mapped[Optional[str]] = mapped_column(String(64), comment="客户姓名")
     contact_info: Mapped[Optional[str]] = mapped_column(String(128), comment="联系方式")
     source_id: Mapped[Optional[int]] = mapped_column(BigInteger().with_variant(BIGINT(unsigned=True), "mysql"), ForeignKey("customer_source.id"), comment="来源资料ID")
+    lead_id: Mapped[int | None] = mapped_column(BigInteger().with_variant(BIGINT(unsigned=True), "mysql"), ForeignKey("crm_lead.id"))
+    profile_version: Mapped[int | None] = mapped_column(Integer)
     background_info: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, comment="背景信息JSON")
     match_result: Mapped[Optional[MatchResult]] = mapped_column(Enum(MatchResult, values_callable=lambda x: [e.value for e in x]), comment="匹配结论")
     matched_product: Mapped[Optional[str]] = mapped_column(String(128), comment="匹配产品线")

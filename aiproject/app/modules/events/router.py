@@ -10,7 +10,7 @@ from app.core.security import EmployeePrincipal, require_employee
 from app.modules.visitor.router import Principal as VisitorPrincipal
 
 from . import service
-from .schemas import EventCreate
+from .schemas import EventCreate, EventDetails, EventPublication
 
 router = APIRouter(prefix="/api/v1/enterprise/events", tags=["活动管理"])
 Database = Annotated[Session, Depends(get_db)]
@@ -28,6 +28,22 @@ def list_events(
 @router.post("")
 def create_event(payload: EventCreate, db: Database, principal: Principal):
     return success(service.create_event(db, payload, principal))
+
+
+@router.put("/{event_id}")
+def update_event(event_id: int, payload: EventDetails, db: Database, principal: Principal):
+    return success(service.update_event(db, event_id, payload, principal))
+
+
+@router.patch("/{event_id}/publication")
+def set_publication(event_id: int, payload: EventPublication, db: Database, principal: Principal):
+    return success(service.set_publication(db, event_id, payload.is_published, principal))
+
+
+@router.delete("/{event_id}")
+def delete_event(event_id: int, db: Database, principal: Principal):
+    service.delete_event(db, event_id, principal)
+    return success(None)
 
 
 @router.get("/{event_id}/registrations")

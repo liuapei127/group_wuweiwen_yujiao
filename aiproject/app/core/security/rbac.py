@@ -2,7 +2,7 @@
 from app.core.exceptions import BusinessError
 
 PERMISSIONS = {
-    'events:manage': ('创建活动', '活动管理'),
+    'events:manage': ('创建、编辑、发布和删除活动', '活动管理'),
     'events:check_in': ('查看预约并手动签到', '活动管理'),
     'dashboard:read': ('工作台', '工作台'),
     'visitor-intake:read': ('查看待认领游客和本人认领资料', '游客跟进'),
@@ -79,6 +79,15 @@ def route_permission(method, path):
     from app.ai.workflows.ent_contracts import ACTIONS
     routes = {(m.upper(), p): ACTION_PERMISSIONS[a] for a,(m,p,*_) in ACTIONS.items()}
     routes.update({
+        ('GET','/api/v1/consultant/customers'):'crm:read',
+        ('GET','/api/v1/consultant/leads/{lead_id}/profile'):'crm:read',
+        ('PATCH','/api/v1/consultant/leads/{lead_id}/profile'):'crm:write',
+        ('POST','/api/v1/consultant/leads/{lead_id}/readiness'):'crm:read',
+        ('POST','/api/v1/consultant/leads/{lead_id}/screening'):'crm:write',
+        ('POST','/api/v1/consultant/leads/{lead_id}/imports/preview'):'crm:write',
+        ('POST','/api/v1/consultant/leads/{lead_id}/imports/confirm'):'crm:write',
+        ('PUT','/api/v1/enterprise/website-accounts/{visitor_id}/customer'):'website-accounts:manage',
+        ('PUT','/api/v1/enterprise/website-accounts/customers/{lead_id}/identity'):'website-accounts:manage',
         ('GET','/api/v1/profile'):'crm:read',
         ('POST','/api/v1/profile/upload'):'crm:write',
         ('POST','/api/v1/profile/{source_id}/dify-preview'):'crm:read',
@@ -86,6 +95,7 @@ def route_permission(method, path):
         ('GET','/api/v1/profile/{source_id}'):'crm:read',
         ('GET','/api/v1/consultant/visitor-intake/pending'):'visitor-intake:read',
         ('GET','/api/v1/consultant/visitor-intake/assigned'):'visitor-intake:read',
+        ('GET','/api/v1/consultant/visitor-intake/{visitor_id}'):'visitor-intake:read',
         ('POST','/api/v1/consultant/visitor-intake/{visitor_id}/claim'):'visitor-intake:write',
         ('POST','/api/v1/consultant/visitor-intake/{visitor_id}/calls'):'visitor-intake:write',
         ('GET','/api/v1/consultant/visitor-intake/{visitor_id}/calls'):'visitor-intake:read',
@@ -125,6 +135,9 @@ def route_permission(method, path):
         ('GET','/api/v1/reporting/employee-reports/summary'):'reports:summary:read',
         ('GET','/api/v1/enterprise/events'):None,
         ('POST','/api/v1/enterprise/events'):'events:manage',
+        ('PUT','/api/v1/enterprise/events/{event_id}'):'events:manage',
+        ('PATCH','/api/v1/enterprise/events/{event_id}/publication'):'events:manage',
+        ('DELETE','/api/v1/enterprise/events/{event_id}'):'events:manage',
         ('GET','/api/v1/enterprise/events/{event_id}/registrations'):'events:check_in',
         ('POST','/api/v1/enterprise/events/{event_id}/registrations/{registration_id}/check-in'):'events:check_in',
         ('POST','/api/v1/enterprise/commands'):'commands:execute',

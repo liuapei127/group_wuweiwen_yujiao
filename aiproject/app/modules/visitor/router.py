@@ -17,7 +17,9 @@ from app.shared.constants.study_policies import study_policies
 from . import service
 from .avatar import MAX_UPLOAD_BYTES
 from .catalog import CourseWrite, list_courses, save_course, staff_courses
-from .schemas import VisitorLogin, VisitorRegister, WebsiteIdentity, WebsiteStudentCreate, WebsiteStudentUpdate
+from .schemas import (
+    VisitorLogin, VisitorRegister, WebsiteIdentity, WebsiteProfileUpdate, WebsiteStudentCreate, WebsiteStudentUpdate,
+)
 
 router = APIRouter(prefix="/api/v1/visitors", tags=["官网游客"])
 Database = Annotated[Session, Depends(get_db)]
@@ -77,6 +79,12 @@ def me(db: Database, principal: Principal):
 def profile(db: Database, principal: Principal, response: Response):
     response.headers["Cache-Control"] = "no-store"
     return success(service.profile(db, principal))
+
+
+@router.put("/profile")
+def update_profile(payload: WebsiteProfileUpdate, db: Database, principal: Principal, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    return success(service.update_profile(db, principal, payload))
 
 
 @router.put("/avatar")

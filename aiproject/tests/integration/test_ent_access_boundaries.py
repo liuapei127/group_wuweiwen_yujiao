@@ -162,6 +162,11 @@ def test_bad_query_parameters_return_422(env):
 
 def test_actor_fields_inferred_only_from_trusted_principal(env):
     c, db, app = env
+    assert c.post("/api/v1/consultant/leads", json={"customer_name": "顾问不可建档"}).status_code == 403
+    app.dependency_overrides[require_employee] = lambda: EmployeePrincipal(
+        employee_id=1, permissions=frozenset({"crm:read", "crm:write", "reports:write", "leaves:approve"}),
+        role_code="admin",
+    )
     lead = c.post("/api/v1/consultant/leads",json={"customer_name":"可信身份验证"})
     assert lead.status_code == 200 and lead.json()["data"]["owner_employee_id"] == 1
     lid = lead.json()["data"]["id"]

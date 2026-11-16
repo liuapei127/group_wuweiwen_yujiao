@@ -7,7 +7,8 @@ import {navigation,navGroups,workplaceHome} from './navigation'
 import {Loading} from './components/shared'
 import {Login} from './pages/Login'
 import {Dashboard,Account} from './pages/Home'
-import {Customers,Reports,Directory,Guides,Notifications,Queries,Commands} from './pages/Business'
+import {Reports,Directory,Guides,Notifications,Queries,Commands} from './pages/Business'
+import {CustomerDetails,Customers} from './pages/CustomerWorkspace'
 import {Scores,Leaves,Tickets,Todos} from './pages/Operations'
 import {Users,Roles,Audits} from './pages/Administration'
 import {Assistant} from './pages/Assistant'
@@ -19,11 +20,10 @@ import {WeeklySubmission} from './pages/WeeklySubmission'
 import {StudentAlerts} from './pages/StudentAlerts'
 import {ApplicationProgress} from './pages/ApplicationProgress'
 import {VisitorIntake} from './pages/VisitorIntake'
-import {ProfileScreening} from './pages/ProfileScreening'
 import {WebsiteContent} from './pages/WebsiteContent'
 import {WebsiteAccounts} from './pages/WebsiteAccounts'
 
-const pages:Record<string,ReactNode>={'/dashboard':<Dashboard/>,'/assistant':<Assistant/>,'/customers':<Customers/>,'/profile-screening':<ProfileScreening/>,'/visitor-intake':<VisitorIntake/>,'/reports':<><Reports/><WeeklySubmission/></>,'/reporting':<ReportCenter/>,'/student-alerts':<StudentAlerts/>,'/directory':<Directory/>,'/guides':<Guides/>,'/scores':<Scores/>,'/leaves':<Leaves/>,'/tickets':<Tickets/>,'/events':<Events/>,'/academic-deadlines':<StaffDeadlines/>,'/course-management':<StaffCourses/>,'/application-progress':<ApplicationProgress/>,'/todos':<Todos/>,'/notifications':<Notifications/>,'/queries':<Queries/>,'/commands':<Commands/>,'/settings/website-content':<WebsiteContent/>,'/settings/website-accounts':<WebsiteAccounts/>,'/settings/users':<Users/>,'/settings/roles':<Roles/>,'/settings/audit':<Audits/>}
+const pages:Record<string,ReactNode>={'/dashboard':<Dashboard/>,'/assistant':<Assistant/>,'/customers':<Customers/>,'/visitor-intake':<VisitorIntake/>,'/reports':<><Reports/><WeeklySubmission/></>,'/reporting':<ReportCenter/>,'/student-alerts':<StudentAlerts/>,'/directory':<Directory/>,'/guides':<Guides/>,'/scores':<Scores/>,'/leaves':<Leaves/>,'/tickets':<Tickets/>,'/events':<Events/>,'/academic-deadlines':<StaffDeadlines/>,'/course-management':<StaffCourses/>,'/application-progress':<ApplicationProgress/>,'/todos':<Todos/>,'/notifications':<Notifications/>,'/queries':<Queries/>,'/commands':<Commands/>,'/settings/website-content':<WebsiteContent/>,'/settings/website-accounts':<WebsiteAccounts/>,'/settings/users':<Users/>,'/settings/roles':<Roles/>,'/settings/audit':<Audits/>}
 
 export default function App(){
   const {user,loading,can,logout}=useAuth()
@@ -84,6 +84,8 @@ export default function App(){
           <Route path="/" element={<Navigate to={first} replace/>}/>
           <Route path="/login" element={<Navigate to={first} replace/>}/>
           <Route path="/account" element={<Account/>}/>
+          <Route path="/profile-screening" element={<Navigate to="/customers" replace/>}/>
+          <Route path="/customers/:id" element={can('crm:read')?<CustomerDetails/>:<Result status="403" title="暂无访问权限"/>}/>
           {navigation.map(n=><Route key={n.path} path={n.path} element={permittedPaths.has(n.path)?pages[n.path]:<Result status="403" title="暂无访问权限" subTitle="你的当前角色尚未获得这项功能权限，请联系管理员。" extra={<Button onClick={()=>navigate(first)}>返回我的工作台</Button>}/>}/>)}
           <Route path="*" element={<Result status="404" title="页面不存在" extra={<Link to={first}><Button>返回工作台</Button></Link>}/>}/>
         </Routes>

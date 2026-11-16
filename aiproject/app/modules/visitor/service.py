@@ -12,6 +12,7 @@ from app.core.exceptions import BusinessError
 from app.core.security import EmployeePrincipal
 from app.core.security.authorization import require_permission
 from app.modules.auth.repository import AuthRepository
+from app.modules.consultant import customer_repository, customer_service
 from app.modules.auth.schemas import PasswordChange, PasswordReset
 from app.modules.student_admin.repository import StudentAdminRepository
 from app.core.security.credentials import hash_password, password_for_reset, utc_now, verify_password
@@ -21,10 +22,12 @@ from . import repository
 from .avatar import normalize_avatar
 from .models import VisitorAccount, VisitorSession, WebsiteStudentAccess
 from .schemas import (
-    VisitorLogin, VisitorRegister, VisitorToken, WebsiteAccountOut, WebsiteProfile, WebsiteStudentCreate, WebsiteStudentUpdate,
+    VisitorLogin, VisitorRegister, VisitorToken, WebsiteAccountOut, WebsiteProfile, WebsiteProfileUpdate,
+    WebsiteStudentCreate, WebsiteStudentUpdate,
 )
 
 _SESSION_SECONDS = 3600
+_MISSING_NAME = "未填写姓名"
 _TOKEN_PATTERN = re.compile(r"visitor_[0-9a-f]{64}")
 
 
@@ -37,7 +40,8 @@ class VisitorPrincipal:
 def register(db: Session, payload: VisitorRegister) -> VisitorToken:
     reject_account_password(payload.password, payload.username, payload.contact)
     account = VisitorAccount(
-        username=payload.username, name=payload.name or "未填写姓名", contact=payload.contact or payload.username,
+        username=payload.username, name=payload.name or _MISSING_NAME, nickname=payload.nickname,
+        contact=payload.contact or payload.username,
         password_hash=hash_password(payload.password), created_at=utc_now(),
     )
     try:
@@ -60,13 +64,13 @@ def login(db: Session, payload: VisitorLogin) -> VisitorToken:
     account = repository.account_by_username(db, payload.username)
     initial_hash = account.password_hash if account else None
     if not verify_password(payload.password, initial_hash) or account is None:
-        raise BusinessError(401, "用户名或密码不正确")
+        raise BusinessError(401, "手机号或密码不正确")
     try:
         locked = repository.lock_website_account(db, account.id)
-        if locked is None or (
+        if locked is None or locked.username != payload.username or (
             locked.password_hash != initial_hash and not verify_password(payload.password, locked.password_hash)
         ):
-            raise BusinessError(401, "用户名或密码不正确")
+            raise BusinessError(401, "手机号或密码不正确")
         repository.delete_expired_for_visitor(db, locked.id, utc_now())
         access = repository.student_access(db, locked.id, lock=True)
         student = bool(access and access.enabled and StudentAdminRepository(db).lock_student(access.student_id))
@@ -102,12 +106,32 @@ def profile(db: Session, principal: VisitorPrincipal) -> WebsiteProfile:
     return _profile(db, account, principal, repository.avatar_bytes(db, account.id))
 
 
+def update_profile(db: Session, principal: VisitorPrincipal, payload: WebsiteProfileUpdate) -> WebsiteProfile:
+    try:
+        account = _lock_profile_account(db, principal)
+        if not customer_service.sync_existing_website_profile(db, account, payload):
+            account.nickname = payload.nickname or None
+            account.name = payload.name or _MISSING_NAME
+            account.contact = payload.contact
+        result = _profile(db, account, principal, repository.avatar_bytes(db, account.id))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return result
+
+
+def _lock_profile_account(db: Session, principal: VisitorPrincipal) -> VisitorAccount:
+    account = repository.lock_website_account(db, principal.visitor_id)
+    if account is None or repository.session_visitor(db, principal.digest, utc_now(), lock=True) != account.id:
+        raise BusinessError(401, "请重新登录官网")
+    return account
+
+
 def change_avatar(db: Session, principal: VisitorPrincipal, content: bytes) -> WebsiteProfile:
     image = normalize_avatar(content)
     try:
-        account = repository.lock_website_account(db, principal.visitor_id)
-        if account is None or repository.session_visitor(db, principal.digest, utc_now(), lock=True) != account.id:
-            raise BusinessError(401, "请重新登录官网")
+        account = _lock_profile_account(db, principal)
         repository.save_avatar(db, account.id, image)
         result = _profile(db, account, principal, image)
         db.commit()
@@ -119,7 +143,9 @@ def change_avatar(db: Session, principal: VisitorPrincipal, content: bytes) -> W
 
 def _profile(db: Session, account: VisitorAccount, principal: VisitorPrincipal, image: bytes | None) -> WebsiteProfile:
     return WebsiteProfile(
-        username=account.username, name=account.name, contact=account.contact,
+        username=account.username, name="" if account.name == _MISSING_NAME else account.name,
+        nickname=account.nickname, contact=account.contact,
+        version=customer_service.website_profile_version(db, account.id),
         created_at=account.created_at.replace(tzinfo=timezone.utc),
         account_type="student" if website_student(db, principal) is not None else "visitor",
         avatar_url="data:image/webp;base64," + b64encode(image).decode("ascii") if image else None,
@@ -128,9 +154,7 @@ def _profile(db: Session, account: VisitorAccount, principal: VisitorPrincipal, 
 
 def change_password(db: Session, principal: VisitorPrincipal, payload: PasswordChange) -> dict[str, bool]:
     try:
-        account = repository.lock_website_account(db, principal.visitor_id)
-        if account is None or repository.session_visitor(db, principal.digest, utc_now(), lock=True) != account.id:
-            raise BusinessError(401, "请重新登录官网")
+        account = _lock_profile_account(db, principal)
         if not verify_password(payload.old_password, account.password_hash):
             raise BusinessError(400, "原密码不正确")
         reject_account_password(payload.new_password, account.username, account.contact)
@@ -165,8 +189,12 @@ def list_accounts(
     db: Session, employee: EmployeePrincipal, keyword: str, after_id: int, limit: int
 ) -> list[WebsiteAccountOut]:
     require_permission(employee, "website-accounts:manage")
-    return [_website_account(account, access) for account, access in
-            repository.list_website_accounts(db, keyword, after_id, limit)]
+    rows = repository.list_website_accounts(db, keyword, after_id, limit)
+    links = customer_repository.linked_leads(db, [account.id for account, _ in rows])
+    return [
+        _website_account(account, access).model_copy(update={"crm_lead_id": links.get(account.id)})
+        for account, access in rows
+    ]
 
 
 def reset_website_password(
@@ -178,8 +206,6 @@ def reset_website_password(
         if account is None:
             raise BusinessError(404, "官网账号不存在")
         password = password_for_reset(account.username, payload.new_password)
-        if payload.new_password is not None:
-            reject_account_password(password, account.username, account.contact)
         _replace_password(db, account, password)
         AuthRepository(db).audit(employee.employee_id, "website_password_reset", visitor_id)
         db.commit()

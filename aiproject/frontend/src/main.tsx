@@ -12,7 +12,7 @@ import './visitor.css'
 
 function Entry() {
   const {pathname} = useLocation()
-  return /^\/website(?:\/(?:visitor(?:\/services)?|student))?\/?$/.test(pathname)
+  return /^\/website(?:\/(?:visitor(?:\/services)?|student|profile))?\/?$/.test(pathname)
     ? <Visitor/>
     : <AuthProvider><App/></AuthProvider>
 }

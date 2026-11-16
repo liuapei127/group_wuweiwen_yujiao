@@ -20,6 +20,7 @@ from app.core.exceptions.handlers import business_error_handler, validation_erro
 
 from app.ai.nl2sql.router import router as nl2sql_router
 from app.modules.consultant.router import router as consultant_router
+from app.modules.consultant.customer_router import admin_router as customer_admin_router, staff_router as customer_staff_router, visitor_router as customer_website_router
 from app.modules.consultant.intake_router import router as visitor_intake_router
 from app.modules.profile.router import router as profile_router, visitor_router as visitor_material_router
 from app.modules.customer_service.router import router as customer_service_router
@@ -59,6 +60,9 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(todo_router)
     # 企业智能助手（ENT）
     app.include_router(consultant_router)
+    app.include_router(customer_staff_router)
+    app.include_router(customer_website_router)
+    app.include_router(customer_admin_router)
     app.include_router(visitor_intake_router)
     app.include_router(profile_router)
     app.include_router(visitor_material_router)

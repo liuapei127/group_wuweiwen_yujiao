@@ -46,18 +46,21 @@ def test_base_employee_cookies_refresh_replay_and_logout(isolated_portal, monkey
             db.execute(role_permissions.insert().values(role_id=2, permission="users:manage"))
             db.execute(text(
                 "INSERT INTO sys_user(id,username,password_hash,real_name,user_type,status,role_id) "
-                "VALUES(4,'reset-admin-test',:password,'管理员','admin','normal',2)"
+                "VALUES(4,'13900002104',:password,'管理员','admin','normal',2)"
             ), {"password": hash_password("synthetic-admin-password")})
             db.execute(text(
                 "INSERT INTO sys_user(id,username,password_hash,real_name,user_type,status,role_id) "
-                "VALUES(3,'base-test',:password,'员工','employee','normal',1)"
+                "VALUES(3,'13900002103',:password,'员工','employee','normal',1)"
             ), {"password": hash_password("synthetic-password")})
             db.commit()
 
         origin = {"Origin": "https://portal.example.test"}
-        credentials = {"username": "base-test", "password": "synthetic-password"}
+        credentials = {"username": "13900002103", "password": "synthetic-password"}
         with TestClient(app, base_url=origin["Origin"]) as client:
             assert client.post("/api/v1/auth/login", json=credentials).status_code == 403
+            assert client.post("/api/v1/auth/login", headers=origin, json={
+                **credentials, "username": "base-test",
+            }).status_code == 422
             login = client.post("/api/v1/auth/login", headers=origin, json=credentials)
             assert login.status_code == 200
             cookies = login.headers.get_list("set-cookie")
@@ -99,12 +102,12 @@ def test_base_employee_cookies_refresh_replay_and_logout(isolated_portal, monkey
                 "old_password": "wrong-current-password", "new_password": "Strong!23",
             }).status_code == 400
             reset = "/api/v1/auth/users/3/password"
-            next_password = {"new_password": "synthetic-new-password"}
+            next_password = {}
             assert client.post(reset, headers=employee_access, json=next_password).status_code == 403
 
             with TestClient(app, base_url=origin["Origin"]) as admin:
                 login = admin.post("/api/v1/auth/login", headers=origin, json={
-                    "username": "reset-admin-test", "password": "synthetic-admin-password",
+                    "username": "13900002104", "password": "synthetic-admin-password",
                 })
                 admin_access = {"Authorization": "Bearer " + login.json()["data"]["access_token"]}
                 invalid = admin.post(reset, headers=admin_access, json={"new_password": "onlyletters"})
@@ -143,13 +146,16 @@ def test_base_employee_cookies_refresh_replay_and_logout(isolated_portal, monkey
                     assert reset_result.json()["data"] == {"id": new_id, "sessions_revoked": True}
                     personal_access = {"Authorization": "Bearer " + personal_login.json()["data"]["access_token"]}
                     assert mobile_user.get("/api/v1/auth/me", headers=personal_access).status_code == 401
-                    assert mobile_user.post("/api/v1/auth/login", headers=origin, json=initial_credentials).status_code == 200
+                    assert mobile_user.post("/api/v1/auth/login", headers=origin, json=initial_credentials).status_code == 401
+                    assert mobile_user.post("/api/v1/auth/login", headers=origin, json={
+                        **initial_credentials, "password": "YJ" + mobile[-6:],
+                    }).status_code == 200
 
             assert client.get("/api/v1/auth/me", headers=employee_access).status_code == 401
             assert client.post("/api/v1/auth/refresh", headers=employee_csrf).status_code == 401
             assert client.post("/api/v1/auth/login", headers=origin, json=credentials).status_code == 401
             assert client.post("/api/v1/auth/login", headers=origin, json={
-                **credentials, "password": next_password["new_password"],
+                **credentials, "password": "YJ" + credentials["username"][-6:],
             }).status_code == 200
     finally:
         engine.dispose()

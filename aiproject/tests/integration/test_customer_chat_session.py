@@ -26,7 +26,8 @@ def test_website_customer_booking_is_confirmed_and_scoped(monkeypatch):
     for model in (VisitorAccount, CustomerChatSession, EventLecture, EventRegistration):
         model.__table__.create(engine)
     with Session(engine) as db:
-        db.execute(text("""INSERT INTO visitor_account VALUES
+        db.execute(text("""INSERT INTO visitor_account
+            (id,username,name,contact,password_hash,created_at) VALUES
             (1,'alice','Alice','demo','unused','2026-01-01'),
             (2,'bob','Bob','demo','unused','2026-01-01')"""))
         db.execute(text("""INSERT INTO event_lecture

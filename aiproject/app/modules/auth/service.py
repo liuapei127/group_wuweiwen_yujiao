@@ -228,8 +228,6 @@ class AuthService:
             self.repo.lock_account_id(user_id)
             account = self._employee(user_id)
             password = password_for_reset(account['username'], body.new_password)
-            if body.new_password is not None:
-                reject_account_password(password, account['username'], account['contact_info'])
             self.repo.update_account(user_id, {'password_hash': hash_password(password), 'update_time': utc_now()})
             self._revoke_all(user_id)
             self.repo.audit(p.employee_id, 'password_reset', user_id)

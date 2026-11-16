@@ -4,7 +4,6 @@ import json
 import os
 from pathlib import Path
 import re
-from secrets import token_urlsafe
 from uuid import uuid4
 
 from cryptography.hazmat.primitives import serialization
@@ -24,6 +23,12 @@ ROLE_LABELS = {
     "manager": "联调主管",
     "team_leader": "联调班主任",
     "student": "学生",
+}
+DEMO_MOBILES = {
+    "admin": "19900001101",
+    "employee": "19900001102",
+    "manager": "19900001103",
+    "team_leader": "19900001104",
 }
 DEMO_GRANTS = {
     "employee": {"visitor-intake:read", "visitor-intake:write"},
@@ -67,11 +72,11 @@ def seed_accounts(conn):
                          [{"role_id": role_id, "permission": permission} for permission in grants])
         if role_code == "student":
             continue
-        password = token_urlsafe(18)
-        username = "ent_" + role_code
+        username = DEMO_MOBILES[role_code]
+        password = username[-6:]
         user_id = conn.execute(text(
-            "INSERT INTO sys_user (username,password_hash,real_name,user_type,role_id) "
-            "VALUES (:username,:password_hash,:name,:user_type,:role_id)"
+            "INSERT INTO sys_user (username,password_hash,real_name,user_type,role_id,contact_info) "
+            "VALUES (:username,:password_hash,:name,:user_type,:role_id,:username)"
         ), {"username": username, "password_hash": hash_password(password), "name": name,
             "user_type": "admin" if role_code == "admin" else "employee", "role_id": role_id}).lastrowid
         accounts.append({"username": username, "password": password, "role": role_code, "id": user_id})
@@ -127,7 +132,7 @@ def main():
         with engine.begin() as conn:
             accounts = seed_accounts(conn)
         with engine.connect() as conn:
-            for migration in ("014_student_assistant.sql", "015_reporting_board.sql", "016_website_content.sql", "017_customer_chat_session.sql", "018_visitor_avatar.sql"):
+            for migration in ("014_student_assistant.sql", "015_reporting_board.sql", "016_website_content.sql", "017_customer_chat_session.sql", "018_visitor_avatar.sql", "019_event_publication.sql", "020_visitor_nickname.sql", "021_customer_workspace.sql"):
                 for ddl in read_ddl(SCHEMA.parent / "pending" / migration):
                     conn.exec_driver_sql(ddl)
             conn.commit()

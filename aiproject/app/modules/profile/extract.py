@@ -10,6 +10,18 @@ _HEADER_KEYS = {
     "id": "id",
     "name": "name",
     "姓名": "name",
+    "客户姓名": "name",
+    "本人姓名": "name",
+    "mobile": "mobile",
+    "手机号": "mobile",
+    "手机号码": "mobile",
+    "登录手机号": "mobile",
+    "本人手机号": "mobile",
+    "昵称": "nickname",
+    "联系方式": "contact_info",
+    "在读或毕业状态": "education_stage",
+    "毕业状态": "education_stage",
+    "意向专业": "intended_major",
     "age": "age",
     "年龄": "age",
     "gender": "gender",
@@ -41,7 +53,7 @@ _HEADER_KEYS = {
 }
 
 
-def extract_text(file_name: str, file_bytes: bytes) -> str:
+def extract_text(file_name: str, file_bytes: bytes, *, preserve_pdf_pages: bool = False) -> str:
     """按扩展名抽出文本。空文件返回空字符串。"""
     if not file_bytes:
         return ""
@@ -53,7 +65,7 @@ def extract_text(file_name: str, file_bytes: bytes) -> str:
     if suffix == "xls":
         return _from_xls(file_bytes)
     if suffix == "pdf":
-        return _from_pdf(file_bytes)
+        return _from_pdf(file_bytes, separator="\f" if preserve_pdf_pages else "\n")
     raise BusinessError(422, "文件格式无法解析")
 
 
@@ -111,7 +123,7 @@ def _from_xls(file_bytes: bytes) -> str:
     return _rows_to_text(rows)
 
 
-def _from_pdf(file_bytes: bytes) -> str:
+def _from_pdf(file_bytes: bytes, *, separator: str) -> str:
     try:
         from pypdf import PdfReader
     except ImportError as exc:
@@ -121,7 +133,7 @@ def _from_pdf(file_bytes: bytes) -> str:
         pages = [page.extract_text() or "" for page in reader.pages]
     except Exception as exc:
         raise BusinessError(422, "PDF 文件无法读取") from exc
-    return "\n".join(part.strip() for part in pages if part.strip())
+    return separator.join(part.strip() for part in pages if part.strip())
 
 
 def _rows_to_text(rows: list[list[str]]) -> str:
@@ -129,6 +141,8 @@ def _rows_to_text(rows: list[list[str]]) -> str:
     if not kept:
         return ""
     header = [_header_key(cell) for cell in kept[0]]
+    if header.count("name") > 1 or header.count("mobile") > 1:
+        raise BusinessError(422, "文件含多列身份信息，无法确认是同一位客户")
     if sum(key is not None for key in header) >= 2 and len(kept) > 1:
         records = []
         for row in kept[1:]:

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint, true
 from sqlalchemy.dialects.mysql import BIGINT
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -18,6 +18,7 @@ class EventLecture(Base):
     id: Mapped[int] = mapped_column(BigInteger().with_variant(Integer, "sqlite").with_variant(BIGINT(unsigned=True), "mysql"), primary_key=True)
     event_type: Mapped[str] = mapped_column(Enum("online", "offline", "hybrid"), default="offline")
     status: Mapped[str] = mapped_column(Enum("upcoming", "ongoing", "ended", "cancelled"), default="upcoming")
+    is_published: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
     event_name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text)
     start_time: Mapped[datetime] = mapped_column(DateTime)

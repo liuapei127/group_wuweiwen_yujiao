@@ -20,7 +20,7 @@ def upcoming(
 ) -> list[EventLecture]:
     stmt = select(EventLecture).where(
         EventLecture.start_time > now, EventLecture.status == "upcoming",
-        EventLecture.max_participants.is_not(None),
+        EventLecture.is_published.is_(True), EventLecture.max_participants.is_not(None),
     )
     if before is not None:
         stmt = stmt.where(EventLecture.start_time <= before)
@@ -63,6 +63,11 @@ def customer_reservations(
     return [(event, booking) for event, booking in db.execute(
         stmt.order_by(EventRegistration.id.desc()).limit(limit)
     )]
+
+
+def has_registrations(db: Session, event_id: int) -> bool:
+    stmt = select(EventRegistration.id).where(EventRegistration.event_id == event_id).limit(1)
+    return db.scalar(stmt.with_for_update()) is not None
 
 
 def reserve_seat(db: Session, event_id: int) -> bool:

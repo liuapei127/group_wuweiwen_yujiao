@@ -3,15 +3,19 @@ import {Button, Card, Input, Space, Typography} from 'antd'
 
 export type GuideTopic = {key: string; label: string; keywords: string[]; answer: string}
 
-export function WebsiteGuide({topics, open}: {topics: GuideTopic[]; open?: (key: string) => void}) {
+export function WebsiteGuide({topics, open, showSearch = true}: {
+  topics: GuideTopic[]
+  open?: (key: string) => void
+  showSearch?: boolean
+}) {
   const [matches, setMatches] = useState<GuideTopic[]>()
   return <Card title="服务指引">
     <Space orientation="vertical" size="middle" style={{width: '100%'}}>
-      <Input.Search aria-label="输入想办理的事项" placeholder="输入想了解或办理的事项" maxLength={120} allowClear
+      {showSearch && <Input.Search aria-label="输入想办理的事项" placeholder="输入想了解或办理的事项" maxLength={120} allowClear
         enterButton="查询" onSearch={question => {
           const text = question.trim().toLowerCase()
           setMatches(text ? topics.filter(topic => topic.keywords.some(word => text.includes(word))) : undefined)
-        }}/>
+        }}/>}
       <Space wrap>{topics.map(topic =>
         <Button key={topic.key} onClick={() => setMatches([topic])}>{topic.label}</Button>
       )}</Space>

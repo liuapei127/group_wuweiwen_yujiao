@@ -1,0 +1,2 @@
+ALTER TABLE event_lecture
+    ADD COLUMN is_published BOOLEAN NOT NULL DEFAULT TRUE;

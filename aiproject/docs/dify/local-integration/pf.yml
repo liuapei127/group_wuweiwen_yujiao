@@ -1387,6 +1387,11 @@ workflow:
           value_type: string
           variable: match_reason
         - value_selector:
+          - '1794466000011'
+          - text
+          value_type: string
+          variable: advisor_advice
+        - value_selector:
           - '1794465387686'
           - recommended_programs
           value_type: array[string]

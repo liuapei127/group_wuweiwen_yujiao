@@ -8,6 +8,7 @@ from app.core.exceptions import BusinessError
 class ReviewPreview(BaseModel):
     match_result: str = Field(max_length=80)
     match_reason: str = Field(max_length=8000)
+    advisor_advice: str | None = Field(default=None, max_length=8000)
 
 
 def review_text(raw_content: str) -> ReviewPreview:

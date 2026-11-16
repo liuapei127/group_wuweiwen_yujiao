@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | CS | 粤教CRM-客服 · 本机集成 | 官网客服，POST /api/cs/chat |
 | STU | 留学学生助手 · 统一API | stu.yml 新薄壳：官网登录或传入 Bearer → POST /api/v1/student/assistant/run。业务请假/投诉/进度/心理在 FastAPI。旧 8001/api/stu 版见 stu-legacy-api-stu.yml。 |
-| PF | 客户研判 · 本机集成 | 员工工作台 → 客户研判 → 运行 Dify 研判。改动见 pf-改动说明.md |
+| PF | 客户研判 · 本机集成 | 员工工作台 → 客户管理 → 客户详情 → 研判。改动见 pf-改动说明.md |
 | RPT | 员工正式报告 AI 总结 · 本机集成 | 员工工作台 → 业务报表 → 日报提交 → 生成 AI 总结 |
 | ENT | 企业智能助手-ENT | 员工工作台 → AI 助手。32 节点版已发布，服务端配置 DIFY_ENT_CHATFLOW_API_KEY。 |
 

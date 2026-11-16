@@ -424,7 +424,7 @@ def test_admin_resets_website_password_and_revokes_all_sessions(isolated_portal,
     admin = {"Authorization": "Bearer admin"}
     staff = {"Authorization": "Bearer staff"}
     credentials = {"username": "13900002004", "password": "original-test-password"}
-    new_password = credentials["username"][-6:]
+    new_password = "YJ" + credentials["username"][-6:]
 
     def bearer(response):
         return {"Authorization": "Bearer " + response.json()["data"]["access_token"]}
@@ -476,12 +476,11 @@ def test_admin_resets_website_password_and_revokes_all_sessions(isolated_portal,
             legacy_login = client.post(website + "/login", json={
                 "username": "legacy-visitor", "password": "legacy-test-password",
             })
-            assert legacy_login.status_code == 200
+            assert legacy_login.status_code == 422
             legacy_account = client.get(management, headers=admin, params={"keyword": "legacy-visitor"}).json()["data"][0]
             legacy_reset = f"{management}/{legacy_account['id']}/password"
             assert client.post(legacy_reset, headers=admin, json={}).status_code == 422
-            assert client.post(legacy_reset, headers=admin, json={"new_password": "legacy-reset-password"}).status_code == 200
-            assert client.get(website + "/me", headers=bearer(legacy_login)).status_code == 401
+            assert client.post(legacy_reset, headers=admin, json={"new_password": "legacy-reset-password"}).status_code == 422
 
         with Session(engine) as db:
             row = db.execute(select(audit_log).where(audit_log.c.action == "website_password_reset",
@@ -498,7 +497,7 @@ def test_website_account_can_change_its_own_password(isolated_portal, monkeypatc
     app, engine = isolated_portal("trusted_jwt")
     monkeypatch.setattr(visitor_router, "_AUTH_CAPACITY", visitor_router.CsChatCapacity(4, 2, 10))
     website = "/api/v1/visitors"
-    registration = {"username": "13900003018", "password": "guest-pass", "name": "测试客户"}
+    registration = {"username": "13900003018", "password": "guest-pass", "nickname": "  测试昵称  "}
 
     def bearer(response):
         return {"Authorization": "Bearer " + response.json()["data"]["access_token"]}
@@ -509,9 +508,16 @@ def test_website_account_can_change_its_own_password(isolated_portal, monkeypatc
                 rejected = client.post(website + "/register", json={**registration, "password": invalid})
                 assert rejected.status_code == 422
                 assert all("input" not in entry for entry in rejected.json()["detail"])
+            for invalid_nickname in ("   ", "名" * 65):
+                assert client.post(website + "/register", json={
+                    **registration, "nickname": invalid_nickname,
+                }).status_code == 422
             signup = client.post(website + "/register", json=registration)
             assert signup.status_code == 201
             first = bearer(signup)
+            account = client.get(website + "/profile", headers=first).json()["data"]
+            assert account["nickname"] == "测试昵称"
+            assert account["name"] == ""
             if is_student:
                 with Session(engine) as db:
                     visitor_id = db.scalar(select(VisitorAccount.id).where(

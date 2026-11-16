@@ -6,6 +6,7 @@ import {WebsitePolicies} from './WebsitePolicies'
 import {WebsiteGuide, type GuideTopic} from './WebsiteGuide'
 import {WebsiteAssistant} from './WebsiteAssistant'
 import {WebsiteAccountMenu} from './WebsiteAccountMenu'
+import {WebsiteCustomerProfile} from './CustomerWorkspace'
 import {publicWebsiteContentPath, websiteContentQueryKey, type WebsiteSection} from '../lib/websiteContent'
 import {Alert, App, Button, Card, Form, Input, List, Modal, Space, Tabs, Tag, Typography} from 'antd'
 import {ArrowLeftOutlined, ArrowRightOutlined, MessageOutlined} from '@ant-design/icons'
@@ -27,7 +28,7 @@ type Activity = {
 type Booking = {event: Activity; reservation: {id: number; status: string}}
 type Material = {source_id: number; file_name: string | null; submitted_at: string; status: string}
 type WebsiteIdentity = {account_type: 'visitor' | 'student'}
-type Credentials = {username: string; password: string}
+type Credentials = {username: string; password: string; nickname?: string}
 
 const publicTopics: GuideTopic[] = [
   {key: 'events', label: '活动预约', keywords: ['活动', '预约', '讲座'], answer: '注册并登录后可查看线下讲座时间和名额，也可在线取消预约。'},
@@ -119,6 +120,7 @@ function HeroBanner({onOpenAssistant}: {onOpenAssistant: () => void}) {
 
 const visitorHome = '/website/visitor'
 const visitorServicesPath = visitorHome + '/services'
+const customerProfilePath = '/website/profile'
 const storageKey = 'yujiao-visitor-token'
 const activityUrl = '/api/v1/visitor/events'
 const materialUrl = '/api/v1/visitor/materials'
@@ -166,8 +168,10 @@ export function Visitor() {
   const navigate = useNavigate()
   const publicPath = current.pathname.replace(/\/$/, '')
   const isServicesPage = publicPath === visitorServicesPath
+  const isProfilePage = publicPath === customerProfilePath
   const legacyServicesLink = (publicPath === '/website' || publicPath === visitorHome) && current.hash === '#visitor-services'
   const returnToServices = current.state?.returnTo === visitorServicesPath
+  const returnToProfile = current.state?.returnTo === customerProfilePath
   const identity = useQuery({
     queryKey: ['visitor', 'identity', token], enabled: !!token,
     queryFn: () => visitorApi<WebsiteIdentity>('/api/v1/visitors/me', token),
@@ -208,21 +212,22 @@ export function Visitor() {
 
   function closeLogin() {
     setAuthOpen(false)
-    if (returnToServices) void navigate('/website', {replace: true})
+    if (returnToServices || returnToProfile) void navigate('/website', {replace: true})
   }
 
-  async function signIn(values: Credentials) {
+  async function signIn({username, password, nickname}: Credentials) {
     setAuthBusy(true)
     try {
       const result = await visitorApi<WebsiteIdentity & {access_token: string}>(
-        '/api/v1/visitors/' + (register ? 'register' : 'login'), '', 'POST', values,
+        '/api/v1/visitors/' + (register ? 'register' : 'login'), '', 'POST',
+        {username, password, ...(register ? {nickname: nickname?.trim()} : {})},
       )
       sessionStorage.setItem(storageKey, result.access_token)
       cache.setQueryData(['visitor', 'identity', result.access_token], {account_type: result.account_type})
       setAuthOpen(false)
       setToken(result.access_token)
       const destination = returnToServices ? visitorServicesPath : visitorHome
-      void navigate(result.account_type === 'student' ? '/website/student' : destination, {replace: true})
+      void navigate(returnToProfile ? customerProfilePath : result.account_type === 'student' ? '/website/student' : destination, {replace: true})
     } catch (error) {
       void message.error((error as Error).message)
     } finally {
@@ -245,7 +250,7 @@ export function Visitor() {
 
   const identityExpired = identity.error instanceof VisitorApiError && identity.error.status === 401
   if (!token && (publicPath !== '/website' || legacyServicesLink)) {
-    const state = isServicesPage || legacyServicesLink ? {returnTo: visitorServicesPath} : undefined
+    const state = isProfilePage ? {returnTo: customerProfilePath} : isServicesPage || legacyServicesLink ? {returnTo: visitorServicesPath} : undefined
     return <Navigate to="/website" state={state} replace/>
   }
   if (token && identity.error) {
@@ -258,12 +263,12 @@ export function Visitor() {
     </section></main>
   }
   const accountType = identity.data?.account_type
-  if (token && accountType === 'student' && publicPath !== '/website/student') {
+  if (token && accountType === 'student' && !isProfilePage && publicPath !== '/website/student') {
     return <Navigate to="/website/student" replace/>
   }
   if (token && accountType === 'visitor') {
     if (legacyServicesLink) return <Navigate to={visitorServicesPath} replace/>
-    if (!isServicesPage && publicPath !== visitorHome) {
+    if (!isServicesPage && !isProfilePage && publicPath !== visitorHome) {
       return <Navigate to={{pathname: visitorHome, hash: current.hash}} replace/>
     }
   }
@@ -282,6 +287,7 @@ export function Visitor() {
     onClose={() => setChangingPassword(false)}
     onChanged={() => {clearSession(); openLogin()}}/>
   const accountActions = token && <WebsiteAccountMenu key={token} token={token} signingOut={authBusy}
+    onViewCustomer={() => void navigate(customerProfilePath)}
     request={<T,>(path: string, method?: string, body?: unknown) => visitorApi<T>(path, token, method, body)
       .catch((error: unknown) => {
         if (error instanceof VisitorApiError && error.status === 401) expire()
@@ -290,6 +296,23 @@ export function Visitor() {
     onChangePassword={() => setChangingPassword(true)}
     onSignOut={() => void signOut()}/>
 
+  if (token && isProfilePage) {
+    const back = () => void navigate(accountType === 'student' ? '/website/student' : visitorHome)
+    return <main className="visitor-site visitor-site--services">
+      <header className="visitor-header visitor-header--public visitor-header--services">
+        <div className="visitor-header-left"><Link className="visitor-logo" to={visitorHome}>粤教教育服务</Link></div>
+        <div className="visitor-header-actions">{accountActions}</div>
+      </header>
+      <WebsiteCustomerProfile token={token} back={back}
+        request={<T,>(path: string, method?: string, body?: unknown) => visitorApi<T>(path, token, method, body)
+          .catch((error: unknown) => {
+            if (error instanceof VisitorApiError && error.status === 401) expire()
+            throw error
+          })}/>
+      {changePassword}
+    </main>
+  }
+
   if (token && accountType === 'student') {
     const request = <T,>(path: string, method?: string, body?: unknown) => visitorApi<T>(path, token, method, body)
       .catch((error: unknown) => {
@@ -297,8 +320,12 @@ export function Visitor() {
         throw error
       })
     return <main className="visitor-site">
-      <header className="visitor-header"><a href="/website">粤教教育服务</a>
-        <div className="visitor-header-actions">{accountActions}</div>
+      <header className="visitor-header visitor-header--student">
+        <div className="visitor-header-left">
+          <Link to="/website" className="visitor-logo">粤教教育服务</Link>
+          <span className="visitor-header-tag">学生服务中心</span>
+        </div>
+        <div className="visitor-header-actions"><Button onClick={() => void navigate(customerProfilePath)}>我的资料</Button>{accountActions}</div>
       </header>
       <Student request={request} accountRecords={<VisitorServices token={token} expire={expire} showAssistant/>}/>
       {changePassword}
@@ -317,6 +344,7 @@ export function Visitor() {
           {isServicesPage
             ? <Button icon={<ArrowLeftOutlined/>} onClick={() => void navigate(visitorHome)}>返回官网</Button>
             : <Button onClick={() => void navigate(visitorServicesPath)}>查看活动和资料</Button>}
+          <Button onClick={() => void navigate(customerProfilePath)}>我的资料</Button>
           {accountActions}
         </> : <Button type="primary" aria-haspopup="dialog" onClick={openLogin}>登录</Button>}
       </div>
@@ -345,7 +373,7 @@ export function Visitor() {
     <Modal
       className="visitor-login"
       title={register ? '注册游客账号' : '官网登录'}
-      open={!token && (authOpen || returnToServices)}
+      open={!token && (authOpen || returnToServices || returnToProfile)}
       onCancel={closeLogin}
       footer={null}
       centered
@@ -356,11 +384,15 @@ export function Visitor() {
       mask={{closable: !authBusy}}
     >
       <Form<Credentials> key={String(register)} name="website-auth" layout="vertical" onFinish={v => void signIn(v)}>
-        <Form.Item label={register ? '手机号' : '手机号或原用户名'} name="username" rules={[
-          {required: true, message: register ? '请输入手机号' : '请输入手机号或原用户名'},
-          ...(register ? [{pattern: mobileNumberPattern, message: mobileNumberMessage}] : []),
+        {register && <Form.Item label="昵称" name="nickname"
+          rules={[{required: true, whitespace: true, message: '请输入昵称'}]}>
+          <Input autoComplete="nickname" maxLength={64}/>
+        </Form.Item>}
+        <Form.Item label="手机号" name="username" rules={[
+          {required: true, message: '请输入手机号'},
+          {pattern: mobileNumberPattern, message: mobileNumberMessage},
         ]}>
-          <Input autoComplete="username" inputMode={register ? 'tel' : undefined} maxLength={register ? 11 : 64}/>
+          <Input autoComplete="username" inputMode="tel" maxLength={11}/>
         </Form.Item>
         <Form.Item label="密码" name="password"
           rules={register ? newPasswordRules() : [{required: true, message: '请输入密码'}]}>
@@ -441,6 +473,9 @@ function VisitorServices({token, expire, showAssistant = false, vertical = false
   const activities = useQuery({
     queryKey: ['visitor', 'activities', offset],
     queryFn: () => load<Activity[]>(activityUrl + '?offset=' + offset + '&limit=20'),
+    enabled: activeTab === 'events',
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   })
   const bookings = useQuery({
     queryKey: ['visitor', 'bookings', bookingBefore],
@@ -496,7 +531,7 @@ function VisitorServices({token, expire, showAssistant = false, vertical = false
     <Tabs tabPlacement={vertical ? 'start' : 'top'} className={vertical ? 'visitor-services-tabs' : undefined}
       tabBarGutter={vertical ? 4 : undefined} activeKey={activeTab} onChange={setActiveTab} items={[
     {key: 'guide', label: '服务指引', children: <>
-      <WebsiteGuide topics={publicTopics} open={setActiveTab}/>
+      <WebsiteGuide topics={publicTopics} open={setActiveTab} showSearch={!vertical}/>
     </>},
     {key: 'events', label: '活动预约', children: <>
       <VisitorError error={activities.error}/>

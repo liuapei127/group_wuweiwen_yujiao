@@ -31,6 +31,11 @@ def assigned(db: Database, advisor: Advisor, after_id: Annotated[int, Query(ge=0
     return success(service.list_assigned(db, advisor, after_id, limit))
 
 
+@router.get("/{visitor_id}")
+def assigned_detail(visitor_id: VisitorId, db: Database, advisor: Advisor):
+    return success(service.assigned_detail(db, visitor_id, advisor))
+
+
 @router.post("/{visitor_id}/claim")
 def claim(visitor_id: VisitorId, db: Database, advisor: Advisor):
     return success(service.claim(db, visitor_id, advisor))

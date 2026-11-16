@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.model_registry import register_models
 from app.core.security.credentials import hash_password,utc_now
 from app.core.security.rbac import ROLE_DEFAULTS
+from scripts.setup_integration_test_db import DEMO_MOBILES
 from app.modules.auth.models import AUTH_NEW_TABLES,role_permissions,student_scopes,roles
 from app.ai.assistant.models import AI_NEW_TABLES
 ROOT=Path(__file__).resolve().parents[1]
@@ -71,16 +72,16 @@ def bootstrap():
     with engine.begin() as conn:
         role_map={r['role_code']:r['id'] for r in conn.execute(select(roles)).mappings()}
         for code,label in [('admin','联调管理员'),('employee','联调员工'),('manager','联调经理'),('team_leader','联调班主任')]:
-            username={'team_leader':'ent_teacher'}.get(code,'ent_'+code)
+            username=DEMO_MOBILES[code]
             existing=conn.execute(select(users).where(users.c.username==username)).mappings().first()
             if existing:
                 if username not in known:raise RuntimeError('Bootstrap account exists but its credential file is missing: '+username)
                 rid=existing['id'];entry=known[username]
             else:
-                password=secrets.token_urlsafe(18)
+                password=username[-6:]
                 rid=conn.execute(insert(users).values(username=username,password_hash=hash_password(password),real_name=label,
                     user_type='admin' if code=='admin' else 'employee',role_id=role_map[code],department='ENT本地联调',
-                    contact_info=username+'@example.invalid',status='normal',create_time=now,update_time=now)).inserted_primary_key[0]
+                    contact_info=username,status='normal',create_time=now,update_time=now)).inserted_primary_key[0]
                 entry={'username':username,'password':password,'role':code,'name':label}
             entry['id']=rid;ids[code]=rid;accounts_out.append(entry)
         student_ids=[]

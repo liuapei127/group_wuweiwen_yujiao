@@ -11,14 +11,13 @@ from app.modules.profile import repository as materials, service as profiling
 from app.modules.profile.dify_workflow import ReviewPreview, review_text
 from app.modules.profile.extract import extract_text
 from app.modules.profile.models import CustomerSource, ParseStatus, SourceType
-from app.modules.profile.schemas import Project, ScreeningInput, ScreeningStatus
+from app.modules.profile.schemas import ScreeningInput
 from app.modules.visitor.models import VisitorAccount
 from app.shared.utils.time_util import now_naive
 
 from . import intake_repository as repository
 from .models import CrmFollowUp, CrmLead, VisitorCall, VisitorIntake
-from .repository import ConsultantRepository
-from .schemas import ClaimedVisitor, LeadCreate, LeadOut, VisitorCallCreate, VisitorCallOut, VisitorLeadCreate, VisitorQueueEntry
+from .schemas import ClaimedVisitor, LeadOut, VisitorCallCreate, VisitorCallOut, VisitorLeadCreate, VisitorQueueEntry
 
 
 def list_pending(db: Session, principal: EmployeePrincipal, after_id: int, limit: int):
@@ -30,6 +29,15 @@ def list_assigned(db: Session, principal: EmployeePrincipal, after_id: int, limi
     require_permission(principal, "visitor-intake:read")
     return [_visitor_details(account, case) for account, case in
             repository.assigned(db, principal.employee_id, after_id, limit)]
+
+
+def assigned_detail(db: Session, visitor_id: int, principal: EmployeePrincipal) -> ClaimedVisitor:
+    require_permission(principal, "visitor-intake:read")
+    case = _owned_case(db, visitor_id, principal.employee_id)
+    account = db.get(VisitorAccount, visitor_id)
+    if account is None:
+        raise BusinessError(404, "游客不存在")
+    return _visitor_details(account, case)
 
 
 def claim(db: Session, visitor_id: int, principal: EmployeePrincipal) -> ClaimedVisitor:
@@ -195,34 +203,12 @@ def _visitor_details(account: VisitorAccount, case: VisitorIntake) -> ClaimedVis
 def create_lead(db: Session, visitor_id: int, principal: EmployeePrincipal, payload: VisitorLeadCreate) -> LeadOut:
     require_permission(principal, "visitor-intake:write")
     require_permission(principal, "crm:write")
-    try:
-        case = _owned_case(db, visitor_id, principal.employee_id, lock=True)
-        if case.crm_lead_id is not None:
-            lead = _linked_lead(db, case)
-        else:
-            if payload.source_id != case.manual_source_id:
-                _visitor_source(db, visitor_id, payload.source_id, lock=True)
-            profile = materials.latest_profile(db, payload.source_id, lock=True)
-            background = (profile.background_info or {}) if profile else {}
-            if (background.get("screening") or {}).get("status") != ScreeningStatus.POTENTIAL_MATCH:
-                raise BusinessError(409, "请先完成符合条件的资料初筛")
-            fields = ScreeningInput.model_validate(background["input"])
-            lead = ConsultantRepository(db).create_lead(LeadCreate(
-                customer_name=payload.customer_name, contact_info=payload.contact_info,
-                intended_country="Germany" if fields.project == Project.DE_VOCATIONAL else "Singapore",
-                age=fields.age, education_level=fields.education, intended_major=payload.intended_major,
-                source_channel="website", owner_employee_id=principal.employee_id, remark=payload.remark,
-            ), commit=False)
-            lead.customer_profile_id = profile.id
-            case.crm_lead_id = lead.id
-            for call in repository.call_history(db, visitor_id):
-                _sync_call(db, lead, call)
-        result = LeadOut.model_validate(lead)
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
-    return result
+    case = _owned_case(db, visitor_id, principal.employee_id)
+    if payload.source_id != case.manual_source_id:
+        _visitor_source(db, visitor_id, payload.source_id)
+    if case.crm_lead_id is None:
+        raise BusinessError(409, "尚未关联客户档案，请联系管理员")
+    return LeadOut.model_validate(_linked_lead(db, case))
 
 
 def _linked_lead(db: Session, case: VisitorIntake) -> CrmLead:

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.core.security.password_policy import UserChosenPassword
 from app.shared.types.phone import MobileNumber
@@ -10,27 +10,13 @@ from app.shared.types.phone import MobileNumber
 class VisitorLogin(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    username: str
+    username: MobileNumber
     password: str = Field(min_length=1, max_length=128)
-
-    @field_validator("username", mode="before")
-    @classmethod
-    def normalize_username(cls, value):
-        return value.strip().lower() if isinstance(value, str) else value
-
-    @field_validator("username")
-    @classmethod
-    def validate_username(cls, value):
-        if not 3 <= len(value) <= 64 or not value.isascii() or not all(
-            char.isalnum() or char in "._-" for char in value
-        ):
-            raise ValueError("用户名为 3 至 64 个英文字母、数字或 . _ -")
-        return value
 
 
 class VisitorRegister(VisitorLogin):
-    username: MobileNumber
     password: UserChosenPassword
+    nickname: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None = None
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None = None
     contact: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)] | None = None
 
@@ -39,9 +25,21 @@ class WebsiteIdentity(BaseModel):
     account_type: Literal["visitor", "student"] = "visitor"
 
 
+class WebsiteProfileUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    expected_version: int | None = Field(default=None, ge=0)
+
+    nickname: str = Field(max_length=64)
+    name: str = Field(max_length=64)
+    contact: str = Field(max_length=128)
+
+
 class WebsiteProfile(WebsiteIdentity):
+    version: int | None = None
     username: str
     name: str
+    nickname: str | None = None
     contact: str
     created_at: datetime
     avatar_url: str | None = None
@@ -68,6 +66,7 @@ class WebsiteAccountOut(BaseModel):
     created_at: datetime
     student_id: int | None
     student_enabled: bool
+    crm_lead_id: int | None = None
 
 
 class WebsiteStudentCreate(BaseModel):

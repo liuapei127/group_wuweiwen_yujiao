@@ -23,13 +23,11 @@ def hash_password(password):
 
 
 def password_for_reset(username: str, requested: str | None) -> str:
-    if re.fullmatch(MOBILE_PATTERN, username):
-        if requested is not None:
-            raise BusinessError(422, "手机号账号的密码自动重置为手机号后 6 位")
-        return username[-6:]
-    if requested is None:
-        raise BusinessError(422, "旧账号请手动设置新密码")
-    return requested
+    if not re.fullmatch(MOBILE_PATTERN, username):
+        raise BusinessError(422, "请先将登录账号迁移为手机号")
+    if requested is not None:
+        raise BusinessError(422, "密码自动重置为 YJ 加手机号后 6 位")
+    return "YJ" + username[-6:]
 
 
 def verify_password(password, hashed):
