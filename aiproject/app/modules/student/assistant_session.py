@@ -124,13 +124,17 @@ async def run_turn(
         assistant_text=answer,
         title_hint=_title_from(text),
     )
-    assistant_mem0.remember_turn(
-        db,
-        student_id=student_id,
-        user_text=text,
-        assistant_text=answer,
-        conversation_id=cid,
-    )
+    try:
+        assistant_mem0.remember_turn(
+            db,
+            student_id=student_id,
+            user_text=text,
+            assistant_text=answer,
+            conversation_id=cid,
+        )
+    except Exception:
+        db.rollback()
+        logger.exception("Student assistant memory could not be saved")
     payload = dict(result)
     payload["conversation_id"] = cid
     payload["answer"] = answer

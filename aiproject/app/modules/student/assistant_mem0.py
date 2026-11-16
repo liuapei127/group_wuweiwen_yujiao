@@ -32,7 +32,8 @@ def user_key(student_id: int) -> str:
 
 def search_memories(db: Session, *, student_id: int, query: str, limit: int = 5) -> list[str]:
     uid = user_key(student_id)
-    remote = _platform_search(uid, query, limit)
+    lookup_name = re.search(r"我是谁|我叫什么|我叫啥|我的名字|我的姓名", query or "")
+    remote = _platform_search(uid, "学生姓名", limit) if lookup_name and not high_risk_hits(query) else None
     local = _local_search(db, uid, query, limit)
     if remote is not None:
         # Keep local durable name facts even when platform is configured.
@@ -52,16 +53,13 @@ def remember_turn(
     assistant_text: str,
     conversation_id: str,
 ) -> None:
-    uid = user_key(student_id)
-    messages = [
-        {"role": "user", "content": (user_text or "")[:1500]},
-        {"role": "assistant", "content": (assistant_text or "")[:1500]},
-    ]
-    if _platform_add(uid, messages, conversation_id):
-        return
     fact = _compact_fact(user_text, assistant_text)
-    if fact:
-        _local_add(db, uid, fact, {"conversation_id": conversation_id})
+    if not fact:
+        return
+    uid = user_key(student_id)
+    _local_add(db, uid, fact, {"conversation_id": conversation_id})
+    if fact == _name_fact_from_user(user_text):
+        _platform_add(uid, [{"role": "user", "content": fact}], conversation_id)
 
 
 def memory_preface(memories: list[str]) -> str:

@@ -106,7 +106,8 @@ def _eligible_teachers():
     stmt = (
         select(accounts.c.id, accounts.c.real_name)
         .join(roles, roles.c.id == accounts.c.role_id)
-        .where(accounts.c.user_type == "employee", accounts.c.status == "normal", roles.c.status == 1)
+        .where(accounts.c.user_type == "employee", accounts.c.status == "normal",
+               roles.c.status == 1, roles.c.role_code != "admin")
     )
     for permission in ("leaves:read", "leaves:approve", "tickets:read", "tickets:write"):
         grant = role_permissions.alias()

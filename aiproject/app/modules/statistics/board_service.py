@@ -1,8 +1,8 @@
-from datetime import date
-from pydantic import BaseModel, ConfigDict, Field
+from calendar import monthrange
+from datetime import date, timedelta
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.core.exceptions import BusinessError
 from app.core.security.authorization import require_permission
 
@@ -35,17 +35,48 @@ def employee_detail(db, principal, anchor, period, employee_id):
     return detail
 
 
-def operations(db, principal, kind, start, end, metric=None, offset=0, limit=30):
+def _complaint_comparison_periods(start, end):
+    periods = {}
+    days = (end - start).days + 1
+    if start.day == 1 and start.month == end.month and start.year == end.year and end.day == monthrange(end.year, end.month)[1]:
+        if start > date.min:
+            previous_end = start - timedelta(days=1)
+            periods["previous"] = (previous_end.replace(day=1), previous_end)
+    elif (start - date.min).days >= days:
+        periods["previous"] = (start - timedelta(days=days), start - timedelta(days=1))
+    if start.year > 1:
+        def last_year(day):
+            year = day.year - 1
+            return day.replace(year=year, day=min(day.day, monthrange(year, day.month)[1]))
+        periods["year_ago"] = (last_year(start), last_year(end))
+    return periods
+
+
+def operations(db, principal, kind, start, end, metric=None, offset=0, limit=30, *, bucket=None,
+               department=None, department_missing=False):
     require_permission(principal, "reports:operations:read")
     scope = _report_department(db, principal)
     if end < start or (end - start).days >= 366 or end == date.max:
         raise BusinessError(422, "请选择有效的日期范围，最长 366 天")
-    now = beijing_now()
     if kind == "customers":
-        data = repo.lead_dashboard(db, scope, start, end, metric, offset, limit)
+        if ((metric in ("status", "channel", "follow_up") and not bucket)
+                or (bucket is not None and metric not in ("status", "channel", "follow_up", "lost"))
+                or (metric == "status" and bucket not in ("new", "contacting", "qualified", "signed", "lost"))
+                or (metric == "follow_up" and bucket not in ("phone", "wechat", "meeting", "email", "other", "未填写"))
+                or (department is not None and department_missing)):
+            raise BusinessError(422, "请选择有效的客户明细筛选条件")
+        data = repo.lead_dashboard(db, scope, start, end, metric, offset, limit,
+                                   bucket=bucket, department=department, department_missing=department_missing)
         data["status_history_since"] = repo.lead_history_since(db)
     else:
-        data = repo.complaint_dashboard(db, scope, start, end, now, metric, offset, limit)
+        if ((metric in ("status", "category", "satisfaction") and not bucket)
+                or (bucket is not None and metric not in ("status", "category", "satisfaction", "backlog"))
+                or (metric == "status" and bucket not in ("pending", "processing", "resolved", "closed"))
+                or (metric == "satisfaction" and bucket not in ("1", "2", "3", "4", "5"))
+                or (metric == "backlog" and bucket is not None and bucket not in repo.BACKLOG_BANDS)):
+            raise BusinessError(422, "请选择有效的投诉明细筛选条件")
+        data = repo.complaint_dashboard(db, scope, start, end, beijing_now(), metric, offset, limit,
+                                        bucket=bucket, comparison_periods=_complaint_comparison_periods(start, end))
     return {"period_start": start, "period_end": end, "department": report_scope_label(scope), **data}
 
 

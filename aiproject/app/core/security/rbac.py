@@ -47,10 +47,18 @@ PERMISSIONS = {
 COMMON = {'dashboard:read','reports:read','reports:write','directory:read','guides:read',
           'tickets:read','tickets:write','todos:read','todos:write','notifications:read',
           'queries:read','commands:execute','ai:use'}
+SYSTEM_ADMIN_PERMISSIONS = frozenset({
+    'dashboard:read', 'ai:use', 'directory:read', 'todos:read', 'todos:write', 'notifications:read',
+    'events:manage', 'events:check_in', 'courses:manage', 'website-content:manage', 'website-accounts:manage',
+    'organizations:manage', 'users:manage', 'roles:manage', 'audit:read',
+})
+MANAGER_REPORT_PERMISSIONS = frozenset({
+    'reports:operations:read', 'reports:summary:read', 'reports:formal:generate',
+})
 ROLE_DEFAULTS = {
-    'admin': set(PERMISSIONS),
-    'employee': COMMON | {'crm:read','crm:write'},
-    'manager': COMMON | {'crm:read','crm:write','directory:contacts','guides:write'},
+    'admin': SYSTEM_ADMIN_PERMISSIONS,
+    'employee': COMMON | {'crm:read','crm:write','visitor-intake:read','visitor-intake:write'},
+    'manager': COMMON | MANAGER_REPORT_PERMISSIONS | {'crm:read','crm:write','directory:contacts','guides:write'},
     'team_leader': COMMON | {'directory:contacts','scores:read','scores:write','leaves:read','leaves:approve'},
     'student': set(),
 }
@@ -199,5 +207,12 @@ def route_permission(method, path):
     return routes[key]
 
 
+def effective_role_permissions(role_code: str, stored: set[str]) -> set[str]:
+    return stored & (SYSTEM_ADMIN_PERMISSIONS if role_code == 'admin' else PERMISSIONS.keys())
+
+
 def permission_catalog():
-    return [{'code':k,'name':v[0],'group':v[1]} for k,v in PERMISSIONS.items()]
+    return [
+        {'code': code, 'name': name, 'group': group, 'system_admin': code in SYSTEM_ADMIN_PERMISSIONS}
+        for code, (name, group) in PERMISSIONS.items()
+    ]

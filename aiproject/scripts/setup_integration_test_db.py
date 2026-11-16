@@ -31,9 +31,7 @@ DEMO_MOBILES = {
     "team_leader": "19900001104",
 }
 DEMO_GRANTS = {
-    "employee": {"visitor-intake:read", "visitor-intake:write"},
-    "manager": {"visitor-intake:read", "visitor-intake:write", "reports:summary:read",
-                "reports:operations:read", "reports:formal:generate"},
+    "manager": {"visitor-intake:read", "visitor-intake:write"},
     "team_leader": {"student-alerts:read", "student-alerts:write", "academics:read",
                     "academics:write", "applications:read", "applications:write"},
 }
@@ -132,7 +130,7 @@ def main():
         with engine.begin() as conn:
             accounts = seed_accounts(conn)
         with engine.connect() as conn:
-            for migration in ("014_student_assistant.sql", "015_reporting_board.sql", "016_website_content.sql", "017_customer_chat_session.sql", "018_visitor_avatar.sql", "019_event_publication.sql", "020_visitor_nickname.sql", "021_customer_workspace.sql"):
+            for migration in ("014_student_assistant.sql", "015_reporting_board.sql", "016_website_content.sql", "017_customer_chat_session.sql", "018_visitor_avatar.sql", "019_event_publication.sql", "020_visitor_nickname.sql", "021_customer_workspace.sql", "022_role_responsibilities.sql"):
                 for ddl in read_ddl(SCHEMA.parent / "pending" / migration):
                     conn.exec_driver_sql(ddl)
             conn.commit()

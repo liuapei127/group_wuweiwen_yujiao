@@ -110,7 +110,10 @@ export function Student({request, accountRecords}: {request: Request; accountRec
         {nextDeadline && <Alert type="warning" showIcon title={nextDeadline.title}
           description={'截止时间（北京时间）' + nextDeadline.deadline.slice(0, 16).replace('T', ' ')}
           action={<Button onClick={() => setActiveTab('deadlines')}>查看考务</Button>}/>}
-        <div className="student-panel">{current.children}</div>
+        <div className="student-panel" style={activeTab === 'guide' ? undefined : {display: 'none'}}>
+          {tabs[0].children}
+        </div>
+        {activeTab !== 'guide' && <div className="student-panel">{current.children}</div>}
         {activeTab === 'account-records' && <div className="student-helper-grid">
           <section className="student-helper">
             <h4>活动与材料提示</h4>

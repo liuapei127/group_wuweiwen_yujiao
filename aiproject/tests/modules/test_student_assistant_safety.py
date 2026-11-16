@@ -125,3 +125,92 @@ def test_crisis_text_never_becomes_long_term_memory():
 def test_high_risk_terms_are_unique_and_non_empty():
     assert len(set(HIGH_RISK_TERMS)) == len(HIGH_RISK_TERMS)
     assert all(term.strip() for term in HIGH_RISK_TERMS)
+
+
+def test_chat_checks_crisis_before_identity_and_open_business_slots(monkeypatch):
+    observed = []
+    monkeypatch.setattr(chat, "_place_label", lambda *_: "德国")
+    monkeypatch.setattr(chat, "_psych", lambda _db, _student, message, _history, _place: (
+        observed.append(message) or {"reply": "关怀", "intent": "psych", "data": None}
+    ))
+    leave_history = [{"role": "assistant", "content": "好，先按病假。请再补充：起止日期。"}]
+    feedback_history = [{"role": "assistant", "content": chat._feedback_choices()}]
+    for message, history in (
+        ("我叫测试同学，我不想活了", []),
+        ("明天请假，我不想活了", leave_history),
+        ("1，我不想活了", feedback_history),
+    ):
+        assert chat.handle_chat(object(), student_id=1, message=message, history=history)["intent"] == "psych"
+    assert len(observed) == 3
+
+
+def test_unassigned_crisis_remains_pending_and_can_be_claimed_only_in_scope(monkeypatch):
+    from sqlalchemy import Column, Integer, MetaData, Table, create_engine, select
+    from sqlalchemy.orm import Session
+
+    from app.core.security import EmployeePrincipal
+    from app.modules.student import alerts
+
+    engine = create_engine("sqlite://")
+    metadata = MetaData()
+    for projection in (chat._psych_record, alerts._alert):
+        Table(projection.name, metadata, Column("id", Integer, primary_key=True),
+              *(Column(col.name, col.type) for col in projection.c if col.name != "id"))
+    metadata.create_all(engine)
+    monkeypatch.setattr(chat.StudentAdminRepository, "class_teacher", lambda *_: None)
+    monkeypatch.setattr(chat, "_place_label", lambda *_: "德国")
+    monkeypatch.setattr(chat, "speak", lambda *_, **__: None)
+    permissions = frozenset({"student-alerts:read", "student-alerts:write"})
+    teacher = EmployeePrincipal(10, permissions, student_ids=frozenset({1}))
+    coworker = EmployeePrincipal(11, permissions, student_ids=frozenset({1}))
+    unrelated = EmployeePrincipal(12, permissions, student_ids=frozenset({2}))
+    with Session(engine) as db:
+        result = chat.handle_chat(db, student_id=1, message="我叫测试同学，我不想活了")
+        assert result["intent"] == "psych" and result["data"] is None
+        assert db.scalar(select(chat._psych_record.c.id)) == 1
+        [record] = alerts.list_alerts(db, teacher, None, 30)
+        assert record.status == "pending" and record.teacher_id is None
+        assert not alerts.list_alerts(db, unrelated, None, 30)
+        claim = alerts.follow_alert(db, teacher, record.id, alerts.AlertUpdate(status="following", follow_record="已联系"))
+        assert claim.teacher_id == 10
+        assert not alerts.list_alerts(db, coworker, None, 30)
+    engine.dispose()
+
+
+def test_explicit_invalid_or_incomplete_leave_never_calls_submit(monkeypatch):
+    from unittest.mock import Mock
+
+    monkeypatch.setattr(chat, "_place_label", lambda *_: "德国")
+    service = Mock()
+    monkeypatch.setattr(chat, "StudentAdminServiceLayer", service)
+    for span in ("25:00到26:00", "09:00到26:00", "09:70到10:00", "25:到26:", "09:00", "08:30、09:30"):
+        outcome = chat.handle_chat(object(), student_id=1, message=f"病假，明天{span}，身体不适")
+        assert outcome["intent"] == "leave_form", span
+    service.assert_not_called()
+    monkeypatch.setattr(chat.StudentAdminRepository, "class_teacher", lambda *_: None)
+    service.return_value.submit_student_leave.return_value.id = 1
+    service.return_value.submit_student_leave.return_value.model_dump.return_value = {}
+    outcome = chat.handle_chat(object(), student_id=1, message="病假，明天09:30到11:10，身体不适")
+    submitted = service.return_value.submit_student_leave.call_args.args[1]
+    assert outcome["intent"] == "leave_submit"
+    assert (submitted.start_time.strftime("%H:%M"), submitted.end_time.strftime("%H:%M")) == ("09:30", "11:10")
+
+
+def test_open_leave_does_not_capture_queries_and_short_complaint_keeps_type(monkeypatch):
+    from unittest.mock import Mock
+
+    monkeypatch.setattr(chat, "_place_label", lambda *_: "德国")
+    monkeypatch.setattr(chat, "_progress", lambda *_: {"reply": "申请进度", "intent": "progress", "data": None})
+    file_complaint = Mock()
+    monkeypatch.setattr(chat.feedback_service, "submit_student_complaint", file_complaint)
+    leave_history = [{"role": "assistant", "content": "好，先按病假。请再补充：起止日期。"}]
+    assert chat.handle_chat(object(), student_id=1, message="查进度", history=leave_history)["intent"] == "progress"
+
+    history = []
+    for message in ("我要投诉", "1", "老师针对我"):
+        result = chat.handle_chat(object(), student_id=1, message=message, history=history)
+        history += [{"role": "user", "content": message}, {"role": "assistant", "content": result["reply"]}]
+    assert result["intent"] == "feedback_detail"
+    assert result["data"]["ticket_type"] == "complaint"
+    assert chat.handle_chat(object(), student_id=1, message="取消", history=history)["intent"] == "feedback_cancel"
+    file_complaint.assert_not_called()

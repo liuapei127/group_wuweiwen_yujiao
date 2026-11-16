@@ -88,6 +88,9 @@ _CLOCK_SPAN_RE = re.compile(
     r"(?:(上午|下午|晚上)\s*)?(?<![\d:])(\d{1,2})\s*点?\s*(?:[:：](\d{2}))?\s*"
     r"[到至\-–—]\s*(?:(上午|下午|晚上)\s*)?(\d{1,2})\s*点?\s*(?:[:：](\d{2}))?"
 )
+_CLOCK_TOKEN_RE = re.compile(
+    r"(?:(上午|下午|晚上)\s*)?(?<![\d:：])(\d+)(?:([:：])(\d*)(?:([:：])(\d*))?|点(?:\s*(\d+)分)?)"
+)
 _NATURAL_RANGE_RE = re.compile(r"(今天|明天|后天)\s*(?:到|至|~|—|–|-)\s*(今天|明天|后天)")
 _MD_RANGE_RE = re.compile(
     r"(?<!\d)(\d{1,2})\s*[-/]\s*(\d{1,2})\s*(?:到|至|~|—|–|-)\s*"
@@ -206,8 +209,10 @@ def handle_chat(
     memory_notes: list[str] | None = None,
 ) -> dict:
     turns = history or []
-    memories = _merge_memories(memory_notes, turns)
     place = _place_label(db, student_id, mock_country)
+    if high_risk_hits(message):
+        return _pack(_psych(db, student_id, message, turns, place))
+    memories = _merge_memories(memory_notes, turns)
     name = _heard_name(message)
     if name:
         memories = _upsert_name_memory(memories, name)
@@ -223,6 +228,13 @@ def handle_chat(
                 "data": {"name": name, "memories": memories},
             }
         )
+    intent = route(message)["intent"]
+    if intent == "leave_query":
+        return _pack(_leave_query(db, student_id))
+    if intent == "progress":
+        return _pack(_progress(db, student_id))
+    if intent == "deadline":
+        return _pack(_deadline(db, student_id))
     forced, spoken = _follow_choice(message, turns)
     if forced == "leave":
         return _pack(_leave_dialogue(db, student_id, spoken, place, turns))
@@ -237,7 +249,7 @@ def handle_chat(
                 "data": None,
             }
         )
-    if _feedback_menu_open(turns) and _is_cancel(message):
+    if (_feedback_menu_open(turns) or _feedback_detail_pending(turns)) and _is_cancel(message):
         return _pack(
             {
                 "reply": "好，这次先不记了。以后想投诉、提建议或咨询，随时跟我说。",
@@ -260,23 +272,16 @@ def handle_chat(
                 "data": None,
             }
         )
-    intent = route(message)["intent"]
     if _picked_feedback(message, turns) or intent == "feedback":
         return _pack(_feedback(db, student_id, message, turns, place))
     if intent == "leave_create" or (
-        _leave_pending(turns) and not _psych_pending(turns) and intent != "psych"
+        _leave_pending(turns) and not _psych_pending(turns) and intent == "other"
     ):
         return _pack(_leave_dialogue(db, student_id, message, place, turns))
-    if intent == "leave_query":
-        return _pack(_leave_query(db, student_id))
-    if intent == "progress":
-        return _pack(_progress(db, student_id))
-    if intent == "deadline":
-        return _pack(_deadline(db, student_id))
     if intent == "psych" or (_psych_pending(turns) and intent == "other"):
         return _pack(_psych(db, student_id, message, turns, place))
     if intent == "ask":
-        return _pack(_ask(db, student_id, message, place, turns, memories))
+        return _pack(_ask(db, student_id, message, place, turns))
     if _wants_upgrade(message):
         return _pack(_upgrade_reply(message, place, turns))
     return _pack(
@@ -661,7 +666,7 @@ def _leave_scope(history: list | None) -> list[dict]:
             if _leave_success_text(content) or not _leave_prompt_text(content):
                 break
             continue
-        if not content:
+        if not content or _leave_time_issue(content):
             continue
         if _looks_like_leave_followup(content) or route(content)["intent"] == "leave_create" or _leave_kind(content):
             scoped.insert(0, turn)
@@ -785,6 +790,15 @@ def _at(day: date, hour: int, minute: int = 0) -> datetime:
     return datetime(day.year, day.month, day.day, hour, minute, 0)
 
 
+def _leave_time_issue(text: str) -> str | None:
+    for period, hour, colon, minute, seconds_colon, seconds, chinese_minutes in _CLOCK_TOKEN_RE.findall(text):
+        if (len(hour) > 2 or _clock(hour, minute or chinese_minutes, period) is None
+                or (colon and len(minute) != 2)
+                or (seconds_colon and (len(seconds) != 2 or int(seconds) > 59))):
+            return "时间格式不对，小时应为 00–23，分钟应为 00–59。请重新提供完整的起止日期和时间（北京时间）。"
+    return None
+
+
 def _clock_span(text: str) -> tuple[Optional[str], Optional[str]]:
     span = _CLOCK_SPAN_RE.search(text or "")
     if not span:
@@ -836,8 +850,12 @@ def _parse_leave_span(text: str) -> tuple[Optional[datetime], Optional[datetime]
         if start_h and end_h:
             start = _at(start.date(), int(start_h[:2]), int(start_h[3:]))
             end = _at(end.date(), int(end_h[:2]), int(end_h[3:]))
+        elif _CLOCK_TOKEN_RE.search(value) and not all(_CLOCK_TOKEN_RE.search(part) for part in ranged.groups()):
+            return None, None
         return start, end
 
+    if _CLOCK_TOKEN_RE.search(value) and not (start_h and end_h):
+        return None, None
     natural = _NATURAL_RANGE_RE.search(value)
     if natural:
         first = today + timedelta(days=_WEEKDAY_OFFSET[natural.group(1)])
@@ -1012,8 +1030,18 @@ def _leave_dialogue(
 ) -> dict:
     # Enough fields → submit immediately; otherwise ask only for missing bits.
     spoken = _compose_leave_utterance(message, history)
-    filled = _natural_leave(spoken, history) or parse_filled_form(spoken)
     form = leave_form(student_id)
+    issue = _leave_time_issue(spoken)
+    if issue:
+        kind = _leave_kind(spoken)
+        reply = (f"好，先按{kind}。" if kind else "") + issue
+        return {"reply": reply, "intent": "leave_form", "form": form, "data": None}
+    if len(_CLOCK_TOKEN_RE.findall(spoken)) not in (0, 2):
+        kind = _leave_kind(spoken)
+        reply = (f"好，先按{kind}。" if kind else "") + "请再补充完整的起止日期和时间（北京时间）。"
+        return {"reply": reply,
+                "intent": "leave_form", "form": form, "data": None}
+    filled = _natural_leave(spoken, history) or parse_filled_form(spoken)
     if filled is None or not filled.get("reason"):
         return {
             "reply": form_reply(spoken, history),
@@ -1112,7 +1140,7 @@ def _speak_one_leave(row: dict) -> str:
 def _feedback(db: Session, student_id: int, message: str, history: list, place: str) -> dict:
     picked = _picked_feedback(message, history)
     pending_type = _feedback_detail_pending(history)
-    if picked is None and pending_type and _has_substance(message):
+    if picked is None and pending_type:
         picked = (pending_type, "正式投诉" if pending_type == "complaint" else "建议")
     if picked is None:
         return {
@@ -1237,22 +1265,21 @@ def _psych(db: Session, student_id: int, message: str, history: list | None, pla
             create_time=now,
         )
     )
-    alert_id = None
     if hits:
         teacher_id = StudentAdminRepository(db).class_teacher(student_id)
-        if teacher_id:
-            result = db.execute(
-                insert(_psych_alert).values(
-                    student_id=student_id,
-                    teacher_id=teacher_id,
-                    risk_level="high",
-                    status="pending",
-                    trigger_reason=f"对话出现高危表述：{(message or '')[:160]}",
-                    create_time=now,
-                    update_time=now,
-                )
+        result = db.execute(
+            insert(_psych_alert).values(
+                student_id=student_id,
+                teacher_id=teacher_id,
+                risk_level="high",
+                status="pending",
+                trigger_reason=f"对话出现高危表述：{(message or '')[:160]}",
+                create_time=now,
+                update_time=now,
             )
-            alert_id = int(result.lastrowid)
+        )
+        alert_id = int(result.lastrowid)
+        if teacher_id:
             _staff_notify(
                 db,
                 user_id=teacher_id,
@@ -1284,52 +1311,58 @@ def _psych(db: Session, student_id: int, message: str, history: list | None, pla
     }
 
 
+_KNOWLEDGE_TERMS = (
+    "公交", "地铁", "火车", "交通", "租房", "住宿", "宿舍", "签证", "续签", "居留",
+    "保险", "挂号", "看病", "医疗", "银行卡", "开户", "电话卡", "网络", "学费", "奖学金", "打工",
+)
+
+
+def _knowledge_terms(message: str) -> list[str]:
+    matches = [term for term in _KNOWLEDGE_TERMS if term in message]
+    if matches:
+        return matches[:3]
+    words = re.sub(r"你好|请问|我想知道|在德国|在新加坡|德国|新加坡|怎么办|怎么|如何|吗|呢", " ", message)
+    return [word for word in re.findall(r"[\w\u4e00-\u9fff]+", words) if 2 <= len(word) <= 16][:3]
+
+
 def _ask(
     db: Session,
     student_id: int,
     message: str,
     place: str,
     history: list | None = None,
-    memories: list[str] | None = None,
 ) -> dict:
+    terms = _knowledge_terms(message)
     policies = student_service.student_policies(db, student_id)
-    overseas = student_service.overseas_resources(db, student_id, "", 0, 3)
-    facts: list[str] = []
-    for tip in (policies.resources or [])[:3]:
-        facts.append(f"政策「{tip.title}」：{tip.description}")
-    for item in (overseas.get("items") or [])[:3]:
-        title = item.get("title") or item.get("question") or "相关说明"
-        body = item.get("description") or item.get("answer") or ""
-        facts.append(f"海外生活「{title}」：{body}".strip("："))
-    if memories:
-        facts.extend(f"记忆：{item}" for item in memories[:3])
-    grounded = "\n".join(facts)
-    spoken = None
+    matched_policies = [tip for tip in policies.resources or []
+                        if any(term in tip.title or term in (tip.description or "") for term in terms)][:3]
+    overseas = {}
+    for term in terms:
+        items = student_service.overseas_resources(db, student_id, term, 0, 3).get("items") or []
+        for item in items:
+            if item.get("content"):
+                overseas[item["id"]] = item
+        if len(overseas) >= 3:
+            break
+    matched_overseas = list(overseas.values())[:3]
+    facts = [(item["title"], item["content"]) for item in matched_overseas]
+    facts.extend((tip.title, tip.description) for tip in matched_policies if tip.description)
     if facts:
-        spoken = speak(
-            f"学生问：{(message or '').strip()}\n请只用下面已收录资料与记忆作答，不要编造电话地址：\n{grounded[:1800]}",
-            history,
-            place,
-        )
-    if spoken:
-        reply = spoken
-    elif policies.resources:
-        tip = policies.resources[0]
-        reply = f"按你的留学去向，可以先看「{tip.title}」：{tip.description}"
-    elif overseas.get("items"):
-        item = overseas["items"][0]
-        reply = f"我找到一条海外生活资料：{item.get('title') or item.get('question') or '相关说明'}。"
+        grounded = "\n".join(f"「{title}」：{body[:350]}" for title, body in facts)
+        spoken = speak(f"问题：{message.strip()[:240]}\n下面是已收录的资料。只依据资料回答，不编造联系方式：\n{grounded[:540]}",
+                       history, place)
+        if spoken:
+            reply = f"{spoken}\n参考资料：" + "、".join(dict.fromkeys(title for title, _ in facts))
+        else:
+            reply = "\n".join(f"「{title}」：{body[:300]}" for title, body in facts[:2])
     else:
-        reply = "这类办事问题我暂时没有可靠依据，建议你问班主任或顾问，不要听信不确定的电话地址。"
+        reply = "这类问题我暂时没找到相关资料。你可以补充想了解的地区和具体事项，或向班主任、顾问核实。"
     return {
         "reply": reply,
         "intent": "ask",
         "form": None,
-        "data": {
-            "country": policies.country,
-            "policy_count": len(policies.resources),
-            "overseas_count": len(overseas.get("items") or []),
-        },
+        "data": {"country": policies.country, "policy_count": len(matched_policies),
+                 "overseas_count": len(matched_overseas)},
     }
 
 

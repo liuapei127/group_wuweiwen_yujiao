@@ -11,7 +11,7 @@ from app.core.security.credentials import (
     decode_token, hash_password, issue_token, password_for_reset, require_auth_config, utc_now, verify_password,
 )
 from app.core.security.password_policy import reject_account_password
-from app.core.security.rbac import PERMISSIONS
+from app.core.security.rbac import PERMISSIONS, SYSTEM_ADMIN_PERMISSIONS
 from app.core.security import base_session
 from app.core.security.base_jwt import ACCESS_TOKEN_USE, BaseTokenError, verify_expired_access, verify_token
 from app.core.security.base_session_schema import refresh_tokens
@@ -69,7 +69,7 @@ class AuthService:
             if not session or not row or row['status']!='normal' or row['role_status']!=1 or row['user_type'] not in ('employee','admin'):
                 raise HTTPException(401,'登录已失效，请重新登录',headers={'WWW-Authenticate':'Bearer'})
             from app.core.security.dependencies import EmployeePrincipal
-            return EmployeePrincipal(employee_id=uid,permissions=frozenset(self.repo.permissions(row['role_id'])&set(PERMISSIONS)),
+            return EmployeePrincipal(employee_id=uid,permissions=frozenset(self.repo.permissions(row['role_id'])),
                 student_ids=frozenset(self.repo.scope(uid)),username=row['username'],role_code=row['role_code'],session_id=claims['sid'])
         except (OperationalError,ProgrammingError):
             self.db.rollback();raise HTTPException(503,'身份存储未就绪') from None
@@ -149,7 +149,7 @@ class AuthService:
 
     def profile(self,row):
         return {**{k:row[k] for k in ('id','username','real_name','user_type','role_id','role_code','role_name','department','contact_info','status')},
-            'permissions':sorted(self.repo.permissions(row['role_id'])&set(PERMISSIONS)),
+            'permissions':sorted(self.repo.permissions(row['role_id'])),
             'student_ids':sorted(self.repo.scope(row['id']))}
 
     def me(self,p):
@@ -250,8 +250,11 @@ class AuthService:
             self.db.rollback();raise
 
     def save_role(self,body,p,role_id=None):
-        unknown=set(body.permissions)-set(PERMISSIONS)
-        if unknown:raise BusinessError(422,'包含未注册的功能权限')
+        requested = set(body.permissions)
+        if requested - PERMISSIONS.keys():
+            raise BusinessError(422, '包含未注册的功能权限')
+        if body.role_code == 'admin' and requested - SYSTEM_ADMIN_PERMISSIONS:
+            raise BusinessError(422, '系统管理员只能配置管理及通用工作权限，请将业务权限分配给业务角色')
         try:
             self.repo.lock_policy()
             old=self.repo.role(role_id) if role_id else None

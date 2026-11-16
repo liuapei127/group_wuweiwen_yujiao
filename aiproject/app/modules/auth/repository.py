@@ -4,6 +4,7 @@ from datetime import timedelta
 from sqlalchemy import select, insert, update, delete, func, and_, inspect, table, column, BigInteger, String
 from .models import accounts, roles, role_permissions, student_scopes, sessions, login_attempts, audit_log
 from app.core.security.credentials import utc_now
+from app.core.security.rbac import effective_role_permissions
 
 student_info = table('student_info',column('id',BigInteger),column('user_id',BigInteger),
                      column('class_teacher_id',BigInteger),column('student_no',String),
@@ -31,7 +32,13 @@ class AuthRepository:
         return self.db.scalar(select(accounts.c.id).where(accounts.c.id == user_id).with_for_update())
 
     def permissions(self, role_id):
-        return set(self.db.execute(select(role_permissions.c.permission).where(role_permissions.c.role_id==role_id)).scalars()) if role_id else set()
+        if not role_id:
+            return set()
+        stmt = select(roles.c.role_code, role_permissions.c.permission).join(
+            role_permissions, role_permissions.c.role_id == roles.c.id,
+        ).where(roles.c.id == role_id)
+        grants = self.db.execute(stmt).all()
+        return effective_role_permissions(grants[0].role_code, {row.permission for row in grants}) if grants else set()
 
     def scope(self, user_id):
         explicit=set(self.db.execute(select(student_scopes.c.student_id).where(student_scopes.c.user_id==user_id)).scalars())

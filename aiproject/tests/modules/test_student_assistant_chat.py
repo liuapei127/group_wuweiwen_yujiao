@@ -218,3 +218,26 @@ def test_student_safe_strips_paths_and_ids():
 def test_form_reply_asks_for_type_first():
     reply = form_reply("我要请假")
     assert "病假" in reply
+
+
+def test_life_answer_looks_up_topic_and_passes_document_body(monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    from app.modules.student import assistant_chat as chat
+
+    monkeypatch.setattr(chat.student_service, "student_policies", lambda *_: (
+        SimpleNamespace(resources=[], country="Germany")
+    ))
+    lookup = Mock(side_effect=lambda _db, _student, keyword, *_: {"items": (
+        [{"id": 1, "title": "公交指南", "content": "使用城市通票"}] if keyword == "公交" else []
+    )})
+    answer = Mock(return_value="可以使用城市通票")
+    monkeypatch.setattr(chat.student_service, "overseas_resources", lookup)
+    monkeypatch.setattr(chat, "speak", answer)
+    assert "公交指南" in chat._ask(object(), 1, "在德国怎么坐公交", "德国")["reply"]
+    assert "使用城市通票" in answer.call_args.args[0]
+    assert lookup.call_args.args[2] == "公交"
+    answer.reset_mock()
+    assert chat._ask(object(), 1, "在德国怎么开户", "德国")["data"]["overseas_count"] == 0
+    answer.assert_not_called()

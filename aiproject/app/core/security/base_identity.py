@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.security.base_jwt import USER_TYPES
-from app.core.security.rbac import PERMISSIONS
+from app.core.security.rbac import effective_role_permissions
 from app.modules.auth.models import accounts, role_permissions, roles
 
 # Columns actually sent to the database. password_hash is intentionally absent.
@@ -81,7 +81,7 @@ def resolve_identity(db: Session, user_id: int) -> BaseIdentity:
         role_id=int(role_id),
         role_code=row["role_code"],
         role_name=row["role_name"],
-        permissions=frozenset(stored & set(PERMISSIONS)),
+        permissions=frozenset(effective_role_permissions(row["role_code"], stored)),
     )
 
 

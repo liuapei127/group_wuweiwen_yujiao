@@ -24,8 +24,23 @@ const risk: Record<string,string> = {low:'低风险',medium:'中风险',high:'�
 const caseStates: Record<string,string> = {open:'待跟进',following:'跟进中',closed:'已结案'}
 const options = (labels:Record<string,string>) => Object.entries(labels).map(([value,label])=>({value,label}))
 
-function totals(rows:Count[], labels:Record<string,string>) {
-  return Object.fromEntries(rows.map(item=>[item.day+' '+(labels[item.label]||item.label), item.count]))
+function DailyCheckins({data}:{data:Snapshot}) {
+  const [selected,select]=useState<string>()
+  const days=Array.from(new Set([...data.emotion,...data.stress].map(row=>row.day))).sort()
+  const day=selected&&days.includes(selected)?selected:days[0]
+  const counts=(rows:Count[])=>Object.fromEntries(rows.filter(row=>row.day===day).map(row=>[row.label,row.count]))
+  if(!day)return <Card title="每日自评分布">
+    <Typography.Text type="secondary">{data.suppressed?'本周参与人数低于展示门槛。':'各日分组暂无可展示数据。'}</Typography.Text>
+  </Card>
+  return <Space orientation="vertical" style={{width:'100%'}}>
+    <Space wrap><Typography.Text strong>每日自评分布</Typography.Text>
+      <Select aria-label="查看自评日期" value={day} onChange={select} options={days.map(value=>({label:value,value}))}/>
+    </Space>
+    <div className="report-center-two">
+      <CountBars title="情绪分布" counts={counts(data.emotion)} labels={emotion}/>
+      <CountBars title="压力分布" counts={counts(data.stress)} labels={stress}/>
+    </div>
+  </Space>
 }
 
 export function WellbeingBoard() {
@@ -51,7 +66,8 @@ export function WellbeingBoard() {
   const generate=useMutation({mutationFn:(include_ai:boolean)=>api<Archive>(staff+'/reports',{
     method:'POST',body:{anchor,include_ai},timeout:55000,
   }),onSuccess:row=>{
-    setDraft(row);setSuggestion(row.ai_summary||'')
+    setDraft(row)
+    if(row.archive_id!==draft?.archive_id||row.ai_summary!==draft.ai_summary)setSuggestion(row.ai_summary||'')
     void cache.invalidateQueries({queryKey:[user?.id,'report-archive']})
   }})
   const publish=useMutation({mutationFn:()=>api(staff+'/reports/'+draft?.archive_id+'/review',{
@@ -62,14 +78,16 @@ export function WellbeingBoard() {
     void cache.invalidateQueries({queryKey:[user?.id,'report-archive']})
   }})
   const data=weekly.data
+  const canDraft=!!data&&(!data.suppressed||data.items.length>0)
+  const draftIsCurrent=draft&&data&&draft.period_start===data.period_start
   const risks:Record<string,number>={}
   for(const row of data?.items||[])risks[risk[row.risk_level]||row.risk_level]=(risks[risk[row.risk_level]||row.risk_level]||0)+row.count
   return <Space orientation="vertical" style={{width:'100%'}} size="middle">
     <Card><Space wrap>
-      <Input aria-label="心理报告日期" type="date" value={anchor} onChange={event=>{setAnchor(event.target.value);setDraft(undefined)}}/>
-      <Button disabled={!anchor} loading={generate.isPending} onClick={()=>generate.mutate(false)}>生成周报草稿</Button>
-      <Button type="primary" disabled={!data||data.suppressed||generate.isPending} onClick={()=>generate.mutate(true)}>生成 AI 建议</Button>
-    </Space></Card>
+      <Input aria-label="心理报告日期" type="date" value={anchor} disabled={generate.isPending||publish.isPending} onChange={event=>{setAnchor(event.target.value);setDraft(undefined)}}/>
+      <Button disabled={!canDraft||generate.isPending||publish.isPending} loading={generate.isPending&&generate.variables===false} onClick={()=>generate.mutate(false)}>生成周报草稿</Button>
+      <Button type="primary" disabled={!data||data.suppressed||generate.isPending||publish.isPending} loading={generate.isPending&&generate.variables===true} onClick={()=>generate.mutate(true)}>生成 AI 建议</Button>
+    </Space>{data&&!canDraft&&<div className="report-center-empty-note"><Typography.Text type="secondary">本周暂无可归档的心理统计。</Typography.Text></div>}</Card>
     <ErrorNotice error={weekly.error||generate.error||publish.error}/>
     {data && <>
       <div className="report-center-grid">
@@ -77,18 +95,16 @@ export function WellbeingBoard() {
         <Metric label="参与自评" value={data.suppressed?'低于展示人数':data.participants}/>
         <Metric label="自评覆盖率" value={data.eligible&&!data.suppressed?Math.round((data.participants??0)*100/data.eligible)+'%':'—'}/>
       </div>
-      <div className="report-center-two">
-        <CountBars title="情绪趋势" counts={totals(data.emotion,emotion)}/>
-        <CountBars title="压力趋势" counts={totals(data.stress,stress)}/>
-        <CountBars title="授权范围预警风险" counts={risks}/>
-      </div>
+      <DailyCheckins data={data}/>
+      {data.items.length>0&&<CountBars title="授权范围预警风险" counts={risks}/>}
     </>}
-    {draft && <Card title={draft.review_status==='published'?'心理周报已发布':'心理周报待审核'}>
+    {draftIsCurrent && <Card title={draft.review_status==='published'?'心理周报已发布':'心理周报待审核'}>
       <Space orientation="vertical" style={{width:'100%'}}>
+        <Typography.Text type="secondary">{draft.period_start} 至 {draft.period_end} · 统计范围 {draft.eligible} 人 · {draft.suppressed?'自评参与人数低于展示门槛':'自评参与 '+draft.participants+' 人'} · 预警 {draft.items.reduce((sum,row)=>sum+row.count,0)} 条</Typography.Text>
         <Input.TextArea aria-label="心理周报群体建议" rows={5} value={suggestion} maxLength={4000}
           disabled={draft.review_status==='published'} onChange={event=>setSuggestion(event.target.value)}/>
         {draft.review_status!=='published' && write && <Button type="primary" loading={publish.isPending}
-          disabled={!suggestion.trim()} onClick={()=>publish.mutate()}>审核并发布</Button>}
+          disabled={!suggestion.trim()||generate.isPending} onClick={()=>publish.mutate()}>审核并发布</Button>}
       </Space>
     </Card>}
     {write && <Card title="关怀个案" extra={<Button onClick={()=>setAction({

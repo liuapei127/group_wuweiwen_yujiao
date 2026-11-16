@@ -24,6 +24,7 @@ STATUSES = {
     "lost": "已流失", "pending": "待处理", "processing": "处理中", "resolved": "已处理",
     "closed": "已关闭", "following": "跟进中", "dismissed": "已排除",
 }
+FOLLOW_METHODS = {"phone": "电话", "wechat": "微信", "meeting": "面谈", "email": "邮件", "other": "其他"}
 RISKS = {"low": "低", "medium": "中", "high": "高"}
 
 
@@ -107,6 +108,23 @@ def render_report(report: dict) -> bytes:
     ):
         if key in body:
             add_table(label, ["分类", "数量"], [[STATUSES.get(name, name), count] for name, count in body[key].items()])
+    for key, label, names in (
+        ("follow_ups", "客户跟进分析", FOLLOW_METHODS),
+        ("source_channels", "获客渠道分析", {"website": "官网"}),
+    ):
+        if key in body:
+            total = sum(body[key].values())
+            add_table(label, ["分类", "数量", "占比"], [
+                [names.get(name, name), count, f"{count / total:.1%}"]
+                for name, count in body[key].items() if total
+            ])
+    if body.get("comparisons"):
+        labels = {"previous": "较上一周期", "year_ago": "较去年同期"}
+        add_table("新增投诉趋势", ["比较", "对比期", "对比期件数", "变化件数", "变化率"], [
+            [labels[key], f"{row['start']} 至 {row['end']}", row["count"], row["change"],
+             "无可比基数" if row["percent"] is None else f"{row['percent']:+g}%"]
+            for key, row in body["comparisons"].items()
+        ])
     if body.get("as_of"):
         story.append(para(f"积压快照生成时间  {body['as_of']}", note))
     if body.get("status_history_since"):

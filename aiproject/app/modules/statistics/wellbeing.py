@@ -180,23 +180,43 @@ def make_event(db, principal, body):
     return result
 
 
+def _validate_report_data(stats, include_ai):
+    if stats["suppressed"]:
+        if include_ai:
+            raise BusinessError(422, "反馈覆盖人数不足，无法生成 AI 建议")
+        if not stats["items"]:
+            raise BusinessError(422, "本周暂无可归档的心理统计")
+
+
 def generate(db, principal, body):
     from fastapi.encoders import jsonable_encoder
 
-    stats = jsonable_encoder(desk_week(db, principal, body.anchor))
-    current_students = sorted(principal.student_ids)
-    if body.include_ai and stats["suppressed"]:
-        raise BusinessError(422, "反馈覆盖人数不足，无法生成 AI 建议")
+    require_permission(principal, "student-alerts:read")
+    ai_stats = None
+    ai_summary = None
+    ai_fields = ("eligible", "participants", "emotion", "stress")
     if body.include_ai:
+        initial = jsonable_encoder(desk_week(db, principal, body.anchor))
+        _validate_report_data(initial, True)
+        ai_stats = {key: initial[key] for key in ai_fields}
         db.rollback()
-        stats["ai_summary"] = report_ai.suggest("心理周报", {
-            key: stats[key] for key in ("eligible", "participants", "emotion", "stress")
-        })
+        ai_summary = report_ai.suggest("心理周报", ai_stats)
+
+    # Start a fresh transaction so a concurrent request's committed draft is visible.
+    db.rollback()
+    if not scheduled_repository.lock_employee(db, principal.employee_id):
+        raise BusinessError(403, "员工账号不可用")
+    stats = jsonable_encoder(desk_week(db, principal, body.anchor))
+    _validate_report_data(stats, body.include_ai)
+    if ai_stats is not None:
+        if ai_stats != {key: stats[key] for key in ai_fields}:
+            raise BusinessError(409, "统计数据已更新，请重新生成 AI 建议")
+        stats["ai_summary"] = ai_summary
     stats["review_status"] = "draft"
-    rid = scheduled_repository.record_report(
-        db, principal.employee_id, "psych_weekly", "心理健康周报",
+    rid = scheduled_repository.save_wellbeing_draft(
+        db, principal.employee_id,
         {"period_start": stats["period_start"], "period_end": stats["period_end"], "scope_version": 1,
-         "student_ids": current_students, "statistics": stats}, beijing_now(),
+         "student_ids": sorted(principal.student_ids), "statistics": stats}, beijing_now(),
     )
     db.commit()
     return {"archive_id": rid, **stats}

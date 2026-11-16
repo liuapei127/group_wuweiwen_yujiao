@@ -7,7 +7,7 @@ import {api, query} from '../lib/api'
 import {ReportSchedules} from './ReportSchedules'
 
 type Alert = {
-  id: number; student_id: number; risk_level: string; status: string
+  id: number; student_id: number; teacher_id: number | null; risk_level: string; status: string
   trigger_reason: string; follow_record: string | null; create_time: string
 }
 const endpoint = '/api/v1/student-admin/psych-alerts'
@@ -36,7 +36,7 @@ export function StudentAlerts() {
     queryFn: () => api<Alert[]>(endpoint + query({before_id: before, limit: 20})),
   })
   return <>
-    <PageTitle title="心理预警" description="查看分派给你的学生预警和跟进历史。"
+    <PageTitle title="心理预警" description="查看分派给你的预警，以及授权范围内待分派的预警。"
       extra={mayWrite && <Button type="primary" disabled={!students.data?.length} onClick={() => setAction({
         title: '登记心理预警', path: endpoint, method: 'POST', fields: [
           {name: 'student_id', label: '学生', kind: 'select', required: true,
@@ -61,12 +61,12 @@ export function StudentAlerts() {
     <ErrorNotice error={records.error}/>
     <Card>
       <Table<Alert> rowKey="id" pagination={false} loading={records.isFetching} dataSource={records.data || []}
-        scroll={{x: 780}} locale={{emptyText: '暂无分派给你的预警'}} columns={[
+        scroll={{x: 780}} locale={{emptyText: '暂无可查看的预警'}} columns={[
           {title: '学生编号', dataIndex: 'student_id'},
           {title: '风险等级', render: (_, row) => <Tag color={row.risk_level === 'high' ? 'red' : undefined}>{levels[row.risk_level]}</Tag>},
           {title: '原因', dataIndex: 'trigger_reason'},
           {title: '跟进记录', dataIndex: 'follow_record', render: value => <span style={{whiteSpace: 'pre-wrap'}}>{value || '—'}</span>},
-          {title: '状态', render: (_, row) => statuses[row.status]},
+          {title: '状态', render: (_, row) => row.teacher_id === null ? <Tag color="orange">待分派</Tag> : statuses[row.status]},
           {title: '操作', render: (_, row) => can('student-alerts:write') && ['pending', 'following'].includes(row.status) &&
             <Button type="link" onClick={() => setAction({
               title: '记录预警跟进', path: endpoint + '/' + row.id, method: 'PUT', fields: [
@@ -74,7 +74,7 @@ export function StudentAlerts() {
                   options: ['following', 'resolved', 'dismissed'].map(value => ({value, label: statuses[value]}))},
                 {name: 'follow_record', label: '本次跟进记录', kind: 'textarea', required: true},
               ],
-            })}>记录跟进</Button>},
+            })}>{row.teacher_id === null ? '接手并跟进' : '记录跟进'}</Button>},
         ]}/>
       <Space style={{marginTop: 12}}>
         <Button disabled={!before || records.isFetching} onClick={() => setBefore(undefined)}>返回最新</Button>

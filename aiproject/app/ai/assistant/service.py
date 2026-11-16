@@ -3,9 +3,10 @@ import logging
 from app.core.exceptions import BusinessError
 from app.core.security.rbac import ACTION_PERMISSIONS, INTENT_PERMISSIONS
 from app.core.security.authorization import require_permission
-from app.ai.workflows.ent_contracts import plan,format_result,CONFIRM,CANCEL,parse_action,selected_id
+from app.ai.workflows.ent_contracts import plan,CONFIRM,CANCEL,parse_action,selected_id
 from app.modules.statistics.service import current_report_members
 from .repository import AssistantRepository
+from .replies import business_reply, chat_history, conversational_reply, display_stored_reply
 from .client import DifyIntentClient,call_business
 
 logger=logging.getLogger(__name__)
@@ -27,7 +28,19 @@ class AssistantService:
         if not row:raise BusinessError(404,'对话不存在')
         try:pending=json.loads(row['pending']) if row['pending'] else None
         except ValueError:pending=None
+        if not isinstance(pending, dict):
+            pending = None
+        if pending:
+            permission = ACTION_PERMISSIONS.get(pending.get('intent'))
+            if permission and permission not in p.permissions:
+                pending = None
         messages=self.repo.history(cid)
+        for message in messages:
+            permission = ACTION_PERMISSIONS.get(message['metadata'].get('action'))
+            if permission and permission not in p.permissions:
+                message['content'] = '当前账号没有查看这条业务结果的权限。'
+            else:
+                message['content'] = display_stored_reply(message)
         scoped=[message for message in messages if 'report_employee_ids' in message['metadata']]
         if scoped:
             try:
@@ -50,46 +63,39 @@ class AssistantService:
         version=body.expected_version+1
         pending='';metadata={'source':'Dify','executed':False}
         text=body.text.strip()
+        reply = conversational_reply(text, p.permissions)
         try:
-            # Exact confirmations and cancellations are owned by server state, not an LLM.
-            saved=json.loads(old['pending']) if old['pending'] else {}
-            if text.rstrip('。！! ') in CONFIRM|CANCEL or (saved.get('state')=='id' and selected_id(text) is not None):
-                model_text='';metadata['source']='服务端确认状态机'
+            if reply is not None:
+                pending = old['pending'] or ''
+                metadata['source'] = '服务端'
             else:
-                model_text=self.extractor.extract(text,old['pending'])
-                try:
-                    extracted=parse_action(model_text)
-                    if extracted.get('intent')=='daily_submit':
-                        for key in ('key_progress','risks'):
-                            value=extracted['params'].get(key)
-                            if isinstance(value,str):extracted['params'][key]=[s.strip() for s in value.splitlines() if s.strip()]
-                        model_text=json.dumps(extracted,ensure_ascii=False)
-                except (ValueError,TypeError):
-                    pass
-            output=plan(model_text,text,old['pending'])
-            pending=output['pending']
-            requested=output['intent']
-            if pending:
-                requested=json.loads(pending).get('intent',requested)
-            if requested in ACTION_PERMISSIONS:
-                require_permission(p,ACTION_PERMISSIONS[requested])
-            if output['call_api'] and output['intent']=='nl_query':
-                query=json.loads(output['http_body'])
-                require_permission(p,INTENT_PERMISSIONS[query['intent']])
-            metadata.update(action=requested,method=output['method'].upper() if output['call_api'] else None)
-            reply=output['reply']
-            if output['call_api']:
-                status,result=self.executor(output['method'],output['http_url'],output['http_body'],employee_token)
-                metadata.update(executed=True,http_status=status,action=output['intent'])
-                reply=format_result(status,result,output['intent'])['reply']
-                if status==200 and output['intent']=='managed_daily_list':
-                    rows=json.loads(result)['data']['items'][:10]
-                    if rows:
-                        metadata['report_employee_ids']=sorted({row['employee_id'] for row in rows})
-                if pending and output['intent'] in ('lead_list','leave_candidates'):
-                    candidate_state=json.loads(pending)
-                    if candidate_state.get('state')=='id':
-                        reply,pending=self._candidate_reply(status,result,candidate_state,reply)
+                output = self._interpret(cid, text, old['pending'], metadata)
+                pending = output['pending']
+                requested = output['intent']
+                if requested == 'chat':
+                    metadata['mode'] = 'chat'
+                else:
+                    if pending:
+                        requested = json.loads(pending).get('intent', requested)
+                    if requested in ACTION_PERMISSIONS:
+                        require_permission(p, ACTION_PERMISSIONS[requested])
+                if output['call_api'] and output['intent']=='nl_query':
+                    query=json.loads(output['http_body'])
+                    require_permission(p,INTENT_PERMISSIONS[query['intent']])
+                metadata.update(action=requested,method=output['method'].upper() if output['call_api'] else None)
+                reply=output['reply']
+                if output['call_api']:
+                    status,result=self.executor(output['method'],output['http_url'],output['http_body'],employee_token)
+                    metadata.update(executed=True,http_status=status,action=output['intent'])
+                    reply=business_reply(status,result,output['intent'])
+                    if status==200 and output['intent']=='managed_daily_list':
+                        rows=json.loads(result)['data']['items'][:10]
+                        if rows:
+                            metadata['report_employee_ids']=sorted({row['employee_id'] for row in rows})
+                    if pending and output['intent'] in ('lead_list','leave_candidates'):
+                        candidate_state=json.loads(pending)
+                        if candidate_state.get('state')=='id':
+                            reply,pending=self._candidate_reply(status,result,candidate_state,reply)
         except BusinessError as exc:
             reply=exc.detail+'。未确认任何业务修改。'
             metadata.update(error_status=exc.status_code)
@@ -106,6 +112,33 @@ class AssistantService:
         except Exception:
             self.db.rollback();raise
         return self.detail(cid,p)
+
+    def _interpret(self, cid, text, pending, metadata):
+        saved = json.loads(pending) if pending else {}
+        if text.rstrip('。！! ') in CONFIRM | CANCEL or (saved.get('state') == 'id' and selected_id(text) is not None):
+            metadata['source'] = '服务端确认状态机'
+            return plan('', text, pending)
+
+        history = chat_history(self.repo.history(cid, limit=12))
+        model_text = self.extractor.extract(text, pending, history)
+        try:
+            action = parse_action(model_text)
+        except (ValueError, TypeError):
+            return plan(model_text, text, pending)
+
+        intent = action.get('intent')
+        if intent == 'chat':
+            answer = action.get('reply')
+            if action['params'] or not isinstance(answer, str) or not answer.strip():
+                answer = '刚才没能生成回复，请再试一次。'
+            return {'intent': 'chat', 'call_api': False, 'pending': pending or '', 'reply': answer.strip()[:1600]}
+        if intent == 'daily_submit':
+            for key in ('key_progress', 'risks'):
+                value = action['params'].get(key)
+                if isinstance(value, str):
+                    action['params'][key] = [line.strip() for line in value.splitlines() if line.strip()]
+            model_text = json.dumps(action, ensure_ascii=False)
+        return plan(model_text, text, pending)
 
     @staticmethod
     def _candidate_reply(status, body, pending, fallback):

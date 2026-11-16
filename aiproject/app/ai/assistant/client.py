@@ -7,7 +7,7 @@ from app.core.config import get_settings
 from app.core.exceptions import BusinessError
 
 class DifyIntentClient:
-    def extract(self, text, pending):
+    def extract(self, text, pending, history):
         settings = get_settings()
         chat_key = settings.dify_ent_chatflow_api_key.get_secret_value()
         workflow_key = settings.dify_workflow_api_key.get_secret_value()
@@ -18,10 +18,12 @@ class DifyIntentClient:
         payload = {'response_mode': 'blocking'}
         if chat_key:
             endpoint = '/chat-messages'
-            payload.update(inputs={'pending': pending or '', 'today': today}, query=text, user='ent-' + token_hex(16))
+            payload.update(inputs={'pending': pending or '', 'today': today, 'chat_history': history},
+                           query=text, user='ent-' + token_hex(16))
         else:
             endpoint = '/workflows/run'
-            payload.update(inputs={'query': text, 'pending': pending, 'today': today}, user='ent-portal-intent')
+            payload.update(inputs={'query': text, 'pending': pending, 'today': today, 'chat_history': history},
+                           user='ent-portal-intent')
 
         try:
             with httpx.Client(trust_env=False, timeout=httpx.Timeout(settings.dify_timeout_seconds, connect=5)) as client:

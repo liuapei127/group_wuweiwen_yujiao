@@ -40,6 +40,7 @@ def test_stu_dsl_has_llm_fallback_for_generic_replies():
     nodes = {node["id"]: node for node in graph["nodes"]}
     llm = nodes["llm_reply"]["data"]
     assert llm["type"] == "llm"
+    assert "{{#resolve_auth.history_json#}}" in llm["prompt_template"][0]["text"]
     assert llm["model"]["provider"].startswith("langgenius/")
     guard = nodes["reply_guard"]["data"]
     assert guard["type"] == "if-else"

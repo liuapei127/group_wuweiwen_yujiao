@@ -34,14 +34,19 @@ def employee(employee_id: Annotated[int, Path(ge=1)], db: DB, staff: Staff, anch
 
 @router.get("/board/customers")
 def customers(start: date, end: date, db: DB, staff: Staff,
-              metric: Literal["new", "signed", "lost"] | None = None, offset: Offset = 0, limit: Limit = 30):
-    return success(service.operations(db, staff, "customers", start, end, metric, offset, limit))
+              metric: Literal["new", "signed", "lost", "status", "channel", "follow_up"] | None = None,
+              offset: Offset = 0, limit: Limit = 30,
+              bucket: Annotated[str | None, Query(max_length=255)] = None,
+              department: Annotated[str | None, Query(max_length=128)] = None, department_missing: bool = False):
+    return success(service.operations(db, staff, "customers", start, end, metric, offset, limit,
+                                      bucket=bucket, department=department, department_missing=department_missing))
 
 
 @router.get("/board/complaints")
 def complaints(start: date, end: date, db: DB, staff: Staff,
-               metric: Literal["new", "backlog"] | None = None, offset: Offset = 0, limit: Limit = 30):
-    return success(service.operations(db, staff, "complaints", start, end, metric, offset, limit))
+               metric: Literal["new", "backlog", "status", "category", "satisfaction"] | None = None,
+               offset: Offset = 0, limit: Limit = 30, bucket: Annotated[str | None, Query(max_length=255)] = None):
+    return success(service.operations(db, staff, "complaints", start, end, metric, offset, limit, bucket=bucket))
 
 
 @router.post("/board/{kind}/archive", status_code=201)

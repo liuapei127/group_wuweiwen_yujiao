@@ -166,6 +166,7 @@ def test_employee_role_does_not_change_account_class(db):
     _role(db, 5, "manager", "部门经理")
     _role(db, 6, "team_leader", "班主任")
     _grant(db, 2, "crm:read")
+    _grant(db, 2, "users:manage")
     _grant(db, 2, "not-a-catalogue-permission")
     _grant(db, 5, "directory:read")
     _grant(db, 6, "leaves:read")
@@ -184,7 +185,7 @@ def test_employee_role_does_not_change_account_class(db):
     assert employee_admin_role.user_type == "employee"
     assert admin_account.user_type == "admin"
     assert employee_admin_role.role_code == admin_account.role_code == "admin"
-    assert employee_admin_role.permissions == admin_account.permissions == frozenset({"crm:read"})
+    assert employee_admin_role.permissions == admin_account.permissions == frozenset({"users:manage"})
     assert employee_admin_role.permissions != frozenset(PERMISSIONS)
     assert "not-a-catalogue-permission" not in employee_admin_role.permissions
 

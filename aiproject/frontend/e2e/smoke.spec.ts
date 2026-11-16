@@ -225,16 +225,17 @@ test('website sends a student to student services after same-entry login', async
   await loginDialog.getByRole('button', {name: /^登\s*录$/}).click()
   await expect(page).toHaveURL(/website\/student$/)
   await expect(page.getByRole('heading', {name: '学生服务'})).toBeVisible()
-  await expect(page.getByRole('tab', {name: '投诉反馈'})).toBeVisible()
+  const studentNav = page.getByLabel('学生服务导航')
+  await expect(studentNav.getByRole('button', {name: '投诉反馈'})).toBeVisible()
   await expect(page.getByText('留学地区：德国')).toBeVisible()
   await expect(page.getByRole('button', {name: '查看考务'})).toBeVisible()
-  await page.getByRole('tab', {name: '申请进度'}).press('Enter')
+  await studentNav.getByRole('button', {name: '申请进度'}).press('Enter')
   await expect(page.getByText('示例大学', {exact: true})).toBeVisible()
   await expect(page.getByText('等待审核', {exact: true})).toBeVisible()
-  await page.getByRole('tab', {name: '留学政策'}).press('Enter')
+  await studentNav.getByRole('button', {name: '留学政策'}).press('Enter')
   await expect(page.getByText('德国职业培训签证', {exact: true})).toBeVisible()
   await expect(page.getByRole('link', {name: '查看官方说明'})).toHaveAttribute('href', /make-it-in-germany/)
-  await page.getByRole('tab', {name: '我的材料与活动'}).press('Enter')
+  await studentNav.getByRole('button', {name: '我的材料与活动'}).press('Enter')
   await page.getByRole('tab', {name: '我的预约'}).click()
   await expect(page.getByText('原预约讲座', {exact: true})).toBeVisible()
   await page.getByRole('tab', {name: '材料提交'}).click()
@@ -294,4 +295,79 @@ test('website account operator can create a student record from a visitor', asyn
   await page.getByText('德国', {exact: true}).last().click()
   await dialog.getByRole('button', {name: /^确\s*定$/}).click()
   await expect(page.getByText('学生已开通', {exact: true})).toBeVisible()
+})
+
+
+test('student assistant keeps the chosen conversation and draft after an older reply', async ({page}) => {
+  const conversations = [{id: 'old', title: '原来的对话'}]
+  const originalTurns = Array.from({length: 24}, (_, index) => ({
+    id: index + 1, role: index % 2 === 0 ? 'user' : 'assistant', content: '历史消息 ' + index,
+  }))
+  let finishReply!: () => void
+  const delayedReply = new Promise<void>(resolve => {finishReply = resolve})
+
+  await page.route('**/api/v1/visitors/login', route => route.fulfill({
+    json: {code: 0, data: {account_type: 'student', access_token: 'website-test'}},
+  }))
+  await page.route('**/api/v1/visitors/me', route => route.fulfill({json: {code: 0, data: {account_type: 'student'}}}))
+  await page.route('**/api/v1/visitors/profile', route => route.fulfill({json: {code: 0, data: {
+    username: '13900009102', name: '测试学生', contact: '13900009102', account_type: 'student', created_at: '2026-11-15T07:00:00Z', avatar_url: null,
+  }}}))
+  await page.route('**/api/v1/student/**', async route => {
+    const path = new URL(route.request().url()).pathname
+    const method = route.request().method()
+    let data: unknown = []
+    if (path.endsWith('/assistant/conversations')) {
+      if (method === 'POST') {
+        const newConversation = {id: 'new', title: '新对话'}
+        conversations.unshift(newConversation)
+        data = newConversation
+      } else data = conversations
+    } else if (path.includes('/assistant/conversations/')) {
+      const id = path.split('/').pop()
+      data = {id, title: '', messages: id === 'old' ? originalTurns : []}
+    } else if (path.endsWith('/assistant') && method === 'POST') {
+      await delayedReply
+      originalTurns.push({id: 25, role: 'user', content: '发给旧对话'}, {id: 26, role: 'assistant', content: '旧对话收到的新回复'})
+      data = {answer: '旧对话收到的新回复', conversation_id: 'old'}
+    } else if (path.endsWith('/profile')) {
+      data = {abroad_country: 'Germany'}
+    } else if (path.endsWith('/deadlines')) {
+      data = {items: []}
+    }
+    await route.fulfill({json: {code: 0, data}})
+  })
+
+  await page.goto('/website')
+  await page.getByRole('button', {name: /^登\s*录$/}).click()
+  const login = page.getByRole('dialog', {name: '官网登录'})
+  await login.getByLabel('手机号', {exact: true}).fill('13900009102')
+  await login.getByLabel('密码').fill('test-password')
+  await login.getByRole('button', {name: /^登\s*录$/}).click()
+  await expect(page).toHaveURL(/website\/student$/)
+  await expect(page.getByRole('button', {name: '原来的对话'})).toHaveAttribute('aria-pressed', 'true')
+  const input = page.getByRole('textbox', {name: '输入要办的事'})
+  await input.fill('发给旧对话')
+  await input.press('Enter')
+  await expect(page.getByText('正在理解并办理…')).toBeVisible()
+  await page.locator('.assistant-shell__aside-head').getByRole('button', {name: '新对话'}).click()
+  const selected = page.locator('.assistant-shell__list').getByRole('button', {name: '新对话'})
+  await expect(selected).toHaveAttribute('aria-pressed', 'true')
+  await input.fill('新会话里的草稿')
+  const scrollBeforeReply = await page.evaluate(() => window.scrollY)
+  const reply = page.waitForResponse(response => response.url().endsWith('/api/v1/student/assistant'))
+  finishReply()
+  await reply
+  await expect(page.getByRole('button', {name: /^发\s*送$/})).toBeEnabled()
+  await expect(selected).toHaveAttribute('aria-pressed', 'true')
+  await expect(input).toHaveValue('新会话里的草稿')
+  expect(await page.evaluate(() => window.scrollY)).toBe(scrollBeforeReply)
+  await page.getByRole('button', {name: '原来的对话'}).click()
+  await expect(page.getByText('旧对话收到的新回复')).toBeVisible()
+  await page.locator('.assistant-shell__list').getByRole('button', {name: '新对话'}).click()
+  await expect(input).toHaveValue('新会话里的草稿')
+  const studentNav = page.getByLabel('学生服务导航')
+  await studentNav.getByRole('button', {name: '申请进度'}).click()
+  await studentNav.getByRole('button', {name: '学生助手'}).click()
+  await expect(input).toHaveValue('新会话里的草稿')
 })

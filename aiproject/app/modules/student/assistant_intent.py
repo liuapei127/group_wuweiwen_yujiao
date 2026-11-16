@@ -20,7 +20,7 @@ def route(query: str) -> dict:
 
     complaintish = any(
         k in text
-        for k in ["投诉", "反馈", "工单", "宿舍", "环境太差", "太差了", "态度差", "服务差", "太吵", "卫生差", "不满意"]
+        for k in ["投诉", "反馈", "工单", "环境太差", "太差了", "态度差", "服务差", "太吵", "卫生差", "不满意"]
     )
     if high_risk_hits(text):
         intent = "psych"
@@ -36,7 +36,7 @@ def route(query: str) -> dict:
         intent = "deadline"
     elif any(k in text for k in PSYCH_CARE_TERMS):
         intent = "psych"
-    elif any(k in text for k in ["怎么办", "怎么", "挂号", "签证", "交通", "看病"]):
+    elif any(k in text for k in ["怎么办", "怎么", "挂号", "签证", "交通", "公交", "地铁", "租房", "住宿", "宿舍", "保险", "看病"]):
         intent = "ask"
     else:
         intent = "other"

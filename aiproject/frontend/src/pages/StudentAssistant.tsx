@@ -6,6 +6,8 @@ type Turn = {id?: number; role: 'user' | 'assistant'; content: string; create_ti
 type Conversation = {id: string; title: string; update_time?: string}
 type Request = <T>(path: string, method?: string, body?: unknown) => Promise<T>
 
+type SendTurn = {query: string; conversationId?: string; selection: number}
+
 const HINTS = [
   '我要请假',
   '病假，2026-11-17 到 2026-11-19，身体不适',
@@ -17,9 +19,11 @@ const HINTS = [
 export function StudentAssistant({request}: {request: Request}) {
   const cache = useQueryClient()
   const [activeId, setActiveId] = useState<string>()
-  const [question, setQuestion] = useState('')
-  const [pendingText, setPendingText] = useState<string>()
-  const bottom = useRef<HTMLDivElement>(null)
+  const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const [showNew, setShowNew] = useState(false)
+  const thread = useRef<HTMLDivElement>(null)
+  const stickToEnd = useRef(true)
+  const selectionVersion = useRef(0)
 
   const conversations = useQuery({
     queryKey: ['visitor', 'student', 'assistant', 'conversations'],
@@ -35,58 +39,65 @@ export function StudentAssistant({request}: {request: Request}) {
   })
 
   const create = useMutation({
-    mutationFn: () => request<Conversation>('/api/v1/student/assistant/conversations', 'POST', {}),
-    onSuccess: row => {
-      setActiveId(row.id)
+    mutationFn: (_selection: number) => request<Conversation>('/api/v1/student/assistant/conversations', 'POST', {}),
+    onSuccess: (row, selection) => {
+      if (selectionVersion.current === selection) choose(row.id)
       void cache.invalidateQueries({queryKey: ['visitor', 'student', 'assistant', 'conversations']})
     },
   })
 
   const send = useMutation({
-    mutationFn: async (query: string) => {
-      let conversationId = activeId
-      if (!conversationId) {
-        const created = await request<Conversation>('/api/v1/student/assistant/conversations', 'POST', {})
-        conversationId = created.id
-        setActiveId(created.id)
+    mutationFn: ({query, conversationId}: SendTurn) => request<{answer: string; conversation_id: string}>(
+      '/api/v1/student/assistant', 'POST', {query, conversation_id: conversationId},
+    ),
+    onSuccess: async (data, turn) => {
+      const key = turn.conversationId || ''
+      setDrafts(current => (current[key] || '').trim() === turn.query ? {...current, [key]: ''} : current)
+      if (!turn.conversationId && data.conversation_id && selectionVersion.current === turn.selection) {
+        setDrafts(current => current[''] ? {...current, [data.conversation_id]: current[''], '': ''} : current)
+        choose(data.conversation_id)
       }
-      return request<{answer: string; conversation_id: string}>(
-        '/api/v1/student/assistant',
-        'POST',
-        {query, conversation_id: conversationId},
-      )
+      await Promise.all([
+        cache.invalidateQueries({queryKey: ['visitor', 'student', 'assistant', 'conversations']}),
+        cache.invalidateQueries({
+          queryKey: ['visitor', 'student', 'assistant', 'conversation', data.conversation_id || turn.conversationId],
+        }),
+        ...['leaves', 'complaints', 'notifications'].map(key => cache.invalidateQueries({queryKey: ['visitor', 'student', key]})),
+      ])
     },
-    onMutate: query => setPendingText(query),
-    onSuccess: async (data) => {
-      setQuestion('')
-      setPendingText(undefined)
-      if (data.conversation_id) setActiveId(data.conversation_id)
-      await cache.invalidateQueries({queryKey: ['visitor', 'student', 'assistant', 'conversations']})
-      await cache.invalidateQueries({
-        queryKey: ['visitor', 'student', 'assistant', 'conversation', data.conversation_id || activeId],
-      })
-      // 助手可能刚提交了请假或投诉，切到对应页签时要能看到最新单据
-      await cache.invalidateQueries({queryKey: ['visitor', 'student', 'leaves']})
-      await cache.invalidateQueries({queryKey: ['visitor', 'student', 'complaints']})
-      await cache.invalidateQueries({queryKey: ['visitor', 'student', 'notifications']})
-    },
-    onError: () => setPendingText(undefined),
   })
 
   useEffect(() => {
-    if (!activeId && conversations.data?.[0]?.id) setActiveId(conversations.data[0].id)
-  }, [activeId, conversations.data])
+    if (!activeId && !send.isPending && !create.isPending && conversations.data?.[0]?.id) {
+      setActiveId(conversations.data[0].id)
+    }
+  }, [activeId, conversations.data, create.isPending, send.isPending])
+
+  const ownRequest = send.variables?.conversationId === activeId
+  const pendingText = ownRequest && send.isPending ? send.variables?.query : undefined
+  const messages = detail.data?.messages || []
+  const question = drafts[activeId || ''] || ''
 
   useEffect(() => {
-    bottom.current?.scrollIntoView({behavior: 'smooth', block: 'end'})
-  }, [detail.data?.messages, pendingText, send.isPending])
+    const node = thread.current
+    if (!node) return
+    if (stickToEnd.current) node.scrollTop = node.scrollHeight
+    else if (detail.data?.messages.length) setShowNew(true)
+  }, [activeId, detail.data?.messages, pendingText])
 
-  const messages = detail.data?.messages || []
+  function choose(id: string) {
+    selectionVersion.current += 1
+    stickToEnd.current = true
+    setShowNew(false)
+    setActiveId(id)
+  }
 
   function submit(raw: string) {
     const query = raw.trim()
-    if (!query || send.isPending) return
-    send.mutate(query)
+    if (!query || send.isPending || create.isPending) return
+    stickToEnd.current = true
+    setShowNew(false)
+    send.mutate({query, conversationId: activeId, selection: selectionVersion.current})
   }
 
   return (
@@ -95,7 +106,7 @@ export function StudentAssistant({request}: {request: Request}) {
         <div className="assistant-shell__aside-head">
           <Typography.Text strong>对话记录</Typography.Text>
           <Button size="small" type="primary" loading={create.isPending}
-            onClick={() => create.mutate()}>
+            onClick={() => create.mutate(++selectionVersion.current)}>
             新对话
           </Button>
         </div>
@@ -108,7 +119,8 @@ export function StudentAssistant({request}: {request: Request}) {
               key={item.id}
               type="button"
               className={'assistant-shell__item' + (item.id === activeId ? ' is-active' : '')}
-              onClick={() => setActiveId(item.id)}
+              aria-pressed={item.id === activeId}
+              onClick={() => choose(item.id)}
             >
               <span>{item.title || '新对话'}</span>
             </button>
@@ -126,8 +138,12 @@ export function StudentAssistant({request}: {request: Request}) {
           </div>
         </header>
 
-        <div className="assistant-panel__thread" role="log" aria-live="polite">
-          {!activeId && !send.isPending && (
+        <div ref={thread} className="assistant-panel__thread" role="log" aria-live="polite" onScroll={event => {
+          const node = event.currentTarget
+          stickToEnd.current = node.scrollHeight - node.scrollTop - node.clientHeight <= 60
+          if (stickToEnd.current) setShowNew(false)
+        }}>
+          {!activeId && !pendingText && (
             <div className="assistant-bubble assistant-bubble--bot assistant-bubble--intro">
               直接说想办的事。例如「病假，2026-11-17 到 19 号，身体不适」。点「新对话」可开一条干净会话。
             </div>
@@ -147,13 +163,17 @@ export function StudentAssistant({request}: {request: Request}) {
               <div className="assistant-bubble__text">{pendingText}</div>
             </div>
           )}
-          {send.isPending && (
+          {pendingText && (
             <div className="assistant-bubble assistant-bubble--bot assistant-bubble--pending">
               正在理解并办理…
             </div>
           )}
-          <div ref={bottom}/>
         </div>
+        {showNew && <Button type="link" size="small" onClick={() => {
+          if (thread.current) thread.current.scrollTop = thread.current.scrollHeight
+          stickToEnd.current = true
+          setShowNew(false)
+        }}>查看新消息</Button>}
 
         <div className="assistant-panel__hints">
           {HINTS.map(item => (
@@ -164,7 +184,7 @@ export function StudentAssistant({request}: {request: Request}) {
           ))}
         </div>
 
-        {send.error && <Alert type="error" showIcon title={(send.error as Error).message} style={{marginBottom: 12}}/>}
+        {ownRequest && send.error && <Alert type="error" showIcon title={(send.error as Error).message} style={{marginBottom: 12}}/>}
         {create.error && <Alert type="error" showIcon title={(create.error as Error).message} style={{marginBottom: 12}}/>}
         {conversations.error && <Alert type="error" showIcon title={(conversations.error as Error).message} style={{marginBottom: 12}}/>}
 
@@ -175,7 +195,7 @@ export function StudentAssistant({request}: {request: Request}) {
             maxLength={1000}
             autoSize={{minRows: 2, maxRows: 5}}
             placeholder="例如：病假，2026-11-17 到 2026-11-19，身体不适要看病"
-            onChange={event => setQuestion(event.target.value)}
+            onChange={event => setDrafts(current => ({...current, [activeId || '']: event.target.value}))}
             onPressEnter={event => {
               // 中文输入法选词时的回车不能直接发送
               if (event.nativeEvent.isComposing || event.keyCode === 229) return
@@ -185,7 +205,7 @@ export function StudentAssistant({request}: {request: Request}) {
               }
             }}
           />
-          <Button type="primary" loading={send.isPending} onClick={() => submit(question)}>发送</Button>
+          <Button type="primary" loading={!!pendingText} disabled={send.isPending || create.isPending} onClick={() => submit(question)}>发送</Button>
         </Space.Compact>
       </div>
     </section>

@@ -21,8 +21,8 @@ class AssistantRepository:
         return [dict(r) for r in self.db.execute(select(conversations.c.id,conversations.c.title,conversations.c.version,conversations.c.update_time).where(
             conversations.c.employee_id==user_id).order_by(conversations.c.update_time.desc()).limit(100)).mappings()]
 
-    def history(self,cid):
-        rows=[dict(r) for r in self.db.execute(select(messages).where(messages.c.conversation_id==cid).order_by(messages.c.id.desc()).limit(100)).mappings()]
+    def history(self,cid,limit=100):
+        rows=[dict(r) for r in self.db.execute(select(messages).where(messages.c.conversation_id==cid).order_by(messages.c.id.desc()).limit(limit)).mappings()]
         for r in rows:r['metadata']=json.loads(r.pop('metadata_json'))
         return list(reversed(rows))
 

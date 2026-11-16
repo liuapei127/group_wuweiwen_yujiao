@@ -2,7 +2,7 @@ from datetime import datetime, time, timedelta
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import BigInteger, Date, DateTime, String, Text, column, func, insert, select, table, update
+from sqlalchemy import BigInteger, Date, DateTime, String, Text, and_, column, func, insert, or_, select, table, update
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import BusinessError
@@ -28,6 +28,7 @@ _observation = table(
 class AlertOut(BaseModel):
     id: int
     student_id: int
+    teacher_id: int | None
     risk_level: str
     status: str
     trigger_reason: str
@@ -44,7 +45,9 @@ class AlertUpdate(BaseModel):
 
 def _owned_query(principal: EmployeePrincipal):
     return select(*(getattr(_alert.c, name) for name in AlertOut.model_fields)).where(
-        _alert.c.teacher_id == principal.employee_id, _alert.c.student_id.in_(principal.student_ids),
+        or_(_alert.c.teacher_id == principal.employee_id,
+            and_(_alert.c.teacher_id.is_(None), _alert.c.status == "pending")),
+        _alert.c.student_id.in_(principal.student_ids),
     )
 
 
@@ -71,7 +74,7 @@ def follow_alert(db: Session, principal: EmployeePrincipal, alert_id: int, paylo
         if len(follow_record.encode("utf-8")) > 60_000:
             raise BusinessError(422, "跟进记录超过可保存长度")
         db.execute(update(_alert).where(_alert.c.id == alert_id).values(
-            status=payload.status, follow_record=follow_record, update_time=now,
+            teacher_id=principal.employee_id, status=payload.status, follow_record=follow_record, update_time=now,
             resolved_time=now if payload.status != "following" else None,
         ))
         result = AlertOut.model_validate(db.execute(query.with_for_update()).mappings().one())
@@ -105,7 +108,7 @@ def create_alert(db: Session, principal: EmployeePrincipal, payload: AlertCreate
             create_time=now, update_time=now,
         ))
         item = AlertOut(
-            **payload.model_dump(), id=result.lastrowid, status="pending",
+            **payload.model_dump(), id=result.lastrowid, teacher_id=principal.employee_id, status="pending",
             follow_record=None, create_time=now,
         )
         db.commit()

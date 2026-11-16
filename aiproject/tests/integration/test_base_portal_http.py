@@ -43,7 +43,10 @@ def test_base_employee_cookies_refresh_replay_and_logout(isolated_portal, monkey
             db.execute(roles.insert().values(id=1, role_code="employee", role_name="员工"))
             db.execute(role_permissions.insert().values(role_id=1, permission="dashboard:read"))
             db.execute(roles.insert().values(id=2, role_code="admin", role_name="管理员"))
-            db.execute(role_permissions.insert().values(role_id=2, permission="users:manage"))
+            db.execute(role_permissions.insert(), [
+                {"role_id": 2, "permission": permission}
+                for permission in ("users:manage", "roles:manage", "crm:read", "visitor-intake:read")
+            ])
             db.execute(text(
                 "INSERT INTO sys_user(id,username,password_hash,real_name,user_type,status,role_id) "
                 "VALUES(4,'13900002104',:password,'管理员','admin','normal',2)"
@@ -110,6 +113,13 @@ def test_base_employee_cookies_refresh_replay_and_logout(isolated_portal, monkey
                     "username": "13900002104", "password": "synthetic-admin-password",
                 })
                 admin_access = {"Authorization": "Bearer " + login.json()["data"]["access_token"]}
+                assert set(login.json()["data"]["user"]["permissions"]) == {"users:manage", "roles:manage"}
+                assert admin.get("/api/v1/consultant/customers", headers=admin_access).status_code == 403
+                assert admin.get("/api/v1/consultant/visitor-intake/pending", headers=admin_access).status_code == 403
+                assert admin.put("/api/v1/auth/roles/2", headers=admin_access, json={
+                    "role_code": "admin", "role_name": "管理员", "status": 1,
+                    "permissions": ["users:manage", "roles:manage", "crm:read"],
+                }).status_code == 422
                 invalid = admin.post(reset, headers=admin_access, json={"new_password": "onlyletters"})
                 assert invalid.status_code == 422 and "onlyletters" not in invalid.text
                 assert admin.post(reset, headers=admin_access, json=next_password).json()["data"] == {

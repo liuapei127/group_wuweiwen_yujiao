@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import BigInteger, Date, DateTime, JSON, SmallInteger, String, column, insert, select, table
+from sqlalchemy import BigInteger, Date, DateTime, JSON, SmallInteger, String, column, insert, select, table, update
 from sqlalchemy.orm import Session
 
 from app.modules.auth.models import accounts
@@ -64,3 +64,27 @@ def own_report(db: Session, employee_id: int, kinds: tuple[str, ...], report_id:
         generated.c.id == report_id,
     )).mappings().one_or_none()
     return dict(row) if row else None
+
+
+def save_wellbeing_draft(db: Session, employee_id: int, payload: dict, now: datetime):
+    start = date.fromisoformat(payload["period_start"])
+    end = date.fromisoformat(payload["period_end"])
+    content = generated.c.report_content
+    drafts = _completed_reports(employee_id, ("psych_weekly",)).where(
+        generated.c.report_title == "心理健康周报",
+        generated.c.period_start == start, generated.c.period_end == end,
+        content["scope_version"].as_integer() == 1,
+        content["statistics"]["review_status"].as_string() == "draft",
+    ).order_by(generated.c.id.desc()).with_for_update()
+    for row in db.execute(drafts).mappings():
+        previous = row["report_content"]
+        if previous.get("student_ids") != payload["student_ids"]:
+            continue
+        stats = payload["statistics"]
+        old_stats = previous["statistics"]
+        if ("ai_summary" not in stats and old_stats.get("ai_summary")
+                and all(value == old_stats.get(key) for key, value in stats.items())):
+            stats["ai_summary"] = old_stats["ai_summary"]
+        db.execute(update(generated).where(generated.c.id == row["id"]).values(report_content=payload))
+        return row["id"]
+    return record_report(db, employee_id, "psych_weekly", "心理健康周报", payload, now)
