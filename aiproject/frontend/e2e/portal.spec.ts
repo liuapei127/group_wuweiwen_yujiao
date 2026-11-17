@@ -18,7 +18,7 @@ for(const role of roles){
       await has('工作台');await has('AI 助手');await has('我的待办')
       if(role==='admin'){
         for(const name of ['官网账号','员工管理','角色权限','安全审计','活动管理'])await has(name)
-        for(const name of ['客户管理','游客跟进','智报中心','学生成绩','请假审批','投诉工单'])await absent(name)
+        for(const name of ['客户管理','资源池','智报中心','学生成绩','请假审批','投诉工单'])await absent(name)
         await page.goto('/customers')
         await expect(page.getByText('暂无访问权限',{exact:true})).toBeVisible()
         await page.goto('/settings/users')

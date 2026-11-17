@@ -12,7 +12,7 @@ from app.modules.profile.schemas import ScreeningInput
 from . import intake_service as service
 from .schemas import VisitorCallCreate, VisitorLeadCreate
 
-router = APIRouter(prefix="/api/v1/consultant/visitor-intake", tags=["游客跟进"])
+router = APIRouter(prefix="/api/v1/consultant/visitor-intake", tags=["资源池"])
 Database = Annotated[Session, Depends(get_db)]
 Advisor = Annotated[EmployeePrincipal, Depends(require_employee)]
 VisitorId = Annotated[int, Path(ge=1)]

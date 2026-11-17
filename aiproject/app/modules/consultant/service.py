@@ -9,7 +9,7 @@ ALLOWED_TRANSITIONS: dict[str, set[str]] = {
     "contacting": {"qualified", "signed", "lost"},
     "qualified": {"signed", "lost"},
     "signed": set(),
-    "lost": set(),
+    "lost": {"contacting"},
 }
 
 
@@ -45,7 +45,8 @@ class ConsultantService:
             raise ConflictError(f"不允许从 {current} 变更为 {payload.status}")
         if payload.status == "lost" and not payload.lost_reason:
             raise ValueError("标记流失必须填写原因")
-        return self.repo.set_lead_status(lead, payload.status, payload.lost_reason)
+        reason = payload.lost_reason if payload.status == "lost" else None
+        return self.repo.set_lead_status(lead, payload.status, reason)
 
     def lead_detail(self, lead_id: int):
         lead = self.repo.get_lead(lead_id)

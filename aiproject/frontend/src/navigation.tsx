@@ -3,7 +3,7 @@ export const navigation=[
  {path:'/dashboard',title:'工作台',permission:'dashboard:read',icon:<AppstoreOutlined/>},
  {path:'/assistant',title:'AI 助手',permission:'ai:use',icon:<RobotOutlined/>},
  {path:'/customers',title:'客户管理',permission:'crm:read',icon:<TeamOutlined/>},
- {path:'/visitor-intake',title:'游客跟进',permission:'visitor-intake:read',icon:<CustomerServiceOutlined/>},
+ {path:'/visitor-intake',title:'资源池',permission:'visitor-intake:read',icon:<CustomerServiceOutlined/>},
  {path:'/reporting',title:'智报中心',permission:'reports:operations:read',alternatePermission:'reports:summary:read',extraPermissions:['student-alerts:read','reports:wellbeing:read'],icon:<FileTextOutlined/>},
  {path:'/reports',title:'员工日报',permission:'reports:read',icon:<FileTextOutlined/>},
  {path:'/directory',title:'组织与同事',permission:'directory:read',icon:<ApartmentOutlined/>},

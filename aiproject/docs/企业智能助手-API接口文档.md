@@ -101,7 +101,7 @@
 ```
 
 **状态机**（`consultant/service.py`）  
-`new→contacting|lost`；`contacting→qualified|signed|lost`；`qualified→signed|lost`；`signed`/`lost` 终态。
+`new→contacting|lost`；`contacting→qualified|signed|lost`；`qualified→signed|lost`；`lost→contacting`；`signed` 为终态。
 
 **权限**：若带 `X-Employee-Id` 且与 `owner_employee_id` 不一致 → `code=403`。  
 **重复**：终态不可再变。

@@ -108,7 +108,7 @@ export function VisitorIntake() {
   }
 
   return <>
-    <PageTitle title="游客跟进" description="认领注册游客，记录通话后补录资料并查看初筛结果。"
+    <PageTitle title="资源池" description="认领注册游客，记录通话后补录资料并查看初筛结果。"
       extra={<Button onClick={() => void list.refetch()}>刷新</Button>}/>
     <Card>
       <Tabs activeKey={tab} onChange={key => {setAfter(0); setTab(key)}} items={[

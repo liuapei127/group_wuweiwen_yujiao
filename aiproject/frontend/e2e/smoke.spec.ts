@@ -156,7 +156,7 @@ test('advisor can claim, record a call and screen a visitor', async ({page}) => 
     await reply({})
   })
   await page.goto('/visitor-intake')
-  await expect(page.getByRole('heading', {name: '游客跟进'})).toBeVisible()
+  await expect(page.getByRole('heading', {name: '资源池'})).toBeVisible()
   await expect(page.getByText('13700000000')).toHaveCount(0)
   await page.getByRole('button', {name: /^认\s*领$/}).click()
   await page.getByRole('button', {name: '确认认领'}).click()
