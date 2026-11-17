@@ -208,12 +208,14 @@ def handle_chat(
     mock_country: Literal["Germany", "Singapore"] | None = None,
     memory_notes: list[str] | None = None,
     on_text=None,
+    generate_reply: bool = True,
 ) -> dict:
     turns = history or []
     stream = {"on_text": on_text} if on_text else {}
     place = _place_label(db, student_id, mock_country)
     if high_risk_hits(message):
-        return _pack(_psych(db, student_id, message, turns, place))
+        return _pack(_psych(db, student_id, message, turns, place) if generate_reply else
+                     _psych(db, student_id, message, turns, place, generate_reply=False))
     if re.fullmatch(r"(?:你知道|你能看到|你能知道)?我(?:现在|目前|此刻)?在(?:哪里|哪儿|哪)(?:吗|呢)?[？?。！!\s]*", message.strip()):
         destination = f"学籍登记的留学去向是{place}，这不代表你现在就在当地。" if place != "还没登记" else "学籍中还没有登记留学地区。"
         return _pack({"reply": "我无法获取你此刻的实际位置。" + destination + "如果想查交通或办事地点，请告诉我所在城市和具体需求。",
@@ -293,7 +295,8 @@ def handle_chat(
     ):
         return _pack(_leave_dialogue(db, student_id, message, place, turns))
     if intent == "psych" or (_psych_pending(turns) and intent == "other"):
-        return _pack(_psych(db, student_id, message, turns, place))
+        return _pack(_psych(db, student_id, message, turns, place) if generate_reply else
+                     _psych(db, student_id, message, turns, place, generate_reply=False))
     if intent == "ask":
         return _pack(_ask(db, student_id, message, place, turns, **stream))
     if _wants_upgrade(message):
@@ -1277,7 +1280,7 @@ def _deadline(db: Session, student_id: int) -> dict:
     }
 
 
-def _psych(db: Session, student_id: int, message: str, history: list | None, place: str) -> dict:
+def _psych(db: Session, student_id: int, message: str, history: list | None, place: str, *, generate_reply: bool = True) -> dict:
     hits = high_risk_hits(message or "")
     now = now_naive()
     db.execute(
@@ -1316,13 +1319,13 @@ def _psych(db: Session, student_id: int, message: str, history: list | None, pla
                 related_id=alert_id,
             )
         db.commit()
-        reply = speak(message, history, place, purpose="psych_crisis") or (
+        reply = (speak(message, history, place, purpose="psych_crisis") if generate_reply else "") or (
             "听到你这么说，我很担心你。你愿意的话，慢慢跟我说说现在最难受的是什么。"
             "你身边也有人可以帮你，班主任和学校心理支持都可以。"
         )
     else:
         db.commit()
-        reply = speak(message, history, place, purpose="psych_care") or (
+        reply = (speak(message, history, place, purpose="psych_care") if generate_reply else "") or (
             "想家、心里不踏实都正常。你要是愿意，我陪你聊聊；需要的话也可以找班主任说一声。"
         )
     # Never expose alert / risk flags to the student-facing payload

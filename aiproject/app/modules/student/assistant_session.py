@@ -57,10 +57,9 @@ async def run_turn(
         result = await run_in_threadpool(
             asyncio.run,
             assistant_workspace.run_turn(db, student_id=student_id, query=query,
-                                         conversation_id=conversation_id, use_dify=use_dify),
+                                         conversation_id=conversation_id, use_dify=use_dify,
+                                         **({"on_text": on_text} if on_text else {})),
         )
-        if on_text:
-            on_text(result.get("answer") or result.get("reply") or "")
         return result
     text = (query or "").strip()
     if not text:

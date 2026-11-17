@@ -115,9 +115,10 @@ def process_ticket(ticket_id, body, db, p):
             db.rollback()
             raise BusinessError(409, "工单已变化，请刷新")
         synchronization.synchronize_source(db, "student_feedback_ticket", ticket_id)
-        if old["ticket_type"] == "complaint" and body.status == "resolved":
+        if old["ticket_type"] in ("complaint", "suggestion") and body.status == "resolved":
             save_student_result(db, old["student_id"], "student_feedback_ticket", ticket_id, body.status,
-                                "投诉处理结果", "你的投诉已处理，请在投诉反馈中查看。")
+                                "投诉处理结果" if old["ticket_type"] == "complaint" else "建议处理结果",
+                                "你的反馈已有处理结果，请在投诉反馈中查看。")
         AuthRepository(db).audit(p.employee_id, "ticket_processed", ticket_id, {
             "previous_status": old["status"], "status": body.status, "solution": solution,
         })

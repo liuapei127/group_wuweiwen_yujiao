@@ -25,7 +25,8 @@ from . import alerts, assistant_chat, assistant_session, notifications, service
 from .capacity import get_stu_capacity
 from .idempotency import replay_cache
 from .schemas import (
-    AssistantTaskDecision, DeadlineBatch, DeadlineWrite, KnowledgeRetrievalRequest,
+    AssistantTaskDecision, AssistantTaskAttachment, LocalMemoryCorrection, LocalMemoryVersion,
+    DeadlineBatch, DeadlineWrite, KnowledgeRetrievalRequest,
     ProgressWrite, StudentAssistantConversationCreate, StudentAssistantRequest,
 )
 from .service import student_policies
@@ -168,6 +169,38 @@ def assistant_confirm(task_id: str, body: "AssistantTaskDecision", db: Database,
 def assistant_cancel(task_id: str, body: "AssistantTaskDecision", db: Database, principal: Principal):
     from .assistant_tasks import decide
     return success(decide(db, _student_id(db, principal), task_id, body.expected_version, cancel=True))
+
+
+
+@router.get("/assistant/memories")
+def assistant_memories(db: Database, principal: Principal, before_id: BeforeId = None, limit: Limit = 20):
+    from .memory_service import listing
+    return success(listing(db, _student_id(db, principal), before_id, limit))
+
+
+@router.patch("/assistant/memories/{memory_id}")
+def correct_assistant_memory(memory_id: int, body: LocalMemoryCorrection, db: Database, principal: Principal):
+    from .memory_service import correct
+    return success(correct(db, _student_id(db, principal), memory_id, body.memory, body.expected_version))
+
+
+@router.delete("/assistant/memories/{memory_id}")
+def delete_assistant_memory(memory_id: int, body: LocalMemoryVersion, db: Database, principal: Principal):
+    from .memory_service import erase
+    return success(erase(db, _student_id(db, principal), memory_id, body.expected_version))
+
+
+@router.delete("/assistant/memories")
+def clear_assistant_memories(db: Database, principal: Principal):
+    from .memory_service import clear
+    return success(clear(db, _student_id(db, principal)))
+
+
+@router.patch("/assistant/tasks/{task_id}/attachment")
+def attach_assistant_leave(task_id: str, body: AssistantTaskAttachment, db: Database, principal: Principal):
+    from .assistant_tasks import change_attachment
+    return success(change_attachment(db, _student_id(db, principal), task_id,
+                                     body.expected_version, str(body.attachment_id) if body.attachment_id else None))
 
 
 @router.get("/profile")

@@ -39,7 +39,7 @@ def test_country_parity_and_sources():
     categories={"arrival","medical","transport","housing","study","emergency"}
     for country in ("Germany","Singapore"):
         assert {r["category"] for r in CATALOG if r["country"]==country}==categories
-        assert sum(len(r["details"]["faqs"]) for r in CATALOG if r["country"]==country)==18
+        assert sum(len(r["details"]["faqs"]) for r in CATALOG if r["country"]==country)==36
     for row in CATALOG:
         assert row["details"]["steps"] and row["details"]["sources"]
 
@@ -95,12 +95,16 @@ def test_feelings_do_not_create_a_business_task(db,monkeypatch,query):
     assert db.scalars(select(StudentAssistantTask)).all()==[]
 
 
-def test_model_feedback_guess_cannot_start_a_complaint(db,monkeypatch):
+def test_ordinary_greeting_cannot_use_model_routing_to_start_a_complaint(db,monkeypatch):
     prepare_turn(monkeypatch)
-    async def model(**_):return AssistantUnderstanding(intent="feedback",fields={"content":"你好"})
-    monkeypatch.setattr(assistant_dify,"understand",model)
+    async def plan(**_):
+        pytest.fail("A greeting cannot ask the planning model to open a business task")
+    async def reply(**_):
+        return "你好呀，想先聊什么？"
+    monkeypatch.setattr(assistant_dify,"understand",plan)
+    monkeypatch.setattr(assistant_dify,"stream_reply",reply)
     result=asyncio.run(workspace.run_turn(db,student_id=2,query="你好",conversation_id=None,use_dify=True))
-    assert result["intent"]=="support" and not result.get("task")
+    assert result["intent"]=="chat" and not result.get("task")
 
 
 def test_guide_collects_one_step_at_a_time_and_preserves_real_reason(db,monkeypatch):
@@ -144,7 +148,7 @@ def test_feedback_context_is_a_suggestion_until_student_supplies_details(db,monk
 
 def test_plain_medical_information_is_not_a_leave_request(db,monkeypatch):
     prepare_turn(monkeypatch)
-    monkeypatch.setattr(knowledge,"answer",lambda *_:{"reply":"已核对的就医信息","intent":"ask"})
+    monkeypatch.setattr(knowledge,"answer",lambda *_, **__:{"reply":"已核对的就医信息","intent":"ask"})
     result=asyncio.run(workspace.run_turn(db,student_id=2,query="我想去医院",conversation_id=None,use_dify=False))
     assert result["intent"]=="ask" and not result["task"]
 
@@ -156,8 +160,9 @@ def test_country_choice_resolves_an_initial_two_country_question():
 
 def test_safe_model_companion_reply_is_used_without_creating_tasks(db,monkeypatch):
     prepare_turn(monkeypatch)
-    async def model(**_):return AssistantUnderstanding(intent="support",reply="刚到新地方时会有不熟悉的感觉。最近哪一件小事最让你想家？")
-    monkeypatch.setattr(assistant_dify,"understand",model)
+    async def reply(**_):
+        return "最近哪一件小事最让你想家？可以慢慢说。"
+    monkeypatch.setattr(assistant_dify,"stream_reply",reply)
     result=asyncio.run(workspace.run_turn(db,student_id=2,query="我最近有点想家",conversation_id=None,use_dify=True))
     assert "哪一件小事" in result["reply"] and result["choices"] and not result.get("task")
 

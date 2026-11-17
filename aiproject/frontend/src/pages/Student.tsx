@@ -80,7 +80,7 @@ export function Student({request, accountRecords}: {request: Request; accountRec
     {key: 'account-records', label: '我的材料与活动', children: accountRecords},
   ]
   const current = tabs.find(tab => tab.key === activeTab) ?? tabs[0]
-  return <section className="visitor-section student-page">
+  return <section className={'visitor-section student-page' + (activeTab === 'guide' ? ' student-page--chat' : '')}>
     <div className="student-shell">
       <aside className="student-side" aria-label="学生服务导航">
         {navGroups.map(group => <div className="student-nav-group" key={group.title}>
@@ -90,8 +90,9 @@ export function Student({request, accountRecords}: {request: Request; accountRec
             return <button type="button" key={key}
               className={'student-nav-item' + (activeTab === key ? ' active' : '')}
               aria-current={activeTab === key ? 'page' : undefined}
+              aria-label={tab.label + (key === 'deadlines' && nextDeadline ? '，有近期事项' : '')}
               onClick={() => setActiveTab(key)}>
-              <span className="student-nav-icon">{tabIcons[key]}</span>{tab.label}
+              <span className="student-nav-icon">{tabIcons[key]}</span>{tab.label}{key === 'deadlines' && nextDeadline && <span className="student-nav-dot" aria-hidden="true"/>}
             </button>
           })}
         </div>)}
@@ -107,9 +108,7 @@ export function Student({request, accountRecords}: {request: Request; accountRec
           <span className="student-head-meta">当前模块 · <b>{current.label}</b></span>
         </header>
         <ResultNotice error={profile.error}/>
-        {nextDeadline && activeTab !== 'home' && activeTab !== 'guide' && <Alert type="warning" showIcon title={nextDeadline.title}
-          description={'截止时间（北京时间）' + nextDeadline.deadline.slice(0, 16).replace('T', ' ')}
-          action={<Button onClick={() => setActiveTab('deadlines')}>查看考务</Button>}/>}
+
         <div className="student-panel student-panel--assistant" style={activeTab === 'guide' ? undefined : {display: 'none'}}>
           {tabs.find(tab => tab.key === 'guide')?.children}
         </div>

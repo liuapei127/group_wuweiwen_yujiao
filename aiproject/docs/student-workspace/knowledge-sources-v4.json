@@ -1,0 +1,124 @@
+{
+  "verified_at": "2026-11-17",
+  "articles": 12,
+  "faqs": 72,
+  "method": "官方机构页面核对、短事实整理；无实时定位、预约或自动外联能力",
+  "sources": [
+    {
+      "title": "Make it in Germany · 住房与登记",
+      "url": "https://www.make-it-in-germany.com/en/arriving-living/getting-started/housing-registration"
+    },
+    {
+      "title": "Make it in Germany · 留学到达与注册准备",
+      "url": "https://www.make-it-in-germany.com/en/study-vocational-training/studying-in-germany/planning"
+    },
+    {
+      "title": "DAAD · 入学条件与注册",
+      "url": "https://www.daad.de/en/studying-in-germany/requirements/overview/"
+    },
+    {
+      "title": "DAAD · 医疗与保险",
+      "url": "https://www.daad.de/en/studying-in-germany/living-in-germany/health-insurance/"
+    },
+    {
+      "title": "116117 · 英文就医说明",
+      "url": "https://www.116117.de/de/englisch.php"
+    },
+    {
+      "title": "Make it in Germany · 交通出行",
+      "url": "https://www.make-it-in-germany.com/en/arriving-living/getting-started/driving-licence-mobility"
+    },
+    {
+      "title": "Deutsche Bahn · Deutschlandticket适用交通",
+      "url": "https://www.bahn.de/faq/deutschlandticket-verkehrsmittel-deutschland"
+    },
+    {
+      "title": "Berlin.de · 柏林票制与路线",
+      "url": "https://www.berlin.de/en/public-transportation/1772016-2913840-tickets-fares-and-route-maps.en.html"
+    },
+    {
+      "title": "DAAD · 学生租房",
+      "url": "https://www.daad.de/en/studying-in-germany/living-in-germany/renting/"
+    },
+    {
+      "title": "Make it in Germany · 日常与紧急求助",
+      "url": "https://www.make-it-in-germany.com/en/arriving-living/getting-started/everyday-knowledge"
+    },
+    {
+      "title": "ICA · SG Arrival Card",
+      "url": "https://www.ica.gov.sg/information-and-e-services/entry-and-departure/entering-singapore/sg-arrival-card-with-electronic-health-declaration"
+    },
+    {
+      "title": "ICA · 学生准证",
+      "url": "https://www.ica.gov.sg/information-and-e-services/long-term-visit-and-study/student-s-pass"
+    },
+    {
+      "title": "ICA · 入境要求",
+      "url": "https://www.ica.gov.sg/enter-transit-depart/entering-singapore"
+    },
+    {
+      "title": "MOH · 获取医疗帮助",
+      "url": "https://www.moh.gov.sg/seeking-healthcare/getting-medical-help/"
+    },
+    {
+      "title": "SCDF · 紧急医疗服务",
+      "url": "https://www.scdf.gov.sg/home/about-scdf/emergency-medical-services"
+    },
+    {
+      "title": "MOH · 看医生",
+      "url": "https://www.moh.gov.sg/seeking-healthcare/getting-medical-help/seeking-a-doctor/"
+    },
+    {
+      "title": "SGH · 门诊就诊准备",
+      "url": "https://www.sgh.com.sg/clinic-visit/planning-for-your-visit"
+    },
+    {
+      "title": "SimplyGo · 非接触银行卡使用说明",
+      "url": "https://www.simplygo.com.sg/faqs/cards-and-charms/simplygo/contactless-bank-cards"
+    },
+    {
+      "title": "LTA · 使用同一设备进出站",
+      "url": "https://www.lta.gov.sg/content/ltagov/en/newsroom/2024/2/media-replies/use-the-same-device-or-card-to-tap-in-and-out-on-public-transpor.html"
+    },
+    {
+      "title": "LTA · 公共交通与行程规划",
+      "url": "https://www.lta.gov.sg/content/ltagov/en/getting_around/public_transport/plan_your_journey.html"
+    },
+    {
+      "title": "Go-Ahead Singapore · 乘车常见问题",
+      "url": "https://go-aheadsingapore.com/faqs/"
+    },
+    {
+      "title": "NUS OSA · 本校住宿选择",
+      "url": "https://osa.nus.edu.sg/accommodation/hostel-options/"
+    },
+    {
+      "title": "SPF · 防范冒充房产中介的租房诈骗",
+      "url": "https://www.police.gov.sg/Media-Hub/News/2024/20241121_police_advisory_on_rental_scams_involving_the_impersonation_of_property_agents"
+    },
+    {
+      "title": "CEA · 核实房产中介",
+      "url": "https://www.cea.gov.sg/consumers/engaging-a-property-agent/check-if-your-property-agent-is-registered/"
+    },
+    {
+      "title": "NLB · 图书馆位置与开放时间",
+      "url": "https://www.nlb.gov.sg/main/visit-us/our-libraries-and-locations"
+    },
+    {
+      "title": "NLB · 会员类别",
+      "url": "https://www.nlb.gov.sg/main/services/library-membership/types-of-membership"
+    },
+    {
+      "title": "NUS Computing · Information for Freshmen",
+      "url": "https://www.comp.nus.edu.sg/freshmen/"
+    },
+    {
+      "title": "新加坡政府产品报告 · 图书馆座位预约",
+      "url": "https://reports.open.gov.sg/sbs"
+    },
+    {
+      "title": "SPF · 联系方式",
+      "url": "https://www.police.gov.sg/Contact-Us"
+    }
+  ]
+}

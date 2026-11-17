@@ -1,4 +1,5 @@
 """Read Dify Chatflow messages and keep only the answer and conversation ID."""
+import asyncio
 import json
 
 import httpx
@@ -50,18 +51,30 @@ class ChatAnswer:
         return {"answer": self.text, "conversation_id": self.conversation_id}
 
 
-async def chat_messages(api_url, key, timeout, payload, on_text):
-    async with httpx.AsyncClient(trust_env=False, timeout=httpx.Timeout(timeout, connect=5)) as client:
-        async with client.stream(
-            "POST", api_url.rstrip("/") + "/chat-messages",
-            headers={"Authorization": "Bearer " + key},
-            json={**payload, "response_mode": "streaming"},
-        ) as response:
-            response.raise_for_status()
-            answer = ChatAnswer()
-            async for line in response.aiter_lines():
-                if answer.accept(line):
-                    on_text(answer.text)
-                if answer.finished and not answer.waiting_for_workflow:
-                    break
+async def chat_messages(api_url, key, timeout, payload, on_text, *,
+                        first_content_timeout=None, overall_timeout=None):
+    """Read one upstream stream, with optional wall-clock budgets.
+
+    The existing HTTP timeout limits individual reads, which heartbeat traffic can
+    keep alive indefinitely. These opt-in budgets also cover connection/headers.
+    Leaving them unset preserves callers outside the student assistant. Expiry or
+    caller cancellation unwinds the HTTP contexts instead of leaving a producer
+    running locally; this does not assert cancellation of Dify's remote workflow.
+    """
+    async with asyncio.timeout(overall_timeout), asyncio.timeout(first_content_timeout) as first:
+        async with httpx.AsyncClient(trust_env=False, timeout=httpx.Timeout(timeout, connect=5)) as client:
+            async with client.stream(
+                "POST", api_url.rstrip("/") + "/chat-messages",
+                headers={"Authorization": "Bearer " + key},
+                json={**payload, "response_mode": "streaming"},
+            ) as response:
+                response.raise_for_status()
+                answer = ChatAnswer()
+                async for line in response.aiter_lines():
+                    if answer.accept(line):
+                        if answer.text.strip():
+                            first.reschedule(None)
+                        on_text(answer.text)
+                    if answer.finished and not answer.waiting_for_workflow:
+                        break
     return answer.response()

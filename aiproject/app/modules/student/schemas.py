@@ -108,3 +108,20 @@ class KnowledgeRetrievalRequest(BaseModel):
     query: str = Field(default="", max_length=2000)
     retrieval_setting: KnowledgeRetrievalSettings = Field(default_factory=KnowledgeRetrievalSettings)
     metadata_condition: dict | None = None
+
+
+class AssistantTaskAttachment(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_version: int = Field(ge=1)
+    attachment_id: UUID | None
+
+
+class LocalMemoryVersion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_version: str = Field(min_length=64, max_length=64, pattern="^[a-f0-9]{64}$")
+
+
+class LocalMemoryCorrection(LocalMemoryVersion):
+    memory: str = Field(min_length=1, max_length=2000)
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)

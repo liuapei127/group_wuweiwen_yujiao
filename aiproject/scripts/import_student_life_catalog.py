@@ -6,6 +6,14 @@ from app.core.config import get_settings
 from app.core.database import SessionLocal
 
 
+def allowed_source(row, existing_url):
+    allowed = {row["source_url"]}
+    previous = row.get("previous_source_url")
+    if isinstance(previous, str) and previous.startswith("https://"):
+        allowed.add(previous)
+    return existing_url in allowed
+
+
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument("--database",required=True)
@@ -18,10 +26,10 @@ def main():
             assert len(row["details"]["faqs"])>=3 and row["source_url"].startswith("https://")
             values={**row,"old_title":row.get("previous_title",row["title"]),"details":json.dumps(row["details"],ensure_ascii=False)}
             found=db.execute(text("SELECT id,source_url FROM overseas_life_knowledge WHERE country=:country AND (title=:title OR title=:old_title) FOR UPDATE"),values).mappings().one_or_none()
-            if found and found["source_url"]!=row["source_url"]:
+            if found and not allowed_source(row, found["source_url"]):
                 raise RuntimeError("Existing guide has a different source; review before replacing")
             if found:
-                db.execute(text("UPDATE overseas_life_knowledge SET title=:title,content=:content,category=:category,city=:city,source_title=:source_title,details=:details,verified_at=:verified_at,update_time=NOW() WHERE id=:id"),{**values,"id":found["id"]})
+                db.execute(text("UPDATE overseas_life_knowledge SET title=:title,content=:content,category=:category,city=:city,source_title=:source_title,source_url=:source_url,details=:details,verified_at=:verified_at,update_time=NOW() WHERE id=:id"),{**values,"id":found["id"]})
             else:
                 db.execute(text("INSERT INTO overseas_life_knowledge(country,category,title,content,city,source_title,source_url,details,verified_at,status,create_time,update_time) VALUES(:country,:category,:title,:content,:city,:source_title,:source_url,:details,:verified_at,1,NOW(),NOW())"),values)
         db.commit()

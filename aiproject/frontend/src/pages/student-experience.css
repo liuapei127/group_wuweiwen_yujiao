@@ -93,3 +93,98 @@
 @media(max-width:1200px){.stu-home__quick{grid-template-columns:1fr 1fr;}.stu-life__grid{grid-template-columns:1fr 1fr;}.stu-home__hero-copy{padding:28px;}.stu-home__hero h1{font-size:30px;}}
 @media(max-width:760px){.stu-home__hero{grid-template-columns:1fr;}.stu-home__visual{min-height:210px;}.stu-home__updates{grid-template-columns:1fr;}.stu-home__quick{gap:10px;}.stu-home__quick>button{padding:14px;}.stu-home__quick button>.anticon:last-child{display:none;}.stu-life__intro{align-items:flex-start;flex-direction:column;}.stu-life__grid{grid-template-columns:1fr;}.stu-guide__choices{grid-template-columns:1fr;}.stu-guide__dates{grid-template-columns:1fr;}.stu-life__urgent>div:nth-child(2){margin-left:0;}.stu-life__urgent{padding:16px;}.stu-life__urgent button:not(.ant-btn){padding:0 12px;min-width:100px;}.student-page .stu-chat__welcome{margin:12px auto;}}
 @media(prefers-reduced-motion:reduce){.stu-home__quick>button{transition:none;}.stu-home__quick>button:hover{transform:none;}}
+
+
+/* The chat gets the remaining viewport; only its message thread scrolls. */
+.visitor-site--student .student-page.student-page--chat.visitor-section {max-width:1680px;padding:14px 20px;}
+.student-page--chat .student-shell {grid-template-columns:200px minmax(0,1fr);gap:16px;}
+.visitor-site--student .student-page--chat .student-main--assistant {padding:0;gap:0;scrollbar-gutter:auto;overflow:hidden;}
+.student-page--chat .student-panel--assistant {height:100%;width:100%;flex:1 1 0;min-height:0;overflow:hidden;}
+.student-page--chat .stu-chat {height:100%;max-height:100%;border-radius:16px;}
+.student-page .stu-chat__toolbar {padding:11px 16px;gap:10px;}
+.student-page .stu-chat__toolbar > div:first-child {min-width:110px;}
+.student-page .stu-chat__toolbar h4 {font-size:18px;line-height:1.45;}
+.student-page .stu-chat__toolbar .ant-typography-secondary {font-size:12px;}
+.student-page .stu-chat__toolbar .ant-btn-sm {font-size:12px;height:28px;padding-inline:9px;}
+.student-page .stu-chat__thread {flex:1 1 0;min-height:0;padding:18px clamp(16px,2vw,30px);scrollbar-gutter:stable;overflow-x:hidden;overflow-y:auto;}
+.student-page .stu-chat__bubble {max-width:min(92%,960px);padding:12px 16px;margin-bottom:16px;font-size:14px;line-height:1.75;}
+.student-page .stu-chat__bubble > span {font-size:11px;margin-bottom:5px;}
+.student-page .stu-chat__bubble.is-user {max-width:min(78%,760px);}
+.student-page .stu-chat__composer {padding:9px 16px 10px;}
+.student-page .stu-chat__input {margin-bottom:4px;gap:10px;}
+.student-page .stu-chat__input textarea {font-size:14px;line-height:22px;padding:8px 12px;}
+.student-page .stu-chat__input > .ant-btn {height:40px;min-width:70px;}
+.stu-chat__composer-meta {display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:18px;}
+.stu-chat__composer-meta > .ant-typography {font-size:11px;color:#83948a;}
+.stu-chat__hint-toggle {padding:0;border:0;background:transparent;color:#487666;cursor:pointer;font:inherit;font-size:11px;}
+.student-page .stu-chat__hints {padding-bottom:8px;gap:6px;}
+.student-page .stu-chat__hints button {padding:5px 11px;font-size:12px;}
+.stu-chat__failed {max-width:920px;border:1px solid #e7debc;border-radius:12px;padding:12px 14px;background:#fffdf5;margin:12px 0 18px;}
+.stu-chat__failed > p {white-space:pre-wrap;overflow-wrap:anywhere;margin:10px 0 4px;color:#6b6756;}
+.stu-chat__failed > small {display:block;color:#8b826a;font-size:11px;line-height:1.7;margin-bottom:10px;}
+.stu-chat__failed .ant-alert {padding:8px 10px;}
+.stu-chat__new-message {align-self:center;flex-shrink:0;font-size:12px;height:26px;}
+.stu-chat__bubble.is-streaming > div:after {content:'▍';font-size:12px;color:#61967d;margin-left:3px;}
+.stu-guide__attachment {margin:14px 0;padding:14px;border:1px dashed #d6e3d8;border-radius:10px;background:#f7faf5;}
+.stu-guide__attachment > label {display:block;font-size:13px;font-weight:550;color:#456a55;}
+.stu-guide__attachment label small {font-size:11px;font-weight:400;color:#819281;margin-left:8px;}
+.stu-guide__attachment input {display:block;margin-top:10px;width:100%;font:inherit;font-size:12px;}
+.stu-guide__attachment > p {font-size:11px;color:#7b8e7d;line-height:1.7;margin:10px 0 0;}
+.stu-guide__attachment-file {display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;overflow-wrap:anywhere;}
+.student-nav-dot {width:6px;height:6px;flex-shrink:0;border-radius:50%;background:#b88035;margin-left:auto;}
+.stu-memory__tools {display:flex;justify-content:space-between;gap:12px;margin:18px 0;}
+.stu-memory .ant-alert {margin-bottom:12px;}
+.stu-memory__item {margin:14px 0;}
+.stu-memory__item .ant-card-head {padding:0 14px;}
+.stu-memory__item .ant-card-extra > small {font-size:11px;color:#8a978f;font-weight:400;}
+.stu-memory__item .ant-card-head-title {flex:none;}
+.stu-memory__item .ant-card-extra {white-space:normal;text-align:right;line-height:1.5;}
+.stu-memory__content {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8;margin:0 0 12px;color:#365546;}
+.stu-memory__pager {margin-top:12px;}
+@media(max-width:900px){
+ .visitor-site--student .student-page.student-page--chat.visitor-section {padding:8px 10px;}
+ .student-page--chat .student-shell {grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);gap:8px;}
+ .visitor-site--student .student-page--chat .student-main--assistant {padding-bottom:0;}
+ .student-page .stu-chat__toolbar {align-items:flex-start;flex-wrap:wrap;padding:9px 12px;}
+ .student-page .stu-chat__toolbar .ant-typography-secondary {display:none;}
+ .student-page .stu-chat__toolbar h4 {font-size:16px;}
+ .student-page .stu-chat__toolbar .ant-space {margin-left:auto;}
+ .student-page .stu-chat__thread {padding:14px;}
+ .student-page .stu-chat__composer {padding:8px 12px;}
+ .student-page .stu-chat__bubble {max-width:96%;}
+}
+@media(max-width:480px){
+ .student-page .stu-chat__toolbar > div:first-child {min-width:0;}
+ .student-page .stu-chat__toolbar .ant-space {gap:4px !important;}
+ .student-page .stu-chat__toolbar .ant-btn-sm {font-size:11px;padding-inline:7px;}
+ .student-page .stu-chat__input > .ant-btn {min-width:55px;padding-inline:11px;}
+ .student-page .stu-chat__input textarea {font-size:16px;}
+ .stu-chat__composer-meta > .ant-typography {font-size:10px;}
+ .stu-guide {padding:14px;}
+ .stu-guide__heading {gap:8px;}
+ .stu-guide__attachment label small {display:block;margin:4px 0 0;}
+}
+@media(max-height:650px){
+ .student-page .stu-chat__toolbar .ant-typography-secondary {display:none;}
+ .student-page .stu-chat__toolbar {padding-block:8px;}
+ .student-page .stu-chat__welcome {margin:6px auto;}
+ .student-page .stu-chat__welcome h2 {font-size:24px;}
+}
+
+.stu-chat__history-warning {font-size:11px;color:#8b7851;line-height:1.7;border-top:1px solid #e9e3d6;margin:12px 0 0;padding-top:9px;}
+
+/* Public references support the answer; personal record cards remain fully expanded. */
+.student-page .stu-chat__cards.is-sources {display:flex;flex-direction:column;gap:6px;margin-top:12px;}
+.stu-chat__source {display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;font-size:12px;line-height:1.6;color:#718578;}
+.stu-chat__source > a {color:#537865;overflow-wrap:anywhere;}
+.stu-chat__source > details {display:contents;}
+.stu-chat__source summary {display:inline-block;cursor:pointer;color:#829187;font-size:11px;text-decoration:underline;text-underline-offset:3px;}
+.stu-chat__source dl {flex-basis:100%;width:100%;margin:2px 0 8px;padding:10px 12px;background:#f5f8f4;border-radius:8px;font-size:11px;}
+.stu-chat__source dl > div {display:flex;gap:10px;margin:3px 0;}
+.stu-chat__source dt {flex:0 0 auto;color:#819083;}
+.stu-chat__source dd {margin:0;color:#536d5c;overflow-wrap:anywhere;white-space:pre-wrap;}
+.student-page .stu-chat__thread {overflow-anchor:none;}
+.student-page .stu-chat__thread:focus-visible {outline:2px solid #9abdae;outline-offset:-3px;}
+.stu-chat__working {margin:0;color:#809386;font-size:12px;}
+
+.stu-chat__reply-notice { margin: 12px 0 0; color: #647975; font-size: 13px; line-height: 1.6; }

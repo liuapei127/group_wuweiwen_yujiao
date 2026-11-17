@@ -24,8 +24,9 @@ def view(row):
     keys = ("leave_type", "start_time", "end_time", "reason") if row.kind == "leave" else ("ticket_type", "category", "content")
     status = "expired" if row.status in ACTIVE and row.expires_at <= now_naive() else row.status
     from .assistant_guidance import for_task
-    return {"guide":for_task(row.kind,row.payload,status), "form_values":{key:row.payload.get(key) for key in keys}, "id": row.id, "kind": row.kind, "status": status, "version": row.version,
+    return {"guide":for_task(row.kind,row.payload,status), "form_values":{key:row.payload.get(key) for key in keys}, "id": row.id, "kind": row.kind, "status": status, "version": row.version, "ordinal": row.ordinal, "updated_at": row.update_time.isoformat(),
             "conversation_id": row.conversation_id, "expires_at": row.expires_at.isoformat(),
+            "attachment": {"id": row.payload["attachment_id"], "filename": row.payload.get("attachment_filename", "请假证明")} if row.kind == "leave" and row.payload.get("attachment_id") else None,
             "fields": [{"label": LABELS[k], "value": VALUES.get(str(row.payload.get(k)), str(row.payload.get(k) or "待补充"))} for k in keys],
             "missing": [LABELS[k] for k in keys if not row.payload.get(k)], "result": row.result}
 
@@ -114,6 +115,43 @@ def decide(db, sid, task_id, expected_version, *, cancel=False):
         row.update_time = now
         db.commit()  # Business row, staff todo and receipt succeed/fail together.
         return view(row)
+    except Exception:
+        db.rollback()
+        raise
+
+
+def change_attachment(db, sid, task_id, expected_version, attachment_id):
+    """Attach only an owned uploaded proof to an active owned draft; invalidate old confirmation."""
+    from app.modules.student_admin.models import LeaveAttachment
+    found = repo.task(db, sid, task_id)
+    if found is None:
+        raise BusinessError(404, "办理草稿不存在")
+    try:
+        repo.conversation(db, sid, found.conversation_id, lock=True)
+        db.expire_all()
+        row = repo.task(db, sid, task_id, lock=True)
+        if row is None or row.kind != "leave":
+            raise BusinessError(404, "请假草稿不存在")
+        if row.version != expected_version:
+            raise BusinessError(409, "草稿已更新，请刷新后再添加附件")
+        if row.status not in ACTIVE or row.expires_at <= now_naive():
+            raise BusinessError(409, "草稿已结束或过期")
+        payload = dict(row.payload)
+        if attachment_id:
+            attachment = db.get(LeaveAttachment, attachment_id, with_for_update=True)
+            if attachment is None or attachment.student_id != sid:
+                raise BusinessError(422, "附件不存在或不属于本人")
+            payload.update(attachment_id=attachment.id, attachment_filename=attachment.filename)
+        else:
+            payload.pop("attachment_id", None)
+            payload.pop("attachment_filename", None)
+        row.payload = payload
+        row.version += 1
+        row.update_time = now_naive()
+        row.expires_at = row.update_time + timedelta(hours=24)
+        result = view(row)
+        db.commit()
+        return result
     except Exception:
         db.rollback()
         raise
