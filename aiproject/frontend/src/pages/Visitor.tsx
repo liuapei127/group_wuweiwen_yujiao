@@ -145,25 +145,33 @@ class VisitorApiError extends Error {
 
 async function visitorApi<T>(path: string, token: string, method = 'GET', body?: unknown, onText?: (text: string) => void): Promise<T> {
   const isFile = body instanceof FormData
-  const response = await fetch(path, {
-    method,
-    headers: {
-      ...(token ? {Authorization: 'Bearer ' + token} : {}),
-      ...(onText ? {Accept: 'text/event-stream'} : {}),
-      ...(body !== undefined && !isFile ? {'Content-Type': 'application/json'} : {}),
-    },
-    body: isFile ? body : body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(onText ? 260000 : 30000),
-  })
+  let response: Response
+  try {
+    response = await fetch(path, {
+      method,
+      headers: {
+        ...(token ? {Authorization: 'Bearer ' + token} : {}),
+        ...(onText ? {Accept: 'text/event-stream'} : {}),
+        ...(body !== undefined && !isFile ? {'Content-Type': 'application/json'} : {}),
+      },
+      body: isFile ? body : body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(onText ? 260000 : 30000),
+    })
+  } catch (error) {
+    throw new VisitorApiError(error instanceof DOMException && error.name === 'TimeoutError'
+      ? '请求超时，请稍后重试。' : '无法连接服务，请稍后重试。', 0)
+  }
   if (response.ok && onText && response.headers.get('content-type')?.includes('text/event-stream')) {
     return readChatStream<T>(response, onText, (message, status) => new VisitorApiError(message, status))
   }
-  const result = await response.json().catch(() => ({}))
-  if (!response.ok || result.code !== 0) {
-    const detail = result.detail || result.message
+  const result = await response.json().catch(() => null)
+  if (!response.ok || result?.code !== 0) {
+    const detail = result?.detail || result?.message
+    const fallback = response.status >= 500 ? '服务暂时不可用，请稍后重试。'
+      : response.ok ? '服务响应异常，请稍后重试。' : '操作未完成，请重试'
     throw new VisitorApiError(Array.isArray(detail)
       ? detail.map(d => d.msg).join('；')
-      : typeof detail === 'string' ? detail : '操作未完成，请重试', response.status)
+      : typeof detail === 'string' ? detail : fallback, response.status)
   }
   return result.data as T
 }
@@ -229,13 +237,14 @@ export function Visitor() {
         {username, password, ...(register ? {nickname: nickname?.trim()} : {})},
       )
       sessionStorage.setItem(storageKey, result.access_token)
+      message.destroy('website-auth')
       cache.setQueryData(['visitor', 'identity', result.access_token], {account_type: result.account_type})
       setAuthOpen(false)
       setToken(result.access_token)
       const destination = returnToServices ? visitorServicesPath : visitorHome
       void navigate(returnToProfile ? customerProfilePath : result.account_type === 'student' ? '/website/student' : destination, {replace: true})
     } catch (error) {
-      void message.error((error as Error).message)
+      void message.error({key: 'website-auth', content: (error as Error).message})
     } finally {
       setAuthBusy(false)
     }
