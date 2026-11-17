@@ -17,6 +17,13 @@ class PasswordChange(Input):
 class PasswordReset(Input):
     new_password: UserChosenPassword | None = None
 
+
+class ProfileWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    real_name: str = Field(min_length=1, max_length=64)
+    contact_info: str | None = Field(default=None, max_length=128)
+
 class UserCreate(Input):
     username: MobileNumber
     real_name: str = Field(min_length=1,max_length=64)

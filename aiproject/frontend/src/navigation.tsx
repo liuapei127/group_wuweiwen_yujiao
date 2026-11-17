@@ -9,7 +9,12 @@ export const navigation=[
  {path:'/directory',title:'组织与同事',permission:'directory:read',icon:<ApartmentOutlined/>},
  {path:'/guides',title:'新人指南',permission:'guides:read',icon:<BookOutlined/>},
  {path:'/scores',title:'学生成绩',permission:'scores:read',icon:<TrophyOutlined/>},
+ {path:'/my-students',title:'我的班级与学生',permission:'students:read',icon:<TeamOutlined/>},
+ {path:'/teaching-courses',title:'教学课程与开课安排',permission:'teaching:manage',icon:<BookOutlined/>},
+ {path:'/ticket-routing',title:'投诉分类与分派',permission:'tickets:route',icon:<CustomerServiceOutlined/>},
  {path:'/course-management',title:'课程管理',permission:'courses:manage',icon:<BookOutlined/>},
+ {path:'/class-management',title:'班级管理',permission:'classes:manage',icon:<TeamOutlined/>},
+ {path:'/teacher-management',title:'老师管理',permission:'classes:manage',icon:<UserOutlined/>},
  {path:'/student-alerts',title:'心理预警',permission:'student-alerts:read',icon:<AuditOutlined/>},
  {path:'/academic-deadlines',title:'考务管理',permission:'academics:read',icon:<CalendarOutlined/>},
  {path:'/application-progress',title:'申请进度',permission:'applications:read',icon:<FileTextOutlined/>},
@@ -31,11 +36,15 @@ export const navigation=[
 export const navGroups=[
  {label:'工作概览',paths:['/dashboard','/assistant','/todos','/notifications']},
  {label:'客户与业务',paths:['/customers','/visitor-intake','/reporting','/reports','/queries','/commands']},
- {label:'学生事务',paths:['/scores','/course-management','/student-alerts','/academic-deadlines','/application-progress']},
- {label:'组织与协同',paths:['/directory','/guides','/leaves','/events','/tickets']},
+ {label:'学生事务',paths:['/my-students','/scores','/teaching-courses','/course-management','/class-management','/teacher-management','/student-alerts','/academic-deadlines','/application-progress']},
+ {label:'组织与协同',paths:['/directory','/guides','/leaves','/events','/tickets','/ticket-routing']},
  {label:'系统管理',paths:['/settings/website-content','/settings/website-accounts','/settings/users','/settings/roles','/settings/audit']},
 ]
 export const permissionNames:Record<string,string>={
+ 'students:read':'查看负责的班级与学生','teaching:manage':'维护教学课程与开课安排',
+ 'academics:read':'查看考务','academics:write':'维护考务','applications:read':'查看申请进度',
+ 'applications:write':'维护申请进度','student-alerts:read':'查看心理预警与周报',
+ 'student-alerts:write':'处理预警与关怀','classes:manage':'管理班级与入班','tickets:route':'纠正投诉分类和分派',
  'website-content:manage':'维护官网栏目与卡片',
  'website-accounts:manage':'管理官网学生身份授权',
  'visitor-intake:read':'查看待认领游客和本人认领资料','visitor-intake:write':'认领游客、记录电话并补录研判',
@@ -51,8 +60,8 @@ export function workplaceHome(roleCode: string, permittedPaths: string[]) {
  const rolePages: Record<string,string[]> = {
    advisor: ['/customers','/visitor-intake'],
    employee: ['/customers','/visitor-intake'],
-   teacher: ['/leaves','/scores','/tickets'],
-   team_leader: ['/leaves','/scores','/tickets'],
+   teacher: ['/my-students','/leaves','/scores','/tickets'],
+   team_leader: ['/my-students','/leaves','/scores','/tickets'],
    manager: ['/tickets','/reports'],
    admin: ['/settings/website-accounts','/settings/users'],
  }

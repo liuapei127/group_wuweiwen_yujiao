@@ -1,7 +1,7 @@
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.modules.profile.schemas import Education, EducationStage, Project
 from app.shared.types.phone import MobileNumber
@@ -39,19 +39,7 @@ class ScreeningRequest(BaseModel):
 class ImportConfirm(ScreeningRequest):
     preview_id: UUID
     fields: list[ProfileField] = Field(min_length=1, max_length=8)
-
-
-class WebsiteCustomerBinding(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    lead_id: int | None = Field(default=None, ge=1)
-    create: bool = False
-
-    @model_validator(mode="after")
-    def choose_action(self):
-        if self.create == (self.lead_id is not None):
-            raise ValueError("请选择新建档案或填写已有客户编号")
-        return self
+    source_id: int | None = Field(default=None, ge=1)
 
 
 class VerifiedIdentity(BaseModel):

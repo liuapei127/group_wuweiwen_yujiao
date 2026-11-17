@@ -207,8 +207,10 @@ def handle_chat(
     history: list | None = None,
     mock_country: Literal["Germany", "Singapore"] | None = None,
     memory_notes: list[str] | None = None,
+    on_text=None,
 ) -> dict:
     turns = history or []
+    stream = {"on_text": on_text} if on_text else {}
     place = _place_label(db, student_id, mock_country)
     if high_risk_hits(message):
         return _pack(_psych(db, student_id, message, turns, place))
@@ -281,12 +283,12 @@ def handle_chat(
     if intent == "psych" or (_psych_pending(turns) and intent == "other"):
         return _pack(_psych(db, student_id, message, turns, place))
     if intent == "ask":
-        return _pack(_ask(db, student_id, message, place, turns))
+        return _pack(_ask(db, student_id, message, place, turns, **stream))
     if _wants_upgrade(message):
-        return _pack(_upgrade_reply(message, place, turns))
+        return _pack(_upgrade_reply(message, place, turns, **stream))
     return _pack(
         {
-            "reply": _chat_reply(message, place, turns, memories),
+            "reply": _chat_reply(message, place, turns, memories, **stream),
             "intent": "chat",
             "form": None,
             "data": {"place": place, "memories": memories},
@@ -1331,6 +1333,7 @@ def _ask(
     message: str,
     place: str,
     history: list | None = None,
+    **stream,
 ) -> dict:
     terms = _knowledge_terms(message)
     policies = student_service.student_policies(db, student_id)
@@ -1350,7 +1353,7 @@ def _ask(
     if facts:
         grounded = "\n".join(f"「{title}」：{body[:350]}" for title, body in facts)
         spoken = speak(f"问题：{message.strip()[:240]}\n下面是已收录的资料。只依据资料回答，不编造联系方式：\n{grounded[:540]}",
-                       history, place)
+                       history, place, **stream)
         if spoken:
             reply = f"{spoken}\n参考资料：" + "、".join(dict.fromkeys(title for title, _ in facts))
         else:
@@ -1370,8 +1373,8 @@ def _wants_upgrade(message: str) -> bool:
     return any(k in (message or "") for k in ("升学", "读研", "本硕", "硕士", "继续读书", "学历提升"))
 
 
-def _upgrade_reply(message: str, place: str, history: list) -> dict:
-    spoken = speak(message, history, place)
+def _upgrade_reply(message: str, place: str, history: list, **stream) -> dict:
+    spoken = speak(message, history, place, **stream)
     if not spoken:
         if "新加坡" in place:
             spoken = (
@@ -1395,7 +1398,7 @@ def _name_from_memories(memories: list[str] | None) -> str:
 
 
 def _chat_reply(
-    message: str, place: str, history: list | None = None, memories: list[str] | None = None
+    message: str, place: str, history: list | None = None, memories: list[str] | None = None, **stream
 ) -> str:
     text = (message or "").strip()
     name = _name_from_memories(memories)
@@ -1413,7 +1416,7 @@ def _chat_reply(
     prompt = text
     if name:
         prompt = f"学生姓名：{name}\n学生本轮说：{text}"
-    spoken = speak(prompt, history, place or "还没登记")
+    spoken = speak(prompt, history, place or "还没登记", **stream)
     if spoken and "学生说：" not in spoken and "长期记忆" not in spoken and "助手答复要点" not in spoken:
         return spoken
     if any(k in text for k in ("退学", "休学", "转学", "转专业")):

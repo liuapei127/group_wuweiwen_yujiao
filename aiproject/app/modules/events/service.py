@@ -5,6 +5,9 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import BusinessError
 from app.core.security import EmployeePrincipal
 from app.core.security.authorization import require_permission
+from app.modules.consultant.customer_service import sync_website_booking_profile
+from app.modules.visitor import repository as visitors
+from app.modules.visitor.models import MISSING_NAME
 
 from . import repository
 from .models import EventLecture, EventRegistration
@@ -15,6 +18,11 @@ from .schemas import (
 
 
 _BEIJING = timezone(timedelta(hours=8))
+
+
+class ReservationNameRequired(BusinessError):
+    def __init__(self):
+        super().__init__(422, "请填写姓名后再预约活动")
 
 
 def _event_now() -> datetime:
@@ -140,9 +148,12 @@ def list_staff_events(
     return [EventOut.model_validate(row) for row in repository.staff_events(db, organizer_id, before_id, limit)]
 
 
-def reserve(db: Session, event_id: int, *, customer_id: int) -> RegistrationOut:
+def reserve(db: Session, event_id: int, *, customer_id: int, name: str | None = None) -> RegistrationOut:
     """customer_id 由可信游客身份提供。"""
     try:
+        account = visitors.lock_website_account(db, customer_id)
+        if account is None:
+            raise BusinessError(401, "请重新登录官网")
         event = _require_event(db, event_id)
         row = repository.booking_for_customer(db, event_id, customer_id)
         if row is None or row.status == "cancelled":
@@ -152,6 +163,15 @@ def reserve(db: Session, event_id: int, *, customer_id: int) -> RegistrationOut:
                 raise BusinessError(409, "活动已开始，无法预约")
             if event.max_participants is None:
                 raise BusinessError(409, "该活动还未设置预约名额")
+            provided_name = None if account.has_name else (name or "").strip()
+            if provided_name in ("", MISSING_NAME):
+                raise ReservationNameRequired()
+            contact = account.contact_with_default
+            if provided_name or account.contact != contact:
+                if not sync_website_booking_profile(db, account, provided_name, contact):
+                    if provided_name:
+                        account.name = provided_name
+                    account.contact = contact
             if not repository.reserve_seat(db, event_id):
                 raise BusinessError(409, "活动名额已满")
             if row is None:

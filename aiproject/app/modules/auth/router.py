@@ -6,7 +6,7 @@ from app.core.database import get_db
 from app.core.responses import success
 from app.core.security import EmployeePrincipal, require_employee
 from app.core.security.dependencies import bearer
-from .schemas import Login, PasswordChange, PasswordReset, UserCreate, UserUpdate, RoleWrite, StudentScope
+from .schemas import Login, PasswordChange, PasswordReset, ProfileWrite, UserCreate, UserUpdate, RoleWrite, StudentScope
 from .service import AuthService
 from . import base_portal, service_identity
 from .schemas import ServiceTokenRequest
@@ -52,6 +52,11 @@ def service_token(body: ServiceTokenRequest, response: Response, db: Session = D
 @router.get('/me')
 def me(svc:AuthService=Depends(service),p:EmployeePrincipal=Depends(require_employee)):
     return success(svc.me(p))
+
+
+@router.patch("/profile")
+def profile(body: ProfileWrite, svc: AuthService = Depends(service), p: EmployeePrincipal = Depends(require_employee)):
+    return success(svc.update_profile(body, p))
 
 @router.post('/logout')
 def logout(request: Request, response: Response, svc: AuthService = Depends(service),

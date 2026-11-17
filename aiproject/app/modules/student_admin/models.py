@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, Enum, Integer, String, Text
+from sqlalchemy import BigInteger, DateTime, Enum, Integer, LargeBinary, String, Text
+from sqlalchemy.dialects.mysql import MEDIUMBLOB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -28,6 +29,17 @@ class StudentAdminService(Base):
     related_academic_id: Mapped[int | None] = mapped_column(BigInteger)
     create_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     update_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class LeaveAttachment(Base):
+    __tablename__ = "student_leave_attachment"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    student_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    filename: Mapped[str] = mapped_column(String(255))
+    content_type: Mapped[str] = mapped_column(String(64))
+    content: Mapped[bytes] = mapped_column(LargeBinary().with_variant(MEDIUMBLOB, "mysql"))
+    created_at: Mapped[datetime] = mapped_column(DateTime)
 
 
 class SysUser(Base):

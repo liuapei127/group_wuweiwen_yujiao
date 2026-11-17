@@ -9,6 +9,7 @@ FEATURES=[
  ('dashboard','工作台','/dashboard','dashboard:read'),('customers','客户管理','/customers','crm:read'),
  ('reports','员工日报','/reports','reports:read'),('directory','组织与同事','/directory','directory:read'),
  ('guides','新人指南','/guides','guides:read'),('scores','学生成绩','/scores','scores:read'),
+ ('my_students','我的班级与学生','/my-students','students:read'),
  ('leaves','请假审批','/leaves','leaves:read'),('tickets','投诉工单','/tickets','tickets:read'),
  ('todos','我的待办','/todos','todos:read'),('notifications','站内通知','/notifications','notifications:read'),
  ('queries','智能查询','/queries','queries:read'),('commands','业务指令','/commands','commands:execute'),

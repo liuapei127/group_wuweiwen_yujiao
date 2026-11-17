@@ -48,21 +48,20 @@ def test_stu_dsl_has_llm_fallback_for_generic_replies():
     edges = {(edge["source"], edge["sourceHandle"]): edge["target"] for edge in graph["edges"]}
     assert edges[("reply_guard", "true")] == "llm_reply"
     assert edges[("reply_guard", "false")] == "answer_chat"
-    assert nodes["answer_llm"]["data"]["answer"] == "{{#clean_reply.reply#}}"
+    assert edges[("llm_reply", "source")] == "answer_llm"
+    assert nodes["answer_llm"]["data"]["answer"] == "{{#llm_reply.text#}}"
     assert nodes["answer_chat"]["data"]["answer"] == "{{#extract_reply.reply#}}"
 
 
 def test_clean_reply_drops_model_reasoning():
-    doc = yaml.safe_load(STU_YML.read_text(encoding="utf-8"))
-    nodes = {node["id"]: node for node in doc["workflow"]["graph"]["nodes"]}
-    scope: dict = {}
-    exec(nodes["clean_reply"]["data"]["code"], scope)
+    from app.modules.student.assistant_speak import model_text, visible_sentences
     raw = (
         "<think>\n<!--dify-deepseek-reasoning-->学生说的是老师针对他，需要直接回答。\n<｜end▁of▁thinking｜>"
         "听着确实挺憋屈的，能说说是哪门课、哪位老师吗？"
     )
-    assert scope["main"](raw)["reply"] == "听着确实挺憋屈的，能说说是哪门课、哪位老师吗？"
-    assert scope["main"]("已经帮你交上病假了。")["reply"] == "已经帮你交上病假了。"
+    assert visible_sentences("<think>不应输出。") == ""
+    assert model_text(raw) == "听着确实挺憋屈的，能说说是哪门课、哪位老师吗？"
+    assert model_text("已经帮你交上病假了。") == "已经帮你交上病假了。"
 
 
 def test_flow_failure_answers_are_not_shown_to_students():

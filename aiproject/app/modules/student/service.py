@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta, timezone
+import hashlib
+import json
 
 from sqlalchemy.orm import Session
 
@@ -12,7 +14,7 @@ from app.shared.utils.time_util import now_naive
 from app.modules.visitor.repository import student_destination
 
 from . import notifications, repository
-from .models import AcademicDeadline, ApplicationProgress
+from .models import AcademicClassBatch, AcademicDeadline, ApplicationProgress
 from .schemas import DeadlineOut, DeadlinePage, DeadlineWrite, ProgressOut, ProgressWrite
 
 def student_policies(db: Session, student_id: int) -> StudentPolicies:
@@ -62,6 +64,9 @@ def save_progress(
             row.update_time = now
         db.flush()
         result = ProgressOut.model_validate(row)
+        AuthRepository(db).audit(principal.employee_id, "application_progress_saved", row.id, {
+            "student_id": student_id, **payload.model_dump(mode="json"),
+        })
         db.commit()
     except Exception:
         db.rollback()
@@ -108,6 +113,7 @@ def finish_deadline(db: Session, student_id: int, deadline_id: int) -> DeadlineO
 def _deadline_view(row: AcademicDeadline, now: datetime) -> DeadlineOut:
     return DeadlineOut(
         id=row.id, title=row.title, deadline_type=row.deadline_type, description=row.description,
+        study_stage=row.study_stage,
         deadline=row.deadline, status=row.status, shared=row.student_id is None, reminder_enabled=row.reminder_enabled,
         due_soon=(row.reminder_enabled and row.status in ("pending", "reminded")
                   and now <= row.deadline <= now + _REMINDER_WINDOW),
@@ -145,6 +151,9 @@ def save_deadline(
             row.update_time = now
         db.flush()
         result = _deadline_view(row, now)
+        AuthRepository(db).audit(principal.employee_id, "academic_deadline_saved", row.id, {
+            "student_id": student_id, **payload.model_dump(mode="json"),
+        })
         db.commit()
     except Exception:
         db.rollback()
@@ -160,6 +169,48 @@ def overseas_resources(db: Session, student_id: int, keyword: str, after_id: int
     found = repository.life_knowledge(db, labels, keyword, after_id, limit)
     return {"items": [dict(row) for row in found[:limit]],
             "next_after_id": found[limit - 1]["id"] if len(found) > limit else None}
+
+
+def class_deadlines(db, principal, class_id, payload):
+    from app.modules.classroom import repository as classrooms
+
+    require_permission(principal, "academics:write")
+    fingerprint = hashlib.sha256(json.dumps(
+        payload.model_dump(mode="json", exclude={"request_id"}), sort_keys=True, ensure_ascii=False,
+    ).encode()).hexdigest()
+    try:
+        classroom = classrooms.classroom(db, class_id, lock=True)
+        if classroom is None or classroom.teacher_id != principal.employee_id:
+            raise BusinessError(404, "班级不存在或无权操作")
+        previous = db.get(AcademicClassBatch, str(payload.request_id), with_for_update=True)
+        if previous:
+            if previous.actor_id != principal.employee_id or previous.class_id != class_id or previous.payload_hash != fingerprint:
+                raise BusinessError(409, "这次发布标识已用于其他内容，请重新核对")
+            return {"id": previous.id, "student_count": previous.student_count, "replayed": True}
+        student_ids = classrooms.class_students(db, class_id)
+        if not student_ids:
+            raise BusinessError(422, "班级暂无学生")
+        if not set(student_ids) <= principal.student_ids:
+            raise BusinessError(403, "班级学生范围已变化，请刷新后重试")
+        fields = payload.model_dump(exclude={"request_id"})
+        now = _deadline_now()
+        for student_id in student_ids:
+            if not StudentAdminRepository(db).lock_student(student_id):
+                raise BusinessError(409, "班级内有已停用学生，请先核对学生状态")
+            db.add(AcademicDeadline(student_id=student_id, create_time=now, update_time=now, **fields))
+        batch = AcademicClassBatch(
+            id=str(payload.request_id), class_id=class_id, actor_id=principal.employee_id,
+            payload_hash=fingerprint, student_count=len(student_ids), created_at=now,
+        )
+        db.add(batch)
+        AuthRepository(db).audit(principal.employee_id, "class_deadlines_published", class_id, {
+            "request_id": batch.id, "student_ids": student_ids, "title": payload.title,
+        })
+        db.commit()
+        return {"id": batch.id, "student_count": batch.student_count, "replayed": False}
+    except Exception:
+        db.rollback()
+        raise
 
 
 def scan_academic_reminders(db: Session) -> int:

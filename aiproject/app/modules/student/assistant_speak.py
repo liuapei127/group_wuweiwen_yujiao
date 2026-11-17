@@ -31,3 +31,18 @@ def feedback_summary(detail: str) -> str:
     if len(text) <= 48:
         return text
     return text[:45].rstrip("，,。；; ") + "…"
+
+
+def model_text(text: str) -> str:
+    for marker in ("</think>", "<｜end▁of▁thinking｜>"):
+        if marker in text:
+            text = text.rsplit(marker, 1)[1]
+    if "<think" in text or "<!--dify" in text or text.lstrip().startswith("<"):
+        return ""
+    return student_safe(text)
+
+
+def visible_sentences(text: str) -> str:
+    # Leave the last incomplete sentence buffered so split internal identifiers are removed.
+    boundary = max((m.end() for m in re.finditer(r"[。！？\n]", text)), default=0)
+    return model_text(text[:boundary]) if boundary else ""

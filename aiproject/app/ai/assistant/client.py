@@ -1,13 +1,32 @@
 """Only the backend can call Dify; employee JWTs never leave this backend."""
+import json
+import re
 from datetime import datetime, timedelta, timezone
 from secrets import token_hex
 from urllib.parse import urlsplit
 import httpx
+from app.ai.dify_stream import ChatAnswer
 from app.core.config import get_settings
 from app.core.exceptions import BusinessError
 
+
+_CHAT_REPLY = re.compile(r'^\s*(?:\x60{3}(?:json)?\s*)?\{\s*"intent"\s*:\s*"chat"\s*,\s*"params"\s*:\s*\{\s*\}\s*,\s*"reply"\s*:\s*"')
+_JSON_TEXT = re.compile(r'(?:[^"\\\x00-\x1f]|\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4}))*')
+
+
+def chat_preview(text):
+    """Extract only a chat reply from the classifier's partial JSON."""
+    start = _CHAT_REPLY.match(text)
+    if not start:
+        return ""
+    fragment = _JSON_TEXT.match(text, start.end()).group()
+    decoded = json.loads('"' + fragment + '"')
+    # A UTF-16 surrogate can arrive one token before the rest of the character.
+    return decoded.encode("utf-16", "surrogatepass").decode("utf-16", "ignore").strip()[:1600]
+
+
 class DifyIntentClient:
-    def extract(self, text, pending, history):
+    def extract(self, text, pending, history, on_text=None):
         settings = get_settings()
         chat_key = settings.dify_ent_chatflow_api_key.get_secret_value()
         workflow_key = settings.dify_workflow_api_key.get_secret_value()
@@ -27,12 +46,14 @@ class DifyIntentClient:
 
         try:
             with httpx.Client(trust_env=False, timeout=httpx.Timeout(settings.dify_timeout_seconds, connect=5)) as client:
-                response = client.post(
-                    settings.dify_api_url.rstrip('/') + endpoint,
-                    headers={'Authorization': 'Bearer ' + (chat_key or workflow_key)}, json=payload,
-                )
-            response.raise_for_status()
-            result = response.json()
+                url = settings.dify_api_url.rstrip('/') + endpoint
+                headers = {'Authorization': 'Bearer ' + (chat_key or workflow_key)}
+                if on_text and chat_key:
+                    result = self._stream(client, url, headers, payload, on_text)
+                else:
+                    response = client.post(url, headers=headers, json=payload)
+                    response.raise_for_status()
+                    result = response.json()
         except (httpx.HTTPError, ValueError):
             raise BusinessError(502, 'AI服务连接失败或超时，未执行业务操作') from None
 
@@ -49,6 +70,23 @@ class DifyIntentClient:
         if not isinstance(extracted, str) or not extracted.strip():
             raise BusinessError(502, 'AI返回格式不正确，未执行业务操作')
         return extracted
+
+
+    @staticmethod
+    def _stream(client, url, headers, payload, on_text):
+        answer = ChatAnswer()
+        last = ""
+        with client.stream("POST", url, headers=headers, json={**payload, "response_mode": "streaming"}) as response:
+            response.raise_for_status()
+            for line in response.iter_lines():
+                if answer.accept(line):
+                    visible = chat_preview(answer.text)
+                    if visible != last:
+                        last = visible
+                        on_text(visible)
+                if answer.finished and not answer.waiting_for_workflow:
+                    break
+        return answer.response()
 
 
 def call_business(method,planned_url,body,employee_token):

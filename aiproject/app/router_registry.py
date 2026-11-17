@@ -2,6 +2,8 @@ from app.modules.portal.router import router as portal_router
 from app.ai.assistant.router import router as assistant_router
 from app.core.security.jwks_router import router as base_jwks_router
 from app.modules.auth.router import router as auth_router
+from app.modules.classroom.router import router as classroom_router, teacher_router
+from app.modules.teaching.router import router as teaching_router
 from app.modules.organization.router import router as organization_router
 from app.modules.onboarding.router import router as onboarding_router
 from app.modules.score.router import router as score_router
@@ -52,6 +54,9 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(website_content_router)
     app.include_router(website_content_admin_router)
     app.include_router(course_router)
+    app.include_router(classroom_router)
+    app.include_router(teacher_router)
+    app.include_router(teaching_router)
     app.include_router(website_student_router)
     app.include_router(staff_progress_router)
     app.include_router(academic_router)

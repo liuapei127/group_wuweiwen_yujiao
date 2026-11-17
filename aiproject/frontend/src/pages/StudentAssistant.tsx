@@ -4,7 +4,7 @@ import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 
 type Turn = {id?: number; role: 'user' | 'assistant'; content: string; create_time?: string}
 type Conversation = {id: string; title: string; update_time?: string}
-type Request = <T>(path: string, method?: string, body?: unknown) => Promise<T>
+type Request = <T>(path: string, method?: string, body?: unknown, onText?: (text: string) => void) => Promise<T>
 
 type SendTurn = {query: string; conversationId?: string; selection: number}
 
@@ -20,6 +20,7 @@ export function StudentAssistant({request}: {request: Request}) {
   const cache = useQueryClient()
   const [activeId, setActiveId] = useState<string>()
   const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const [partial, setPartial] = useState('')
   const [showNew, setShowNew] = useState(false)
   const thread = useRef<HTMLDivElement>(null)
   const stickToEnd = useRef(true)
@@ -48,7 +49,7 @@ export function StudentAssistant({request}: {request: Request}) {
 
   const send = useMutation({
     mutationFn: ({query, conversationId}: SendTurn) => request<{answer: string; conversation_id: string}>(
-      '/api/v1/student/assistant', 'POST', {query, conversation_id: conversationId},
+      '/api/v1/student/assistant', 'POST', {query, conversation_id: conversationId}, setPartial,
     ),
     onSuccess: async (data, turn) => {
       const key = turn.conversationId || ''
@@ -83,7 +84,7 @@ export function StudentAssistant({request}: {request: Request}) {
     if (!node) return
     if (stickToEnd.current) node.scrollTop = node.scrollHeight
     else if (detail.data?.messages.length) setShowNew(true)
-  }, [activeId, detail.data?.messages, pendingText])
+  }, [activeId, detail.data?.messages, pendingText, partial])
 
   function choose(id: string) {
     selectionVersion.current += 1
@@ -97,6 +98,7 @@ export function StudentAssistant({request}: {request: Request}) {
     if (!query || send.isPending || create.isPending) return
     stickToEnd.current = true
     setShowNew(false)
+    setPartial('')
     send.mutate({query, conversationId: activeId, selection: selectionVersion.current})
   }
 
@@ -164,8 +166,8 @@ export function StudentAssistant({request}: {request: Request}) {
             </div>
           )}
           {pendingText && (
-            <div className="assistant-bubble assistant-bubble--bot assistant-bubble--pending">
-              正在理解并办理…
+            <div className={'assistant-bubble assistant-bubble--bot' + (partial ? '' : ' assistant-bubble--pending')}>
+              {partial || '正在理解并办理…'}
             </div>
           )}
         </div>

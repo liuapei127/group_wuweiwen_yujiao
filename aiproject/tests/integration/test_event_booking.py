@@ -8,10 +8,12 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import BusinessError
 from app.core.security import EmployeePrincipal
+from app.core.security.credentials import utc_now
 from app.modules.auth import service as auth_service
 from app.modules.events import service
 from app.modules.events.models import EventLecture, EventRegistration
 from app.modules.events.schemas import EventCreate
+from app.modules.visitor.models import VisitorAccount
 from app.modules.visitor.router import require_visitor
 from app.modules.visitor.service import VisitorPrincipal
 from tests.integration.test_ent_portal_routes import isolated_portal
@@ -28,6 +30,14 @@ PERMISSIONS = frozenset({"events:manage", "events:check_in"})
 ORGANIZER = EmployeePrincipal(11, PERMISSIONS)
 
 
+def seed_visitors(db, *ids):
+    db.add_all(VisitorAccount(
+        id=visitor_id, username=f"1390000{visitor_id:04d}", name=f"游客{visitor_id}", contact="测试电话",
+        password_hash="unused", created_at=utc_now(),
+    ) for visitor_id in ids)
+    db.commit()
+
+
 def test_reservation_cancel_and_staff_check_in(monkeypatch, isolated_portal):
     app, engine = isolated_portal("trusted_jwt")
     actors = {"organizer": ORGANIZER, "other": EmployeePrincipal(12, PERMISSIONS)}
@@ -37,6 +47,7 @@ def test_reservation_cancel_and_staff_check_in(monkeypatch, isolated_portal):
     other = {"Authorization": "Bearer other"}
     try:
         with TestClient(app) as client, Session(engine) as db:
+            seed_visitors(db, 101, 102)
             assert client.post(base, json=EVENT).status_code == 401
             event_id = client.post(base, json=EVENT, headers=organizer).json()["data"]["id"]
             assert [row["id"] for row in client.get(base, headers=organizer).json()["data"]] == [event_id]
@@ -88,6 +99,8 @@ def test_event_management_controls_booking_visibility(monkeypatch, isolated_port
     organizer = {"Authorization": "Bearer organizer"}
     admin = {"Authorization": "Bearer admin"}
     try:
+        with Session(engine) as db:
+            seed_visitors(db, 101)
         with TestClient(app) as client:
             draft = client.post(events, json={**EVENT, "is_published": False}, headers=organizer)
             assert draft.status_code == 200
@@ -128,6 +141,8 @@ def test_event_management_preserves_reservations_and_checks_start_time(monkeypat
     organizer = {"Authorization": "Bearer organizer"}
     past_event = {**EVENT, "start_time": "2000-01-01T09:00:00", "end_time": "2000-01-01T11:00:00"}
     try:
+        with Session(engine) as db:
+            seed_visitors(db, 101, 102)
         with TestClient(app) as client:
             assert client.post(events, json=past_event, headers=organizer).status_code == 422
             draft_id = client.post(events, json={**past_event, "is_published": False},
@@ -160,7 +175,9 @@ def test_concurrent_reservations_do_not_exceed_capacity(tmp_path):
     try:
         EventLecture.__table__.create(engine)
         EventRegistration.__table__.create(engine)
+        VisitorAccount.__table__.create(engine)
         with Session(engine) as db:
+            seed_visitors(db, 101, 102, 103, 104)
             event_id = service.create_event(db, EventCreate.model_validate(EVENT), ORGANIZER).id
 
         start = Barrier(4)

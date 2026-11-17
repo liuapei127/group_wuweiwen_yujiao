@@ -7,7 +7,7 @@ from app.modules.student_admin.repository import StudentAdminRepository
 from app.modules.student.notifications import save_student_result
 from app.modules.todo import synchronization
 from .schemas import StudentComplaintCreate, StudentComplaintOut
-from app.core.security.authorization import require_owned
+from app.core.security.authorization import require_owned, require_permission
 from app.shared.utils.time_util import now_naive
 from .repository import FeedbackRepository
 
@@ -117,8 +117,64 @@ def process_ticket(ticket_id, body, db, p):
         if old["ticket_type"] == "complaint" and body.status == "resolved":
             save_student_result(db, old["student_id"], "student_feedback_ticket", ticket_id, body.status,
                                 "投诉处理结果", "你的投诉已处理，请在投诉反馈中查看。")
+        AuthRepository(db).audit(p.employee_id, "ticket_processed", ticket_id, {
+            "previous_status": old["status"], "status": body.status, "solution": solution,
+        })
         db.commit()
         return {"id": ticket_id, "status": body.status, "is_notified": 0}
     except Exception:
         db.rollback()
         raise
+
+
+def routing_queue(db, principal):
+    require_permission(principal, "tickets:route")
+    if principal.role_code not in ("admin", "manager"):
+        raise BusinessError(403, "仅管理员或主管可以修正投诉分派")
+    return FeedbackRepository(db).routing_queue()
+
+
+def route_ticket(db, principal, ticket_id, body):
+    require_permission(principal, "tickets:route")
+    if principal.role_code not in ("admin", "manager"):
+        raise BusinessError(403, "仅管理员或主管可以修正投诉分派")
+    repo = FeedbackRepository(db)
+    try:
+        row = repo.get(ticket_id, lock=True)
+        if row is None or row["ticket_type"] != "complaint":
+            raise BusinessError(404, "投诉不存在")
+        if (row["status"], row["category"], row["assignee_id"]) != (
+            body.expected_status, body.expected_category, body.expected_assignee_id,
+        ):
+            raise BusinessError(409, "工单状态或分派已变化，请刷新后核对")
+        if not StudentAdminRepository(db).lock_student(row["student_id"]):
+            raise BusinessError(422, "学生不存在或已停用")
+        assignee = StudentAdminRepository(db).class_teacher(row["student_id"]) if body.category == "learning" else _company_assignee(db)
+        if assignee is None:
+            raise BusinessError(409, "尚未配置有效的处理负责人")
+        count = repo.update_status(ticket_id, row["assignee_id"], row["status"], {
+            "category": body.category, "assignee_id": assignee, "status": "pending", "update_time": now_naive(),
+        })
+        if count != 1:
+            raise BusinessError(409, "工单已变化，请重新核对")
+        AuthRepository(db).audit(principal.employee_id, "ticket_routed", ticket_id, {
+            "previous_category": row["category"], "category": body.category,
+            "previous_assignee": row["assignee_id"], "assignee_id": assignee, "reason": body.reason,
+        })
+        synchronization.synchronize_source(db, "student_feedback_ticket", ticket_id)
+        db.commit()
+        return {"id": ticket_id, "category": body.category, "assignee_id": assignee}
+    except Exception:
+        db.rollback()
+        raise
+
+
+def ticket_history(db, principal, ticket_id):
+    if "tickets:route" in principal.permissions and principal.role_code in ("admin", "manager"):
+        require_permission(principal, "tickets:route")
+        if FeedbackRepository(db).get(ticket_id) is None:
+            raise BusinessError(404, "投诉不存在")
+    else:
+        require_permission(principal, "tickets:read")
+        ticket_detail(ticket_id, db, principal)
+    return FeedbackRepository(db).history(ticket_id)

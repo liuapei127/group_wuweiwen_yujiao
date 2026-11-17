@@ -70,6 +70,7 @@ export function Assistant() {
   const [input, setInput] = useState('')
   const [voice, setVoice] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [partial, setPartial] = useState('')
   const [sending, setSending] = useState<string>()
   const [error, setError] = useState<unknown>()
   const transcript = useRef<HTMLDivElement>(null)
@@ -94,7 +95,7 @@ export function Assistant() {
 
   useEffect(() => {
     if (transcript.current?.offsetHeight) transcript.current.scrollTop = transcript.current.scrollHeight
-  }, [selected, history.length, sending, pending, showList, voice])
+  }, [selected, history.length, sending, pending, showList, voice, partial])
 
   function openConversation(id: string) {
     if (selected !== id) setVoice(false)
@@ -130,12 +131,13 @@ export function Assistant() {
     const text = value.trim()
     if (!text || locked) return
     setSending(text)
+    setPartial('')
     setError(undefined)
     try {
       const current = selected ? detail.data : await createConversation()
       if (!current) throw new Error('对话正在加载，请稍后发送')
       const updated = await api<Conversation>(conversationsUrl + '/' + current.id + '/messages', {
-        method: 'POST', body: {text, expected_version: current.version}, timeout: 260000,
+        method: 'POST', body: {text, expected_version: current.version}, timeout: 260000, onText: setPartial,
       })
       storeConversation(updated)
       setInput('')
@@ -221,10 +223,10 @@ export function Assistant() {
         })}
         {sending && <>
           <MessageBubble mine content={sending} initials={initials}/>
-          <div className="assistant-message">
+          {partial ? <MessageBubble mine={false} content={partial}/> : <div className="assistant-message">
             <Avatar shape="square" size={34} className="assistant-avatar" icon={<RobotOutlined/>}/>
             <div className="assistant-chat-bubble assistant-typing" role="status">助手正在回复…</div>
-          </div>
+          </div>}
         </>}
         <ErrorNotice error={error || detail.error}/>
         {pending?.state === 'confirm' && <Card className="assistant-confirmation" size="small"

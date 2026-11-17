@@ -155,6 +155,17 @@ class AuthService:
     def me(self,p):
         return self.profile(self.repo.account(user_id=p.employee_id))
 
+    def update_profile(self, body, principal):
+        try:
+            self.repo.lock_account_id(principal.employee_id)
+            self.repo.update_account(principal.employee_id, {**body.model_dump(), "update_time": utc_now()})
+            self.repo.audit(principal.employee_id, "profile_updated", principal.employee_id, body.model_dump())
+            self.db.commit()
+            return self.me(principal)
+        except Exception:
+            self.db.rollback()
+            raise
+
     def logout(self,p):
         self.repo.revoke(p.employee_id,p.session_id);self.repo.audit(p.employee_id,'logout',p.employee_id);self.db.commit()
         return {'logged_out':True}
@@ -213,7 +224,15 @@ class AuthService:
     def update_user(self,user_id,body,p):
         self.db.rollback()
         try:
-            self.repo.lock_policy();self.repo.lock_account_id(user_id);self._employee(user_id);self._role(body.role_id)
+            self.repo.lock_policy();self.repo.lock_account_id(user_id)
+            current = self._employee(user_id)
+            next_role = self._role(body.role_id)
+            teacher_permissions = {"leaves:read", "leaves:approve", "tickets:read", "tickets:write"}
+            if body.status != "normal" or not teacher_permissions <= self.repo.permissions(body.role_id) or (
+                current["role_code"] in ("teacher", "team_leader") and next_role["role_code"] not in ("teacher", "team_leader")
+            ):
+                from app.modules.classroom.service import ensure_handover_complete
+                ensure_handover_complete(self.db, user_id)
             self.repo.update_account(user_id,{**body.model_dump(),'update_time':utc_now()})
             self._keep_admin()
             if body.status!='normal':self._revoke_all(user_id)
@@ -260,6 +279,12 @@ class AuthService:
             old=self.repo.role(role_id) if role_id else None
             if role_id and not old:raise BusinessError(404,'角色不存在')
             if old and old['role_code']=='student':raise BusinessError(403,'学生基础角色不由员工门户修改')
+            if old and (body.status != 1 or not {"leaves:read", "leaves:approve", "tickets:read", "tickets:write"} <= requested):
+                from .models import accounts
+                from app.modules.classroom.service import ensure_handover_complete
+                members = self.db.scalars(select(accounts.c.id).where(accounts.c.role_id == role_id).order_by(accounts.c.id).with_for_update()).all()
+                for member in members:
+                    ensure_handover_complete(self.db, member)
             values={**body.model_dump(exclude={'permissions'}),'update_time':utc_now()}
             if role_id:
                 if body.role_code!=old['role_code']:raise BusinessError(422,'已创建角色的编码不可修改')

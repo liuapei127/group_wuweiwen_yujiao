@@ -53,7 +53,7 @@ class AssistantService:
                 message['metadata'].pop('report_employee_ids')
         return {'id':row['id'],'title':row['title'],'version':row['version'],'pending':pending,'messages':messages}
 
-    def send(self,cid,body,p,employee_token):
+    def send(self,cid,body,p,employee_token,on_text=None):
         old=self.repo.get(cid,p.employee_id)
         if not old:raise BusinessError(404,'对话不存在')
         nonce=self.repo.reserve(cid,p.employee_id,body.expected_version)
@@ -69,7 +69,7 @@ class AssistantService:
                 pending = old['pending'] or ''
                 metadata['source'] = '服务端'
             else:
-                output = self._interpret(cid, text, old['pending'], metadata)
+                output = self._interpret(cid, text, old['pending'], metadata, on_text)
                 pending = output['pending']
                 requested = output['intent']
                 if requested == 'chat':
@@ -113,14 +113,14 @@ class AssistantService:
             self.db.rollback();raise
         return self.detail(cid,p)
 
-    def _interpret(self, cid, text, pending, metadata):
+    def _interpret(self, cid, text, pending, metadata, on_text=None):
         saved = json.loads(pending) if pending else {}
         if text.rstrip('。！! ') in CONFIRM | CANCEL or (saved.get('state') == 'id' and selected_id(text) is not None):
             metadata['source'] = '服务端确认状态机'
             return plan('', text, pending)
 
         history = chat_history(self.repo.history(cid, limit=12))
-        model_text = self.extractor.extract(text, pending, history)
+        model_text = self.extractor.extract(text, pending, history, **({"on_text": on_text} if on_text else {}))
         try:
             action = parse_action(model_text)
         except (ValueError, TypeError):

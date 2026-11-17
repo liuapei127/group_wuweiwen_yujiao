@@ -173,7 +173,7 @@ def visitor_material(db: Session, visitor_id: int, source_id: int) -> VisitorMat
 
 
 def _visitor_progress(source: CustomerSource, result: CustomerProfile | None) -> VisitorMaterialProgress:
-    status = "received"
+    status = "imported" if source.parse_status == ParseStatus.success and "confirmed_fields" in (source.parse_result or {}) else "received"
     if result is not None:
         screening = (result.background_info or {}).get("screening") or {}
         status = "needs_information" if screening.get("status") == ScreeningStatus.NEEDS_INFORMATION else "reviewed"

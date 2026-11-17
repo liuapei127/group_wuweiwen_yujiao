@@ -4,7 +4,7 @@ import {App, Avatar, Button, Descriptions, Form, Input, Modal, Space, Spin, Typo
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {ErrorNotice} from '../components/shared'
 
-type Profile = {
+export type WebsiteProfile = {
   version?: number | null
   username: string
   name: string
@@ -32,7 +32,6 @@ const dateFormat = new Intl.DateTimeFormat('zh-CN', {dateStyle: 'medium', timeSt
 export function WebsiteAccountMenu({token, request, signingOut, onViewCustomer, onChangePassword, onSignOut}: Props) {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState(false)
-  const [form] = Form.useForm<ProfileFields>()
   const [editVersion, setEditVersion] = useState<number | null>()
   const picker = useRef<HTMLInputElement>(null)
   const cache = useQueryClient()
@@ -40,13 +39,13 @@ export function WebsiteAccountMenu({token, request, signingOut, onViewCustomer, 
   const key = ['visitor', 'profile', token]
   const profile = useQuery({
     queryKey: key,
-    queryFn: () => request<Profile>('/api/v1/visitors/profile'),
+    queryFn: () => request<WebsiteProfile>('/api/v1/visitors/profile'),
   })
   const upload = useMutation({
     mutationFn: (file: File) => {
       const form = new FormData()
       form.append('file', file)
-      return request<Profile>('/api/v1/visitors/avatar', 'PUT', form)
+      return request<WebsiteProfile>('/api/v1/visitors/avatar', 'PUT', form)
     },
     onSuccess: updated => {
       cache.setQueryData(key, updated)
@@ -54,7 +53,7 @@ export function WebsiteAccountMenu({token, request, signingOut, onViewCustomer, 
     },
   })
   const save = useMutation({
-    mutationFn: (fields: ProfileFields) => request<Profile>('/api/v1/visitors/profile', 'PUT', {...fields, expected_version: editVersion}),
+    mutationFn: (fields: ProfileFields) => request<WebsiteProfile>('/api/v1/visitors/profile', 'PUT', {...fields, expected_version: editVersion}),
     onSuccess: updated => {
       cache.setQueryData(key, updated)
       setEditing(false)
@@ -80,17 +79,21 @@ export function WebsiteAccountMenu({token, request, signingOut, onViewCustomer, 
     className="website-account-avatar"/>
 
   return <>
-    <Button className="website-account-trigger" icon={avatar(24)} aria-haspopup="dialog" onClick={() => setOpen(true)}>
+    <Button className="website-account-trigger" icon={avatar(24)} aria-haspopup="dialog" onClick={() => {
+      setOpen(true)
+      void profile.refetch()
+    }}>
       个人信息 <DownOutlined/>
     </Button>
     <Modal title="个人信息" open={open} onCancel={closeProfile} centered width={480}
       closable={!busy} keyboard={!busy} mask={{closable: !busy}}
       footer={editing ? <Space key="editing" wrap>
         <Button disabled={busy} onClick={cancelEditing}>取消编辑</Button>
-        <Button type="primary" disabled={upload.isPending} loading={save.isPending} onClick={() => form.submit()}>保存</Button>
+        <Button type="primary" disabled={upload.isPending} loading={save.isPending}
+          htmlType="submit" form="website-profile">保存</Button>
       </Space> : <Space key="viewing" wrap>
         <Button type="primary" disabled={!account || busy} onClick={() => {setEditVersion(account?.version); setEditing(true)}}>编辑资料</Button>
-        <Button disabled={busy} onClick={() => {closeProfile(); onViewCustomer()}}>我的资料</Button>
+        {account?.version != null && <Button disabled={busy} onClick={() => {closeProfile(); onViewCustomer()}}>我的资料</Button>}
         <Button disabled={busy} onClick={() => {closeProfile(); onChangePassword()}}>修改密码</Button>
         <Button danger disabled={upload.isPending} loading={signingOut} onClick={onSignOut}>退出登录</Button>
       </Space>}>
@@ -118,7 +121,7 @@ export function WebsiteAccountMenu({token, request, signingOut, onViewCustomer, 
         {editing ? <>
           <ErrorNotice error={upload.error}/>
           <ErrorNotice error={save.error}/>
-          <Form<ProfileFields> form={form} name="website-profile" layout="vertical" clearOnDestroy
+          <Form<ProfileFields> name="website-profile" layout="vertical"
             disabled={save.isPending} initialValues={{nickname: account.nickname ?? '', name: account.name, contact: account.contact}}
             onFinish={fields => {if (!busy) save.mutate(fields)}}>
             <Form.Item name="nickname" label="昵称"><Input autoComplete="nickname" maxLength={64}/></Form.Item>

@@ -1,4 +1,3 @@
-from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -74,10 +73,10 @@ def list_leads(
     )
 
 
-@router.get("/customers", summary="我的客户及待关联档案的游客")
+@router.get("/customers", summary="我跟进的客户")
 def list_customers(
     keyword: str | None = None,
-    status: LeadStatus | Literal["pending_binding"] | None = None,
+    status: LeadStatus | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),

@@ -58,4 +58,4 @@ class VisitorMaterialProgress(BaseModel):
     source_id: int
     file_name: str | None
     submitted_at: datetime
-    status: Literal["received", "needs_information", "reviewed"]
+    status: Literal["received", "imported", "needs_information", "reviewed"]

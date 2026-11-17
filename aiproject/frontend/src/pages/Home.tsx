@@ -5,7 +5,7 @@ import {ArrowRightOutlined,RobotOutlined,TeamOutlined,FileTextOutlined,AuditOutl
 import {useQuery} from '@tanstack/react-query'
 import {api} from '../lib/api'
 import {useAuth} from '../auth'
-import {ErrorNotice,PageTitle} from '../components/shared'
+import {ActionModal,ErrorNotice,PageTitle,type ActionSpec} from '../components/shared'
 import {PasswordChangeDialog} from '../components/PasswordChangeDialog'
 import {navigation,navGroups,permissionNames} from '../navigation'
 const metricNames:Record<string,string>={customers:'本人客户',reports_today:'今日日报',leaves_pending:'待审批请假',todos_open:'未完成待办',tickets_open:'待处理工单',notifications:'站内通知',authorized_students:'授权学生'}
@@ -67,12 +67,18 @@ export function Dashboard(){
   </>
 }
 export function Account() {
-  const {user,logout} = useAuth()
+  const {user,logout,reload} = useAuth()
   const navigate = useNavigate()
   const [changingPassword,setChangingPassword] = useState(false)
+  const [profileAction, setProfileAction] = useState<ActionSpec | null>(null)
 
   return <>
-    <PageTitle title="我的账号" description="查看登录身份与授权范围，维护自己的登录密码。"/>
+    <PageTitle title="我的账号" description="查看登录身份与授权范围，维护自己的信息和登录密码。"
+      extra={<Button onClick={() => setProfileAction({
+        title: '维护个人信息', path: '/api/v1/auth/profile', method: 'PATCH',
+        initial: {real_name: user?.real_name, contact_info: user?.contact_info},
+        fields: [{name: 'real_name', label: '姓名', required: true}, {name: 'contact_info', label: '联系方式'}],
+      })}>维护个人信息</Button>}/>
     <div className="two-column">
       <Card title="员工信息">
         <Descriptions column={1} items={[
@@ -94,5 +100,6 @@ export function Account() {
       submit={passwords=>api('/api/v1/auth/password',{method:'POST',body:passwords})}
       onClose={()=>setChangingPassword(false)}
       onChanged={()=>void logout().catch(()=>undefined).then(()=>navigate('/login',{replace:true}))}/>}
+    <ActionModal action={profileAction} onClose={() => setProfileAction(null)} onSuccess={() => void reload()}/>
   </>
 }

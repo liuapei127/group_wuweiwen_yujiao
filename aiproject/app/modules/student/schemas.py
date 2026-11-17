@@ -2,6 +2,8 @@ from datetime import date, datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, NaiveDatetime, StringConstraints
+from uuid import UUID
+from app.shared.types.study_stage import StudyStage
 
 
 class ProgressWrite(BaseModel):
@@ -28,6 +30,7 @@ class DeadlineOut(BaseModel):
     id: int
     title: str
     deadline_type: str
+    study_stage: StudyStage = "unspecified"
     description: str | None
     deadline: datetime
     status: str
@@ -46,9 +49,14 @@ class DeadlineWrite(BaseModel):
 
     title: str = Field(min_length=1, max_length=255)
     deadline_type: Literal["paper", "exam", "application", "visa", "other"]
+    study_stage: StudyStage = "unspecified"
     description: str | None = Field(default=None, max_length=10000)
     deadline: NaiveDatetime
     reminder_enabled: bool = True
+
+
+class DeadlineBatch(DeadlineWrite):
+    request_id: UUID
 
 
 class AssistantTurn(BaseModel):

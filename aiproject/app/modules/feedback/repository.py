@@ -1,4 +1,6 @@
+import json
 from sqlalchemy import insert, or_, select, update
+from app.modules.auth.models import audit_log
 from .models import student_feedback_ticket as tickets
 
 class FeedbackRepository:
@@ -31,9 +33,23 @@ class FeedbackRepository:
         )
         return self.db.execute(stmt).mappings().one_or_none()
 
-    def get(self, ticket_id):
-        row = self.db.execute(select(tickets).where(tickets.c.id == ticket_id)).first()
+    def get(self, ticket_id, *, lock=False):
+        stmt = select(tickets).where(tickets.c.id == ticket_id)
+        row = self.db.execute(stmt.with_for_update() if lock else stmt).first()
         return dict(row._mapping) if row else None
+
+    def routing_queue(self):
+        return [dict(row) for row in self.db.execute(select(tickets).where(
+            tickets.c.ticket_type == "complaint", tickets.c.status.in_(("pending", "processing")),
+        ).order_by(tickets.c.id.desc()).limit(200)).mappings()]
+
+    def history(self, ticket_id):
+        rows = self.db.execute(select(audit_log).where(
+            audit_log.c.action.in_(("ticket_processed", "ticket_routed")),
+            audit_log.c.target == str(ticket_id),
+        ).order_by(audit_log.c.id)).mappings()
+        return [{"actor_id": row["actor_id"], "action": row["action"], "created_at": row["create_time"],
+                 "details": json.loads(row["details"])} for row in rows]
 
     def update_status(self, ticket_id, employee_id, expected_status, values):
         return self.db.execute(update(tickets).where(tickets.c.id == ticket_id, tickets.c.assignee_id == employee_id, tickets.c.status == expected_status).values(**values)).rowcount

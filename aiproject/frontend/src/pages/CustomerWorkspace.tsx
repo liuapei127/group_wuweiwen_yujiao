@@ -6,20 +6,17 @@ import {useAuth} from '../auth'
 import {ActionModal, ErrorNotice, PageTitle, Status, Value, options, type ActionSpec} from '../components/shared'
 import {CustomerProfilePanel, customerValue, useCustomerEditor, type CustomerProfile, type Request} from '../components/CustomerProfilePanel'
 import {api, query} from '../lib/api'
-import {screeningStatuses} from './VisitorIntake'
+import {CustomerVisitorMaterials, screeningStatuses} from './VisitorIntake'
 import './customer-workspace.css'
 
 const leads = '/api/v1/consultant/leads'
 const leadStates = ['new', 'contacting', 'qualified', 'signed', 'lost']
-const pendingBinding = {value: 'pending_binding', label: '待关联档案'}
 const missingLabels: Record<string, string> = {project: '意向项目', age: '年龄', education: '学历类别', education_stage: '在读或毕业状态'}
 const followTypes: Record<string, string> = {phone: '电话', wechat: '微信', meeting: '面谈', email: '邮件', other: '其他'}
 const request: Request = <T,>(path: string, method?: string, body?: unknown) => api<T>(path, {method, body, timeout: 65000})
 
 type Lead = {id: number; customer_name: string; status: string}
-type CustomerRow = Lead & {kind: 'lead' | 'visitor'}
-const customerPath = (row: CustomerRow) => row.kind === 'lead'
-  ? '/customers/' + row.id : '/visitor-intake?visitor=' + row.id
+const customerPath = (row: Lead) => '/customers/' + row.id
 
 type FollowUp = {id: number; follow_type: string | null; content: string; next_plan: string | null; create_time: string}
 type Detail = {lead: Lead; follow_ups: FollowUp[]}
@@ -28,17 +25,17 @@ type Screening = {
   id: number; stale: boolean; result?: {status: string; findings: string[]}
   ai?: {state: string; message?: string; recommendation?: string; talk_track?: string}
 }
-type StaffProfile = CustomerProfile & {readiness: Missing; screening: Screening | null}
+type StaffProfile = CustomerProfile & {visitor_id?: number | null; readiness: Missing; screening: Screening | null}
 
 export function Customers() {
-  const {user, can} = useAuth()
+  const {user} = useAuth()
   const navigate = useNavigate()
   const [keyword, setKeyword] = useState('')
   const [status, setStatus] = useState<string>()
   const [page, setPage] = useState(1)
   const list = useQuery({
     queryKey: [user?.id, 'crm-customers', keyword, status, page],
-    queryFn: () => api<{items: CustomerRow[]; total: number}>(
+    queryFn: () => api<{items: Lead[]; total: number}>(
       '/api/v1/consultant/customers' + query({keyword, status, page, page_size: 20})),
     refetchOnWindowFocus: true,
   })
@@ -48,18 +45,17 @@ export function Customers() {
       <Space wrap style={{marginBottom: 16}}>
         <Input.Search aria-label="搜索客户" placeholder="搜索姓名或昵称" allowClear
           onSearch={text => {setKeyword(text.trim()); setPage(1)}}/>
-        <Select aria-label="客户状态筛选" placeholder="全部状态" allowClear options={can('visitor-intake:read') ? [...options(leadStates), pendingBinding] : options(leadStates)}
+        <Select aria-label="客户状态筛选" placeholder="全部状态" allowClear options={options(leadStates)}
           onChange={value => {setStatus(value); setPage(1)}} style={{width: 160}}/>
       </Space>
       <ErrorNotice error={list.error}/>
-      <Table<CustomerRow> rowKey={row => row.kind + '-' + row.id} loading={list.isFetching} dataSource={list.data?.items ?? []}
+      <Table<Lead> rowKey="id" loading={list.isFetching} dataSource={list.data?.items ?? []}
         locale={{emptyText: '暂无跟进客户'}} pagination={{
           total: list.data?.total ?? 0, current: page, pageSize: 20, showSizeChanger: false, onChange: setPage,
         }} onRow={row => ({onClick: () => void navigate(customerPath(row)), className: 'customer-list-row'})}
         columns={[
           {title: '客户姓名', render: (_, row) => <Link to={customerPath(row)} onClick={event => event.stopPropagation()}>{row.customer_name}</Link>},
-          {title: '跟进状态', dataIndex: 'status', render: value => value === pendingBinding.value
-            ? <Tag color="warning">{pendingBinding.label}</Tag> : <Status value={value}/>},
+          {title: '跟进状态', dataIndex: 'status', render: value => <Status value={value}/>},
         ]}/>
     </Card>
   </>
@@ -134,7 +130,8 @@ function CustomerDetail({id, userId}: {id: string; userId?: number}) {
     title: '更新客户状态', method: 'PATCH', path: base + '/status',
     initial: {status: lead?.status},
     fields: [
-      {name: 'status', label: '目标状态', kind: 'select', required: true, options: options(leadStates)},
+      {name: 'status', label: '目标状态', kind: 'select', required: true, options: options(leadStates),
+        help: '签约时按合同约定收取项目费用。'},
       {name: 'lost_reason', label: '流失原因', kind: 'textarea'},
     ],
   })
@@ -154,6 +151,9 @@ function CustomerDetail({id, userId}: {id: string; userId?: number}) {
     {profile.data && <div className="customer-detail-grid">
       <Space orientation="vertical" size="middle" style={{width: '100%'}}>
         <CustomerProfilePanel profile={profile.data} request={request} endpoint={profileUrl} importEndpoint={base} editor={editor} canWrite={write} onSaved={refresh}/>
+        {profile.data.visitor_id != null && can('visitor-intake:read') &&
+          <CustomerVisitorMaterials key={profile.data.visitor_id} visitorId={profile.data.visitor_id} userId={userId}
+            importEndpoint={base} onImported={refresh}/>}
         <Card title="跟进记录" extra={write && <Button type="link" onClick={follow}>新增跟进</Button>}>
           <Table<FollowUp> size="small" rowKey="id" pagination={false} locale={{emptyText: '暂无跟进记录'}}
             dataSource={detail.data?.follow_ups ?? []} columns={[
@@ -203,18 +203,29 @@ export function WebsiteCustomerProfile({request, token, back}: {request: Request
   const cache = useQueryClient()
   const key = ['visitor', 'crm-profile', token]
   const profile = useQuery({
-    queryKey: key, queryFn: () => request<WebsiteProfile>(publicProfileUrl),
+    queryKey: key,
+    queryFn: async () => {
+      try {
+        return await request<WebsiteProfile>(publicProfileUrl)
+      } catch (error) {
+        // The profile endpoint reports an account without a linked customer as 409.
+        if (error instanceof Error && 'status' in error && error.status === 409) return null
+        throw error
+      }
+    },
     refetchOnWindowFocus: true, refetchInterval: 15000, staleTime: 0,
   })
   const refresh = () => {
     void cache.invalidateQueries({queryKey: key})
     void cache.invalidateQueries({queryKey: ['visitor', 'profile', token]})
   }
-  const editor = useCustomerEditor(profile.data, request, publicProfileUrl, refresh)
+  const editor = useCustomerEditor(profile.data ?? undefined, request, publicProfileUrl, refresh)
   return <section className="visitor-section customer-website-profile">
     <PageTitle title="我的资料" description="查看和维护与本人账号关联的资料。"
       extra={<Button onClick={back}>返回服务</Button>}/>
     <ErrorNotice error={profile.error}/>
+    {profile.data === null && <Alert type="info" showIcon title="顾问尚未建立你的客户资料"
+      description="你仍可通过右上角的个人信息维护姓名和联系方式。顾问建立客户资料后，可在这里查看和补充。"/>}
     {profile.data && <Space orientation="vertical" size="middle" style={{width: '100%'}}>
       <CustomerProfilePanel profile={profile.data} request={request} endpoint={publicProfileUrl} editor={editor} canWrite onSaved={refresh}/>
       {!!profile.data.imports?.length && <Card title="已导入资料">

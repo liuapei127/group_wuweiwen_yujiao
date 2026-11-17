@@ -51,9 +51,12 @@ def _owned_query(principal: EmployeePrincipal):
     )
 
 
-def list_alerts(db: Session, principal: EmployeePrincipal, before_id: int | None, limit: int) -> list[AlertOut]:
+def list_alerts(db: Session, principal: EmployeePrincipal, before_id: int | None, limit: int, student_id: int | None = None) -> list[AlertOut]:
     require_permission(principal, "student-alerts:read")
     query = _owned_query(principal)
+    if student_id is not None:
+        require_student_scope(principal, student_id, "student-alerts:read")
+        query = query.where(_alert.c.student_id == student_id)
     if before_id is not None:
         query = query.where(_alert.c.id < before_id)
     rows = db.execute(query.order_by(_alert.c.id.desc()).limit(limit)).mappings()
@@ -70,7 +73,8 @@ def follow_alert(db: Session, principal: EmployeePrincipal, alert_id: int, paylo
         if old["status"] not in {"pending", "following"}:
             raise BusinessError(409, "该预警已结案")
         now = now_naive()
-        follow_record = "\n".join(part for part in (old["follow_record"], payload.follow_record) if part)
+        entry = f"{now:%Y-%m-%d %H:%M:%S} · 员工{principal.employee_id}：{payload.follow_record}"
+        follow_record = "\n".join(part for part in (old["follow_record"], entry) if part)
         if len(follow_record.encode("utf-8")) > 60_000:
             raise BusinessError(422, "跟进记录超过可保存长度")
         db.execute(update(_alert).where(_alert.c.id == alert_id).values(

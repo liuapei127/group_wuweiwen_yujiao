@@ -7,7 +7,9 @@ import os
 import urllib.error
 import urllib.request
 
-from .assistant_speak import student_safe
+import httpx
+
+from .assistant_speak import model_text, student_safe, visible_sentences
 
 _SYSTEM = """你是留学学生助手，只对学生说话。
 学生当前的留学去向是：{place}。
@@ -27,6 +29,7 @@ def speak(
     place: str = "还没登记",
     *,
     purpose: str = "chat",
+    on_text=None,
 ) -> str | None:
     key = (os.getenv("LLM_API_KEY") or "").strip()
     if not key:
@@ -64,6 +67,9 @@ def speak(
         "max_tokens": 120 if purpose == "feedback_title" else 400,
         "thinking": {"type": "disabled"},
     }
+    if on_text:
+        body.pop("thinking", None)
+        return model_text(_stream(base, key, body, on_text) or "") or None
     text = _post(base, key, body)
     if text is None and "thinking" in body:
         body.pop("thinking")
@@ -91,3 +97,37 @@ def _post(base: str, key: str, body: dict) -> str | None:
         return payload["choices"][0]["message"]["content"]
     except (KeyError, IndexError, TypeError):
         return None
+
+
+def _stream(base, key, body, on_text):
+    text = ""
+    try:
+        with httpx.Client(timeout=httpx.Timeout(45, connect=5)) as client:
+            with client.stream(
+                "POST", base + "/chat/completions", headers={"Authorization": "Bearer " + key},
+                json={**body, "stream": True},
+            ) as response:
+                response.raise_for_status()
+                for line in response.iter_lines():
+                    if not line.startswith("data:"):
+                        continue
+                    value = line[5:].strip()
+                    if value == "[DONE]":
+                        return text
+                    choices = json.loads(value).get("choices") or []
+                    if not choices:
+                        continue
+                    choice = choices[0]
+                    fragment = (choice.get("delta") or {}).get("content")
+                    if isinstance(fragment, str):
+                        text += fragment
+                        visible = visible_sentences(text)
+                        if visible:
+                            on_text(visible)
+                    if choice.get("finish_reason"):
+                        return text
+    except (httpx.HTTPError, ValueError):
+        pass
+    if text:
+        on_text("")
+    return None

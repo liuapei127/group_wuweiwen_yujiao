@@ -12,6 +12,8 @@ from app.core.exceptions import BusinessError
 from app.core.security import EmployeePrincipal
 from app.core.security.authorization import require_permission
 from app.modules.auth.repository import AuthRepository
+from app.modules.classroom import service as classroom_service
+from app.modules.classroom.schemas import ClassPlacement
 from app.modules.consultant import customer_repository, customer_service
 from app.modules.auth.schemas import PasswordChange, PasswordReset
 from app.modules.student_admin.repository import StudentAdminRepository
@@ -20,14 +22,13 @@ from app.core.security.password_policy import reject_account_password
 
 from . import repository
 from .avatar import normalize_avatar
-from .models import VisitorAccount, VisitorSession, WebsiteStudentAccess
+from .models import MISSING_NAME, VisitorAccount, VisitorSession, WebsiteStudentAccess
 from .schemas import (
     VisitorLogin, VisitorRegister, VisitorToken, WebsiteAccountOut, WebsiteProfile, WebsiteProfileUpdate,
     WebsiteStudentCreate, WebsiteStudentUpdate,
 )
 
 _SESSION_SECONDS = 3600
-_MISSING_NAME = "未填写姓名"
 _TOKEN_PATTERN = re.compile(r"visitor_[0-9a-f]{64}")
 
 
@@ -40,7 +41,7 @@ class VisitorPrincipal:
 def register(db: Session, payload: VisitorRegister) -> VisitorToken:
     reject_account_password(payload.password, payload.username, payload.contact)
     account = VisitorAccount(
-        username=payload.username, name=payload.name or _MISSING_NAME, nickname=payload.nickname,
+        username=payload.username, name=payload.name or MISSING_NAME, nickname=payload.nickname,
         contact=payload.contact or payload.username,
         password_hash=hash_password(payload.password), created_at=utc_now(),
     )
@@ -109,9 +110,11 @@ def profile(db: Session, principal: VisitorPrincipal) -> WebsiteProfile:
 def update_profile(db: Session, principal: VisitorPrincipal, payload: WebsiteProfileUpdate) -> WebsiteProfile:
     try:
         account = _lock_profile_account(db, principal)
+        if not payload.contact:
+            payload = payload.model_copy(update={"contact": account.username})
         if not customer_service.sync_existing_website_profile(db, account, payload):
             account.nickname = payload.nickname or None
-            account.name = payload.name or _MISSING_NAME
+            account.name = payload.name or MISSING_NAME
             account.contact = payload.contact
         result = _profile(db, account, principal, repository.avatar_bytes(db, account.id))
         db.commit()
@@ -143,8 +146,8 @@ def change_avatar(db: Session, principal: VisitorPrincipal, content: bytes) -> W
 
 def _profile(db: Session, account: VisitorAccount, principal: VisitorPrincipal, image: bytes | None) -> WebsiteProfile:
     return WebsiteProfile(
-        username=account.username, name="" if account.name == _MISSING_NAME else account.name,
-        nickname=account.nickname, contact=account.contact,
+        username=account.username, name=account.name if account.has_name else "",
+        nickname=account.nickname, contact=account.contact_with_default,
         version=customer_service.website_profile_version(db, account.id),
         created_at=account.created_at.replace(tzinfo=timezone.utc),
         account_type="student" if website_student(db, principal) is not None else "visitor",
@@ -228,8 +231,17 @@ def change_student_access(
             raise BusinessError(409, "该官网账号已绑定其他学籍")
         if access is None and not payload.enabled:
             raise BusinessError(409, "该官网账号尚未绑定学籍")
+        if payload.placement is not None and (access is not None or not payload.enabled):
+            raise BusinessError(422, "首次绑定学生档案时才能选择班级")
+        assignment = None
+        if payload.placement is not None:
+            assignment = classroom_service.resolve_placement(db, payload.placement)
+        elif access is None:
+            _require_placement_for_customer(db, visitor_id)
         if payload.enabled and not StudentAdminRepository(db).lock_student(payload.student_id):
             raise BusinessError(422, "请选择有效的企业学生档案")
+        if assignment is not None:
+            classroom_service.place_student(db, payload.student_id, payload.placement, assignment)
         if access is None or access.enabled != payload.enabled:
             if access is None:
                 access = WebsiteStudentAccess(visitor_id=visitor_id, student_id=payload.student_id, enabled=True)
@@ -237,7 +249,8 @@ def change_student_access(
             else:
                 access.enabled = payload.enabled
             db.flush()
-            _record_student_access(db, employee, access)
+            details = payload.placement.model_dump() if payload.placement is not None else {}
+            _record_student_access(db, employee, access, **details)
         result = _website_account(account, access)
         db.commit()
     except IntegrityError as exc:
@@ -270,6 +283,11 @@ def list_students(db: Session, employee: EmployeePrincipal, keyword: str, limit:
     return [dict(row) for row in repository.student_options(db, keyword, limit)]
 
 
+def _require_placement_for_customer(db: Session, visitor_id: int) -> None:
+    if customer_repository.linked_leads(db, [visitor_id]):
+        raise BusinessError(422, "客户转为学生时须选择项目和班级")
+
+
 def create_and_enable_student(
     db: Session, employee: EmployeePrincipal, visitor_id: int, payload: WebsiteStudentCreate
 ) -> WebsiteAccountOut:
@@ -280,8 +298,17 @@ def create_and_enable_student(
             raise BusinessError(404, "官网账号不存在")
         if repository.student_access(db, visitor_id, lock=True) is not None:
             raise BusinessError(409, "该官网账号已有学籍，请在现有绑定上管理学生身份")
-        if not repository.lock_eligible_teacher(db, payload.class_teacher_id):
-            raise BusinessError(422, "请选择可审批请假并处理学习投诉的在职员工")
+        assignment = None
+        details = {}
+        if isinstance(payload, ClassPlacement):
+            assignment = classroom_service.resolve_placement(db, payload)
+            teacher_id, country = assignment.teacher_id, assignment.abroad_country
+            details = payload.model_dump()
+        else:
+            _require_placement_for_customer(db, visitor_id)
+            teacher_id, country = payload.class_teacher_id, payload.abroad_country
+            if not repository.lock_eligible_teacher(db, teacher_id):
+                raise BusinessError(422, "请选择可审批请假并处理学习投诉的在职员工")
         student_role = repository.active_student_role_id(db)
         if student_role is None:
             raise BusinessError(409, "企业的学生角色尚未启用")
@@ -296,12 +323,14 @@ def create_and_enable_student(
             "create_time": utc_now(),
             "update_time": utc_now(),
         })
-        repository.create_student_profile(db, student_id, payload.class_teacher_id, payload.abroad_country)
+        repository.create_student_profile(db, student_id, teacher_id, country)
+        if assignment is not None:
+            classroom_service.place_student(db, student_id, payload, assignment)
         access = WebsiteStudentAccess(visitor_id=visitor_id, student_id=student_id, enabled=True)
         db.add(access)
         db.flush()
-        _record_student_access(db, employee, access, class_teacher_id=payload.class_teacher_id,
-                               abroad_country=payload.abroad_country)
+        _record_student_access(db, employee, access, class_teacher_id=teacher_id,
+                               abroad_country=country, **details)
         result = _website_account(account, access)
         db.commit()
     except IntegrityError as exc:

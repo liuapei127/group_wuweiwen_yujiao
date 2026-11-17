@@ -1,5 +1,6 @@
 import {useState} from 'react'
-import {Button, Card, Input, Space, Table, Tag} from 'antd'
+import {Button, Card, Input, Select, Space, Table, Tag} from 'antd'
+import {useSearchParams} from 'react-router-dom'
 import {useQuery} from '@tanstack/react-query'
 import {useAuth} from '../auth'
 import {ActionModal, ErrorNotice, PageTitle, type ActionSpec} from '../components/shared'
@@ -16,6 +17,8 @@ const levels: Record<string, string> = {low: '低', medium: '中', high: '高'}
 
 export function StudentAlerts() {
   const {user, can} = useAuth()
+  const [params] = useSearchParams()
+  const [studentId, selectStudent] = useState<number | undefined>(() => Number(params.get('student_id')) || undefined)
   const [before, setBefore] = useState<number>()
   const [action, setAction] = useState<ActionSpec | null>(null)
   const mayWrite = can('student-alerts:write')
@@ -23,7 +26,7 @@ export function StudentAlerts() {
     timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit',
   }).format(new Date()))
   const students = useQuery({
-    queryKey: [user?.id, 'student-alert-students'], enabled: mayWrite,
+    queryKey: [user?.id, 'student-alert-students'],
     queryFn: () => api<{id: number; real_name: string}[]>(endpoint + '/students'),
   })
   const weekly = useQuery({
@@ -32,8 +35,8 @@ export function StudentAlerts() {
       items: {status: string; risk_level: string; count: number}[]}>(endpoint + '/weekly' + query({anchor: week})),
   })
   const records = useQuery({
-    queryKey: [user?.id, 'student-alerts', before],
-    queryFn: () => api<Alert[]>(endpoint + query({before_id: before, limit: 20})),
+    queryKey: [user?.id, 'student-alerts', before, studentId],
+    queryFn: () => api<Alert[]>(endpoint + query({before_id: before, limit: 20, student_id: studentId})),
   })
   return <>
     <PageTitle title="心理预警" description="查看分派给你的预警，以及授权范围内待分派的预警。"
@@ -60,6 +63,10 @@ export function StudentAlerts() {
     </Card>
     <ErrorNotice error={records.error}/>
     <Card>
+      <Select aria-label="预警学生" placeholder="全部负责学生" allowClear value={studentId}
+        style={{minWidth: 260, marginBottom: 16}} showSearch={{optionFilterProp: 'label'}}
+        options={(students.data ?? []).map(student => ({value: student.id, label: student.real_name + ' · ' + student.id}))}
+        onChange={value => {selectStudent(value); setBefore(undefined)}}/>
       <Table<Alert> rowKey="id" pagination={false} loading={records.isFetching} dataSource={records.data || []}
         scroll={{x: 780}} locale={{emptyText: '暂无可查看的预警'}} columns={[
           {title: '学生编号', dataIndex: 'student_id'},

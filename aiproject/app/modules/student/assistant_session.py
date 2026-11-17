@@ -46,6 +46,7 @@ async def run_turn(
     access_token: str | None,
     use_dify: bool,
     mock_country=None,
+    on_text=None,
 ) -> dict:
     text = (query or "").strip()
     if not text:
@@ -78,10 +79,13 @@ async def run_turn(
                 access_token=access_token,
                 history=history_with_memory,
                 user_key=assistant_mem0.user_key(student_id),
+                **({"on_text": on_text} if on_text else {}),
             )
         except BusinessError as exc:
             # Dify down / misconfigured → keep student flows working on local brain.
             logger.warning("stu dify failed, local fallback: %s", exc)
+            if on_text:
+                on_text("")
             cache = replay_cache()
             # Dify forwards the query and history. Its callback does not carry mock_country.
             key = cache.key(student_id, text, history_with_memory)
@@ -96,6 +100,7 @@ async def run_turn(
                         history=history_with_memory,
                         mock_country=mock_country,
                         memory_notes=memories,
+                        **({"on_text": on_text} if on_text else {}),
                     ),
                 )
                 return result
@@ -106,13 +111,14 @@ async def run_turn(
             if isinstance(result.get("data"), dict):
                 result["data"] = {**result["data"], "source": "local_fallback"}
     else:
-        result = assistant_chat.handle_chat(
-            db,
+        result = await run_in_threadpool(
+            assistant_chat.handle_chat, db,
             student_id=student_id,
             message=text,
             history=history_with_memory,
             mock_country=mock_country,
             memory_notes=memories,
+            **({"on_text": on_text} if on_text else {}),
         )
 
     answer = (result.get("answer") or result.get("reply") or "").strip()

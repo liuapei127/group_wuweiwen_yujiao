@@ -1,9 +1,11 @@
 from uuid import UUID
 from fastapi import APIRouter,Depends,Request,UploadFile
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import EmployeePrincipal,require_employee
 from app.core.responses import success
+from app.core.responses.streaming import chat_response
 from app.modules.employee_report.transcription import MAX_AUDIO_BYTES, transcribe_audio
 from .schemas import ConversationCreate,MessageInput
 from .service import AssistantService
@@ -28,7 +30,12 @@ def detail(conversation_id:UUID,db:Session=Depends(get_db),p:EmployeePrincipal=D
     return success(AssistantService(db).detail(str(conversation_id),p))
 
 @router.post('/conversations/{conversation_id}/messages')
-def message(conversation_id:UUID,body:MessageInput,request:Request,db:Session=Depends(get_db),p:EmployeePrincipal=Depends(require_employee)):
+async def message(conversation_id:UUID,body:MessageInput,request:Request,db:Session=Depends(get_db),p:EmployeePrincipal=Depends(require_employee)):
     # Only forwarded to this same backend's fixed loopback API, never to Dify.
     token=request.headers.get('Authorization','').split(' ',1)[1]
-    return success(AssistantService(db).send(str(conversation_id),body,p,token))
+    async def run(on_text=None):
+        return await run_in_threadpool(AssistantService(db).send, str(conversation_id), body, p, token, on_text)
+
+    if "text/event-stream" in request.headers.get("accept", ""):
+        return chat_response(run)
+    return success(await run())

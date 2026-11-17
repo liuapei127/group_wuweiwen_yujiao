@@ -72,6 +72,10 @@ def db(monkeypatch):
     roles.create(engine)
     for table in AUTH_NEW_TABLES:
         table.create(engine)
+    from app.modules.consultant.models import VisitorIntake
+    from app.modules.visitor.models import WebsiteStudentAccess
+    VisitorIntake.__table__.create(engine)
+    WebsiteStudentAccess.__table__.create(engine)
     session = Session(engine)
     try:
         yield session

@@ -1,10 +1,11 @@
 import {Fragment, useEffect, useRef, useState} from 'react'
 import {useMutation} from '@tanstack/react-query'
-import {Drawer} from 'antd'
+import {Drawer, Input} from 'antd'
+import type {TextAreaRef} from 'antd/es/input/TextArea'
 import {CloseOutlined, CustomerServiceOutlined, MessageOutlined, ReloadOutlined, RobotOutlined, SendOutlined, SmileOutlined, UserOutlined} from '@ant-design/icons'
 
 export type AssistantTurn = {role: 'user' | 'assistant'; content: string; at?: string}
-type Ask = (query: string, history: AssistantTurn[], sessionId?: string) => Promise<{answer: string; session_id?: string}>
+type Ask = (query: string, history: AssistantTurn[], sessionId: string | undefined, onText: (text: string) => void) => Promise<{answer: string; session_id?: string}>
 
 function clock() {
   return new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit', hour12: false})
@@ -48,13 +49,14 @@ export function WebsiteAssistant({
 }) {
   const [innerOpen, setInnerOpen] = useState(false)
   const [question, setQuestion] = useState('')
+  const [partial, setPartial] = useState('')
   const [history, setHistory] = useState<AssistantTurn[]>([])
   const [sessionStart, setSessionStart] = useState(clock)
   const [hintsOn, setHintsOn] = useState(true)
   const session = useRef<string | undefined>(undefined)
   const generation = useRef(0)
   const thread = useRef<HTMLDivElement>(null)
-  const input = useRef<HTMLInputElement>(null)
+  const input = useRef<TextAreaRef>(null)
   const isOpen = open ?? innerOpen
 
   function setOpen(value: boolean) {
@@ -63,7 +65,10 @@ export function WebsiteAssistant({
   }
 
   const result = useMutation({
-    mutationFn: ({query}: {query: string; generation: number}) => ask(query, history, session.current),
+    mutationFn: ({query, generation: sentAt}: {query: string; generation: number}) =>
+      ask(query, history, session.current, text => {
+        if (generation.current === sentAt) setPartial(text)
+      }),
     onSuccess: (data, {query, generation: sentAt}) => {
       if (generation.current !== sentAt) return
       if (data.session_id) session.current = data.session_id
@@ -80,17 +85,19 @@ export function WebsiteAssistant({
   useEffect(() => {
     const messages = thread.current
     if (isOpen && messages) messages.scrollTop = messages.scrollHeight
-  }, [isOpen, history, result.isPending])
+  }, [isOpen, history, result.isPending, partial])
 
   function send(raw: string) {
     const query = raw.trim()
     if (!query || result.isPending) return
+    setPartial('')
     result.mutate({query, generation: generation.current})
   }
 
   function reset() {
     generation.current += 1
     session.current = undefined
+    setPartial('')
     setHistory([])
     setQuestion('')
     setSessionStart(clock())
@@ -148,7 +155,10 @@ export function WebsiteAssistant({
           {turn.role === 'user' && turn.at && <div className="wa-time"><span>{turn.at}</span></div>}
           <ChatRow side={turn.role === 'user' ? 'me' : 'bot'} text={turn.content} />
         </Fragment>)}
-        {result.isPending && <ChatRow side="bot" typing />}
+        {result.isPending && <>
+          <ChatRow side="me" text={result.variables.query}/>
+          <ChatRow side="bot" typing={!partial} text={partial}/>
+        </>}
         {result.error && <div className="wa-system" role="alert">{result.error.message}</div>}
       </div>
 
@@ -166,13 +176,14 @@ export function WebsiteAssistant({
           {hints.length > 0 && <button type="button" className={hintsOn ? 'is-on' : ''}
             aria-label="切换猜你想问" aria-pressed={hintsOn} title="猜你想问"
             onClick={() => setHintsOn(value => !value)}><MessageOutlined /></button>}
-          <span className="wa-composer__tip">Enter 发送</span>
+          <span className="wa-composer__tip">Enter 发送 · Shift+Enter 换行</span>
         </div>
         <div className="wa-composer__row">
-          <input ref={input} aria-label="输入想了解的问题" value={question} maxLength={1000}
+          <Input.TextArea ref={input} aria-label="输入想了解的问题" value={question} maxLength={1000}
+            autoSize={{minRows: 1, maxRows: 5}}
             placeholder="输入你想了解的问题…" onChange={event => setQuestion(event.target.value)}
             onKeyDown={event => {
-              if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+              if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) {
                 event.preventDefault()
                 send(question)
               }

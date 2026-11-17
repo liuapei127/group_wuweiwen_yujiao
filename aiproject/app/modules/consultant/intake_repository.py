@@ -8,7 +8,8 @@ from .models import CrmLead, VisitorCall, VisitorIntake
 
 def pending(db: Session, after_id: int, limit: int):
     query = (
-        select(VisitorAccount.id.label("visitor_id"), VisitorAccount.created_at.label("registered_at"))
+        select(VisitorAccount.id.label("visitor_id"), VisitorAccount.nickname,
+               VisitorAccount.created_at.label("registered_at"))
         .outerjoin(VisitorIntake, VisitorIntake.visitor_id == VisitorAccount.id)
         .where(VisitorIntake.visitor_id.is_(None), VisitorAccount.id > after_id)
         .order_by(VisitorAccount.id)

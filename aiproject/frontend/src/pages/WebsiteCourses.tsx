@@ -8,7 +8,7 @@ import {ActionModal, ErrorNotice, PageTitle, type ActionSpec, type Field} from '
 type Request = <T>(path: string) => Promise<T>
 type Course = {
   id: number; project_name: string; category: string | null; description: string | null
-  target_audience: string | null; duration: string | null; price: string | null
+  target_audience: string | null; duration: string | null
 }
 type CoursePage = {items: Course[]; next_after_id: number | null}
 
@@ -22,6 +22,7 @@ export function WebsiteCourses({request}: {request: Request}) {
     })),
   })
   return <Space orientation="vertical" style={{width: '100%'}} size="middle">
+    <Typography.Text type="secondary">课程免费，项目费用在签约时按合同约定收取。</Typography.Text>
     <Input.Search aria-label="查询课程和项目" placeholder="按课程名称或类别查询" maxLength={64}
       allowClear onSearch={value => {setAfter(0); setKeyword(value.trim())}}/>
     {result.error && <Alert showIcon type="error" title={result.error.message}/>}
@@ -33,7 +34,6 @@ export function WebsiteCourses({request}: {request: Request}) {
         {course.description && <Typography.Paragraph style={{whiteSpace: 'pre-wrap'}}>{course.description}</Typography.Paragraph>}
         {course.target_audience && <Typography.Paragraph>适合人群：{course.target_audience}</Typography.Paragraph>}
         {course.duration && <Typography.Paragraph>课程周期：{course.duration}</Typography.Paragraph>}
-        {course.price !== null && <Typography.Text>价格：¥{course.price}</Typography.Text>}
       </Card>)}
     </div>
     <Space>
@@ -50,7 +50,7 @@ const staffEndpoint = '/api/v1/enterprise/courses'
 const courseFields: Field[] = [
   {name: 'project_name', label: '课程或项目名称', required: true},
   {name: 'category', label: '类别'}, {name: 'target_audience', label: '适合人群'},
-  {name: 'duration', label: '周期'}, {name: 'price', label: '价格（元）', kind: 'number', precision: 2},
+  {name: 'duration', label: '周期'},
   {name: 'description', label: '详情', kind: 'textarea'},
   {name: 'status', label: '发布状态', kind: 'select', required: true, initial: 0,
     options: [{value: 0, label: '下架'}, {value: 1, label: '上架'}]},
@@ -70,7 +70,7 @@ export function StaffCourses() {
       title: row ? '编辑课程' : '新增课程',
       path: row ? staffEndpoint + '/' + row.id : staffEndpoint,
       method: row ? 'PUT' : 'POST', fields: courseFields,
-      initial: row ? {...row, price: row.price === null ? null : Number(row.price)} : undefined,
+      initial: row,
     })
   }
   return <>
@@ -83,7 +83,7 @@ export function StaffCourses() {
       <Table<StaffCourse> rowKey="id" loading={records.isFetching} dataSource={records.data?.items || []}
         pagination={false} scroll={{x: 620}} style={{marginTop: 16}} columns={[
           {title: '课程或项目', dataIndex: 'project_name'}, {title: '类别', dataIndex: 'category'},
-          {title: '周期', dataIndex: 'duration'}, {title: '价格（元）', dataIndex: 'price'},
+          {title: '周期', dataIndex: 'duration'},
           {title: '状态', render: (_, row) => <Tag>{row.status === 1 ? '已上架' : '下架'}</Tag>},
           {title: '操作', render: (_, row) => <Button type="link" onClick={() => edit(row)}>编辑</Button>},
         ]}/>

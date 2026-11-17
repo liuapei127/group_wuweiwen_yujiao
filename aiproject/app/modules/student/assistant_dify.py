@@ -11,8 +11,11 @@ from secrets import token_hex
 
 import httpx
 
+from app.ai.dify_stream import chat_messages
 from app.core.config import get_settings
 from app.core.exceptions import BusinessError
+
+from .assistant_speak import model_text, visible_sentences
 
 
 async def ask_dify(
@@ -21,6 +24,7 @@ async def ask_dify(
     access_token: str,
     history: list[dict] | None = None,
     user_key: str,
+    on_text=None,
 ) -> dict:
     settings = get_settings()
     key = settings.stu_dify_api_key.get_secret_value().strip()
@@ -37,23 +41,31 @@ async def ask_dify(
         "response_mode": "blocking",
     }
     try:
-        async with httpx.AsyncClient(
-            trust_env=False, timeout=httpx.Timeout(settings.dify_timeout_seconds, connect=5)
-        ) as client:
-            response = await client.post(
-                settings.dify_api_url.rstrip("/") + "/chat-messages",
-                headers={"Authorization": "Bearer " + key},
-                json=payload,
+        if on_text:
+            result = await chat_messages(
+                settings.dify_api_url, key, settings.dify_timeout_seconds, payload,
+                lambda text: _visible_answer(text, on_text),
             )
-            response.raise_for_status()
-            result = response.json()
+        else:
+            async with httpx.AsyncClient(
+                trust_env=False, timeout=httpx.Timeout(settings.dify_timeout_seconds, connect=5)
+            ) as client:
+                response = await client.post(
+                    settings.dify_api_url.rstrip("/") + "/chat-messages",
+                    headers={"Authorization": "Bearer " + key},
+                    json=payload,
+                )
+                response.raise_for_status()
+                result = response.json()
     except (httpx.HTTPError, ValueError) as exc:
         raise BusinessError(502, "学生助手暂不可用，请稍后重试") from exc
 
     answer = result.get("answer") if isinstance(result, dict) else None
     if not isinstance(answer, str) or not answer.strip():
         raise BusinessError(502, "学生助手未返回有效答复")
-    text = answer.strip()
+    text = model_text(answer)
+    if not text:
+        raise BusinessError(502, "学生助手未返回有效答复")
     if _looks_like_flow_failure(text):
         raise BusinessError(502, "学生助手暂不可用，请稍后重试")
     return {
@@ -78,3 +90,10 @@ def _looks_like_flow_failure(text: str) -> bool:
     """Dify returns its own runtime errors as the answer; treat them as outages."""
     head = (text or "")[:120]
     return any(marker in head for marker in _FLOW_FAILURE_MARKERS)
+
+
+def _visible_answer(text, on_text):
+    if not _looks_like_flow_failure(text):
+        visible = visible_sentences(text)
+        if visible:
+            on_text(visible)

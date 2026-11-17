@@ -1,4 +1,5 @@
 import {useState} from 'react'
+import {useSearchParams} from 'react-router-dom'
 import {Button, Card, Select, Space, Table, Tag} from 'antd'
 import {useQuery} from '@tanstack/react-query'
 import {useAuth} from '../auth'
@@ -48,13 +49,14 @@ export function ProgressPager({before, rows, move}: {before?: number; rows?: Pro
 
 export function ApplicationProgress() {
   const {user, can} = useAuth()
+  const [params] = useSearchParams()
   const [selected, select] = useState<number>()
   const [before, move] = useState<number>()
   const [action, setAction] = useState<ActionSpec | null>(null)
   const students = useQuery({
     queryKey: [user?.id, 'application-students'], queryFn: () => api<Student[]>(endpoint + '/students'),
   })
-  const studentId = selected ?? students.data?.[0]?.id
+  const studentId = selected ?? (Number(params.get('student_id')) || students.data?.[0]?.id)
   const records = useQuery({
     queryKey: [user?.id, 'application-records', studentId, before], enabled: studentId !== undefined,
     queryFn: () => api<Progress[]>(endpoint + '/' + studentId + query({before_id: before, limit: pageSize})),

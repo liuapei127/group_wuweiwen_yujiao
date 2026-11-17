@@ -1,3 +1,4 @@
+import {readChatStream} from './chat-stream'
 import {prepareSessionWorker} from './auth-session-worker'
 
 export type Row = Record<string, any>
@@ -57,7 +58,7 @@ export function query(params: Row) {
   Object.entries(params).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') q.set(k, String(v)) })
   return q.size ? '?' + q.toString() : ''
 }
-export async function api<T = any>(path: string, options: {method?: string; body?: unknown; timeout?: number; renewed?: boolean} = {}): Promise<T> {
+export async function api<T = any>(path: string, options: {method?: string; body?: unknown; timeout?: number; renewed?: boolean; onText?: (text: string) => void} = {}): Promise<T> {
   if ((options.method || 'GET') === 'POST' && (path === '/api/v1/auth/login' || path === '/api/v1/auth/logout')) {
     await prepareSessionWorker()
   }
@@ -65,11 +66,14 @@ export async function api<T = any>(path: string, options: {method?: string; body
   let response: Response
   try {
     response = await fetch(path, {
-      method: options.method || 'GET', headers: {...(options.body instanceof FormData ? {} : {'Content-Type': 'application/json'}), ...(token ? {Authorization: 'Bearer ' + token} : {}),
+      method: options.method || 'GET', headers: {...(options.onText ? {Accept: 'text/event-stream'} : {}), ...(options.body instanceof FormData ? {} : {'Content-Type': 'application/json'}), ...(token ? {Authorization: 'Bearer ' + token} : {}),
         ...(path.endsWith('/logout') && csrf() ? {'X-CSRF-Token': csrf()!} : {})},
       body: options.body === undefined || options.body instanceof FormData ? options.body : JSON.stringify(options.body), signal: AbortSignal.timeout(options.timeout || 30000),
     })
   } catch { throw new ApiError('连接失败或等待超时，请检查服务。写入操作请先查询核对后再重试。', 0) }
+  if (response.ok && options.onText && response.headers.get('content-type')?.includes('text/event-stream')) {
+    return readChatStream<T>(response, options.onText, (message, status) => new ApiError(message, status))
+  }
   const result = await response.json().catch(() => ({}))
   if (response.status === 401 && !path.endsWith('/login') && !path.endsWith('/logout') && !options.renewed) {
     if ((getToken() && getToken() !== token) || await refreshSession()) {
@@ -105,7 +109,9 @@ export async function download(path: string, filename: string, renewed = false):
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = filename
+  const suppliedName = response.headers.get('content-disposition')?.match(/filename\*=UTF-8''([^;]+)/i)?.[1]
+  try {link.download = suppliedName ? decodeURIComponent(suppliedName) : filename}
+  catch {link.download = filename}
   document.body.append(link)
   link.click()
   link.remove()

@@ -10,7 +10,7 @@ from app.core.security import EmployeePrincipal, require_employee
 from app.modules.visitor.router import Principal as VisitorPrincipal
 
 from . import service
-from .schemas import EventCreate, EventDetails, EventPublication
+from .schemas import EventCreate, EventDetails, EventPublication, VisitorReservationDetails
 
 router = APIRouter(prefix="/api/v1/enterprise/events", tags=["活动管理"])
 Database = Annotated[Session, Depends(get_db)]
@@ -79,8 +79,8 @@ def my_reservations(
 
 
 @visitor_router.post("/{event_id}/reservation")
-def reserve(event_id: int, db: Database, principal: VisitorPrincipal):
-    return success(service.reserve(db, event_id, customer_id=principal.visitor_id))
+def reserve(event_id: int, db: Database, principal: VisitorPrincipal, payload: VisitorReservationDetails | None = None):
+    return success(service.reserve(db, event_id, customer_id=principal.visitor_id, name=payload.name if payload else None))
 
 
 @visitor_router.delete("/{event_id}/reservation")

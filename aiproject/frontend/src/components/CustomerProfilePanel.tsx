@@ -19,6 +19,7 @@ export type CustomerProfile = CustomerFields & {version: number; website_linked?
 type Field = keyof CustomerFields
 type Diff = {field: Field; current: string | number | null; proposed: string | number}
 type ImportPreview = {preview_id: string; version: number; file_name: string; matches: string[]; fields: Diff[]}
+type ImportInput = File | {source_id: number; file_name: string | null}
 type Draft = {profile: CustomerProfile; changes: Partial<CustomerFields>}
 
 export const customerLabels: Record<Field, string> = {
@@ -77,6 +78,87 @@ export function useCustomerEditor(profile: CustomerProfile | undefined, request:
   }
 }
 
+export function useCustomerImport(request: Request, endpoint: string, onSaved: () => void) {
+  const [source, setSource] = useState<ImportInput>()
+  const [selected, setSelected] = useState<Field[]>([])
+  const {message} = App.useApp()
+  const preview = useMutation({
+    mutationFn: (input: ImportInput) => {
+      if (!(input instanceof File)) {
+        return request<ImportPreview>(endpoint + '/materials/' + input.source_id + '/imports/preview', 'POST')
+      }
+      if (input.size > 10 * 1024 * 1024) throw new Error('文件不能超过 10 MB')
+      const body = new FormData()
+      body.append('file', input)
+      return request<ImportPreview>(endpoint + '/imports/preview', 'POST', body)
+    },
+    onSuccess: data => setSelected(data.fields.map(row => row.field)),
+  })
+  const confirm = useMutation({
+    mutationFn: (data: ImportPreview) => request<CustomerProfile>(endpoint + '/imports/confirm', 'POST', {
+      preview_id: data.preview_id, expected_version: data.version, fields: selected,
+      ...(source && !(source instanceof File) ? {source_id: source.source_id} : {}),
+    }),
+    onSuccess: () => {
+      setSource(undefined)
+      preview.reset()
+      onSaved()
+      void message.success('资料已导入')
+    },
+  })
+  const working = preview.isPending || confirm.isPending
+  return {
+    source, selected, setSelected, preview, confirm, working,
+    begin(input: ImportInput) {
+      if (working) return
+      confirm.reset()
+      preview.reset()
+      setSelected([])
+      setSource(input)
+      preview.mutate(input)
+    },
+    close() {
+      if (working) return
+      setSource(undefined)
+      preview.reset()
+      confirm.reset()
+    },
+  }
+}
+
+export function CustomerImportDialog({importer, onChooseFile}: {
+  importer: ReturnType<typeof useCustomerImport>; onChooseFile?: () => void
+}) {
+  const {source, selected, setSelected, preview, confirm, working} = importer
+  const fileName = source instanceof File ? source.name : source?.file_name || '文字资料'
+  const data = preview.data
+  return <Modal title={data ? '确认导入客户资料' : source instanceof File ? '上传资料' : '识别客户资料'} open={!!source}
+    onCancel={importer.close} closable={!working} keyboard={!working} mask={{closable: !working}}
+    width={690} footer={<Space wrap>
+      <Button disabled={working} onClick={importer.close}>取消</Button>
+      {data ? <Button type="primary" disabled={!selected.length} loading={confirm.isPending}
+        onClick={() => confirm.mutate(data)}>确认保存</Button>
+        : onChooseFile && <Button type="primary" disabled={working} onClick={onChooseFile}>重新选择文件</Button>}
+    </Space>}>
+    <Space orientation="vertical" size="middle" style={{width: '100%'}}>
+      <div className="customer-document"><strong>{fileName}</strong></div>
+      {preview.isPending && <Alert title="正在识别资料并核对归属" type="info" showIcon/>}
+      <ErrorNotice error={preview.error || confirm.error}/>
+      {data && <>
+        <Space wrap>{data.matches.map(name => <Tag key={name} color="success">{name}一致</Tag>)}</Space>
+        <Table<Diff> rowKey="field" size="small" pagination={false} dataSource={data.fields} columns={[
+          {title: '选择', width: 58, render: (_, row) => <Checkbox aria-label={'更新' + customerLabels[row.field]}
+            checked={selected.includes(row.field)} disabled={confirm.isPending} onChange={event => setSelected(current =>
+              event.target.checked ? [...current, row.field] : current.filter(field => field !== row.field))}/>},
+          {title: '字段', render: (_, row) => customerLabels[row.field]},
+          {title: '当前资料', render: (_, row) => customerValue(row.field, row.current)},
+          {title: '文件提取值', render: (_, row) => customerValue(row.field, row.proposed)},
+        ]}/>
+      </>}
+    </Space>
+  </Modal>
+}
+
 export function CustomerProfilePanel({profile, request, endpoint, importEndpoint = endpoint, editor, canWrite, onSaved}: {
   profile: CustomerProfile
   request: Request
@@ -87,35 +169,12 @@ export function CustomerProfilePanel({profile, request, endpoint, importEndpoint
   onSaved: () => void
 }) {
   const filePicker = useRef<HTMLInputElement>(null)
-  const [fileName, setFileName] = useState<string>()
-  const [selected, setSelected] = useState<Field[]>([])
-  const {message} = App.useApp()
-  const preview = useMutation({
-    mutationFn: (file: File) => {
-      if (file.size > 10 * 1024 * 1024) throw new Error('文件不能超过 10 MB')
-      const body = new FormData()
-      body.append('file', file)
-      return request<ImportPreview>(importEndpoint + '/imports/preview', 'POST', body)
-    },
-    onSuccess: data => setSelected(data.fields.map(row => row.field)),
-  })
-  const confirm = useMutation({
-    mutationFn: (data: ImportPreview) => request<CustomerProfile>(importEndpoint + '/imports/confirm', 'POST', {
-      preview_id: data.preview_id, expected_version: data.version, fields: selected,
-    }),
-    onSuccess: () => {
-      setFileName(undefined)
-      preview.reset()
-      onSaved()
-      void message.success('资料已导入')
-    },
-  })
+  const importer = useCustomerImport(request, importEndpoint, onSaved)
 
   const {draft, save} = editor
   const fields = fieldNames.filter(name => name !== 'nickname' || profile.website_linked !== false)
-  const working = preview.isPending || confirm.isPending
+  const working = importer.working
   const pickFile = () => filePicker.current?.click()
-  const data = preview.data
 
   return <Card title="客户资料" extra={canWrite && !draft && <Space wrap>
     <Button disabled={working} onClick={editor.edit}>手动编辑</Button>
@@ -126,11 +185,7 @@ export function CustomerProfilePanel({profile, request, endpoint, importEndpoint
         const file = event.currentTarget.files?.[0]
         event.currentTarget.value = ''
         if (!file || working || draft) return
-        confirm.reset()
-        preview.reset()
-        setSelected([])
-        setFileName(file.name)
-        preview.mutate(file)
+        importer.begin(file)
       }}/>
     {draft ? <>
       <ErrorNotice error={save.error}/>
@@ -155,31 +210,6 @@ export function CustomerProfilePanel({profile, request, endpoint, importEndpoint
     </> : <Descriptions column={{xs: 1, sm: 2, lg: 2}} items={fields.map(field => ({
       key: field, label: customerLabels[field], children: customerValue(field, profile[field]),
     }))}/>}
-    <Modal title={data ? '确认导入客户资料' : '上传资料'} open={!!fileName}
-      onCancel={() => {if (!working) {setFileName(undefined); preview.reset(); confirm.reset()}}}
-      closable={!working} keyboard={!working} mask={{closable: !working}}
-      width={690} footer={<Space wrap>
-        <Button disabled={working} onClick={() => {setFileName(undefined); preview.reset(); confirm.reset()}}>取消</Button>
-        {data ? <Button type="primary" disabled={!selected.length} loading={confirm.isPending}
-          onClick={() => confirm.mutate(data)}>确认保存</Button>
-          : <Button type="primary" disabled={working} onClick={pickFile}>重新选择文件</Button>}
-      </Space>}>
-      <Space orientation="vertical" size="middle" style={{width: '100%'}}>
-        <div className="customer-document"><strong>{fileName}</strong></div>
-        {preview.isPending && <Alert title="正在核对资料归属" type="info" showIcon/>}
-        <ErrorNotice error={preview.error || confirm.error}/>
-        {data && <>
-          <Space wrap>{data.matches.map(name => <Tag key={name} color="success">{name}一致</Tag>)}</Space>
-          <Table<Diff> rowKey="field" size="small" pagination={false} dataSource={data.fields} columns={[
-            {title: '选择', width: 58, render: (_, row) => <Checkbox aria-label={'更新' + customerLabels[row.field]}
-              checked={selected.includes(row.field)} disabled={confirm.isPending} onChange={event => setSelected(current =>
-                event.target.checked ? [...current, row.field] : current.filter(field => field !== row.field))}/>},
-            {title: '字段', render: (_, row) => customerLabels[row.field]},
-            {title: '当前资料', render: (_, row) => customerValue(row.field, row.current)},
-            {title: '文件提取值', render: (_, row) => customerValue(row.field, row.proposed)},
-          ]}/>
-        </>}
-      </Space>
-    </Modal>
+    <CustomerImportDialog importer={importer} onChooseFile={pickFile}/>
   </Card>
 }

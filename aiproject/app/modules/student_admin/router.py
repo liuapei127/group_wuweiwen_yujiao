@@ -10,8 +10,14 @@ from app.core.responses import http_fail as fail, success
 from app.modules.consultant.errors import ConflictError
 from app.modules.student_admin.schemas import LeaveApprove, LeaveOut
 from app.modules.student_admin.service import StudentAdminServiceLayer
+from .attachments import teacher_download, teacher_leave
 
 router = APIRouter(prefix="/api/v1/student-admin", tags=["企业助手-学生行政（共用表）"])
+
+
+@router.get("/leaves/{leave_id}/attachment")
+def attachment(leave_id: int, db: Session = Depends(get_db), principal: EmployeePrincipal = Depends(require_employee)):
+    return teacher_download(db, principal, leave_id)
 
 
 @router.get("/leaves/pending", summary="待审批请假 ENT-09")
@@ -33,6 +39,11 @@ def leave_candidates(
     principal: EmployeePrincipal = Depends(require_employee),
 ):
     return success(StudentAdminServiceLayer(db).pending_leave_candidates(principal.employee_id, student_name))
+
+
+@router.get("/leaves/{leave_id}")
+def leave_record(leave_id: int, db: Session = Depends(get_db), principal: EmployeePrincipal = Depends(require_employee)):
+    return success(LeaveOut.model_validate(teacher_leave(db, principal, leave_id)))
 
 
 @router.post("/leaves/{leave_id}/approve", summary="请假审批（写操作）ENT-09/12")

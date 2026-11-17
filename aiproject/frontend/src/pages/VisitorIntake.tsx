@@ -4,9 +4,10 @@ import {Alert, App, Button, Card, Descriptions, Drawer, Empty, Form, Input, Moda
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {useAuth} from '../auth'
 import {ErrorNotice, FormFields, PageTitle, type Field} from '../components/shared'
+import {CustomerImportDialog, useCustomerImport} from '../components/CustomerProfilePanel'
 import {api, download, query} from '../lib/api'
 
-type Visitor = {visitor_id: number; registered_at: string}
+type Visitor = {visitor_id: number; registered_at: string; nickname?: string | null}
 type AssignedVisitor = Visitor & {
   name: string; contact: string; claimed_at: string; last_contact_at: string | null; manual_source_id: number | null; crm_lead_id?: number | null
 }
@@ -24,7 +25,7 @@ export type SourceDetails = {
 const endpoint = '/api/v1/consultant/visitor-intake'
 export const pageSize = 20
 const fieldLabels: Record<string, string> = {project: '意向项目', age: '年龄', education: '学历类别', education_stage: '在读或毕业状态'}
-const materialStatuses: Record<string, string> = {received: '已收到', needs_information: '待补充', reviewed: '已研判'}
+const materialStatuses: Record<string, string> = {received: '已收到', imported: '已导入', needs_information: '待补充', reviewed: '已研判'}
 export const screeningStatuses: Record<string, string> = {
   needs_information: '待补充', needs_review: '待人工复核', potential_match: '初筛符合', not_matched: '初筛不符合',
 }
@@ -55,7 +56,6 @@ export function beijingTime(value: string) {
 export function VisitorIntake() {
   const {user, can} = useAuth()
   const navigate = useNavigate()
-  const {message} = App.useApp()
   const cache = useQueryClient()
   const [params, setParams] = useSearchParams()
   const requested = Number(params.get('visitor'))
@@ -93,7 +93,6 @@ export function VisitorIntake() {
       setTab('assigned')
       void cache.invalidateQueries({queryKey: scope})
       void cache.invalidateQueries({queryKey: [user?.id, 'crm-customers']})
-      if (!visitor.crm_lead_id) void message.info('已跟进，等待管理员关联客户档案')
       if (can('crm:read')) {
         void navigate(visitor.crm_lead_id ? '/customers/' + visitor.crm_lead_id : '/customers')
       } else {
@@ -118,6 +117,7 @@ export function VisitorIntake() {
           <Table rowKey="visitor_id" dataSource={pending.data || []} loading={pending.isFetching}
             pagination={false} locale={{emptyText: '暂无待认领游客'}} columns={[
               {title: '游客编号', dataIndex: 'visitor_id'},
+              {title: '昵称', dataIndex: 'nickname', render: value => value || '未设置'},
               {title: '注册时间（北京时间）', dataIndex: 'registered_at', render: beijingTime},
               ...(access ? [{title: '操作', render: (_: unknown, row: Visitor) =>
                 <Button type="link" onClick={() => openClaim(row)}>跟进该游客</Button>}] : []),
@@ -126,8 +126,9 @@ export function VisitorIntake() {
         {key: 'assigned', label: '我已认领', children: <>
           <ErrorNotice error={assigned.error}/>
           <Table rowKey="visitor_id" dataSource={assigned.data || []} loading={assigned.isFetching}
-            pagination={false} scroll={{x: 630}} locale={{emptyText: '暂无已认领游客'}} columns={[
+            pagination={false} scroll={{x: 760}} locale={{emptyText: '暂无已认领游客'}} columns={[
               {title: '游客编号', dataIndex: 'visitor_id'},
+              {title: '昵称', dataIndex: 'nickname', render: value => value || '未设置'},
               {title: '姓名', dataIndex: 'name'},
               {title: '联系方式', dataIndex: 'contact'},
               {title: '最近联系（北京时间）', dataIndex: 'last_contact_at',
@@ -160,6 +161,79 @@ export function VisitorIntake() {
   </>
 }
 
+function useVisitorMaterials(visitorId: number, scope: (string | number | undefined)[]) {
+  const [before, setBefore] = useState<number>()
+  const path = endpoint + '/' + visitorId + '/materials'
+  const materials = useQuery({
+    queryKey: [...scope, visitorId, 'materials', before],
+    queryFn: () => api<Material[]>(path + query({before_id: before, limit: pageSize})),
+  })
+  return {path, materials, before, setBefore}
+}
+
+function VisitorMaterialsCard({history, onView, viewLabel, viewHref, onImport, importing}: {
+  history: ReturnType<typeof useVisitorMaterials>; onView: (row: Material) => void; viewLabel: string; viewHref?: string
+  onImport?: (row: Material) => void; importing?: boolean
+}) {
+  const {path, materials, before, setBefore} = history
+  const {message} = App.useApp()
+  const attachment = useMutation({
+    mutationFn: (material: Material) =>
+      download(path + '/' + material.source_id + '/attachment', material.file_name || '材料附件'),
+    onError: error => {void message.error(error.message)},
+  })
+  return <Card title="游客提交的材料">
+    <ErrorNotice error={materials.error}/>
+    <Table<Material> size="small" rowKey="source_id" loading={materials.isFetching} pagination={false}
+      dataSource={materials.data || []} locale={{emptyText: '游客尚未提交材料'}} columns={[
+        {title: '材料', render: (_, row) => row.file_name || '文字资料'},
+        {title: '提交时间', dataIndex: 'submitted_at', render: value => value.slice(0, 16).replace('T', ' ')},
+        {title: '处理进度', dataIndex: 'status', render: value => <Tag>{materialStatuses[value]}</Tag>},
+        {title: '操作', render: (_, row) => <Space wrap>
+          <Button type="link" onClick={() => onView(row)} href={viewHref}>{viewLabel}</Button>
+          {onImport && <Button type="link" disabled={importing} onClick={() => onImport(row)}>识别并导入</Button>}
+          {row.file_name && <Button type="link" loading={attachment.isPending && attachment.variables?.source_id === row.source_id}
+            disabled={attachment.isPending} onClick={() => attachment.mutate(row)}>下载原件</Button>}
+        </Space>},
+      ]}/>
+    <HistoryPaging before={before} count={materials.data?.length}
+      reset={() => setBefore(undefined)} next={() => setBefore(materials.data?.at(-1)?.source_id)}/>
+  </Card>
+}
+
+export function CustomerVisitorMaterials({visitorId, userId, importEndpoint, onImported}: {
+  visitorId: number; userId?: number; importEndpoint: string; onImported: () => void
+}) {
+  const {can} = useAuth()
+  const cache = useQueryClient()
+  const scope = [userId, 'visitor-intake']
+  const history = useVisitorMaterials(visitorId, scope)
+  const importer = useCustomerImport(
+    (path, method, body) => api(path, {method, body}),
+    importEndpoint,
+    () => {void cache.invalidateQueries({queryKey: scope}); onImported()},
+  )
+  const [selected, setSelected] = useState<Material>()
+  const details = useQuery({
+    queryKey: [...scope, visitorId, 'details', selected?.source_id],
+    enabled: selected != null,
+    queryFn: () => api<SourceDetails>(history.path + '/' + selected?.source_id),
+  })
+  return <>
+    <VisitorMaterialsCard history={history} onView={setSelected} viewLabel="查看说明"
+      onImport={can('crm:write') ? importer.begin : undefined} importing={importer.working}/>
+    <CustomerImportDialog importer={importer}/>
+    <Modal title={selected?.file_name || '文字资料'} open={selected != null} footer={null}
+      onCancel={() => setSelected(undefined)}>
+      <ErrorNotice error={details.error}/>
+      {details.isLoading && <Typography.Text>正在读取资料…</Typography.Text>}
+      {details.data && <Typography.Paragraph style={{whiteSpace: 'pre-wrap', overflowWrap: 'anywhere'}}>
+        {details.data.raw_content || '未填写资料说明，可下载原件查看。'}
+      </Typography.Paragraph>}
+    </Modal>
+  </>
+}
+
 function IntakeDetail({visitor, canWrite, scope, onUpdate}: {
   visitor: AssignedVisitor; canWrite: boolean; scope: (string | number | undefined)[]
   onUpdate: (update: Partial<AssignedVisitor>) => void
@@ -169,7 +243,6 @@ function IntakeDetail({visitor, canWrite, scope, onUpdate}: {
   const {message} = App.useApp()
   const {can} = useAuth()
   const [beforeCall, setBeforeCall] = useState<number>()
-  const [beforeMaterial, setBeforeMaterial] = useState<number>()
   const [target, setTarget] = useState<number | 'manual'>('manual')
   const [callForm] = Form.useForm<{notes: string}>()
   const callIds = useRef(new Map<string, string>())
@@ -177,10 +250,8 @@ function IntakeDetail({visitor, canWrite, scope, onUpdate}: {
     queryKey: [...scope, visitor.visitor_id, 'calls', beforeCall],
     queryFn: () => api<Call[]>(base + '/calls' + query({before_id: beforeCall, limit: pageSize})),
   })
-  const materials = useQuery({
-    queryKey: [...scope, visitor.visitor_id, 'materials', beforeMaterial],
-    queryFn: () => api<Material[]>(base + '/materials' + query({before_id: beforeMaterial, limit: pageSize})),
-  })
+  const history = useVisitorMaterials(visitor.visitor_id, scope)
+  const {materials} = history
   const sourcePath = target === 'manual' ? base + '/screening' : base + '/materials/' + target
   const detailsKey = [...scope, visitor.visitor_id, 'details', target]
   const details = useQuery({
@@ -208,11 +279,6 @@ function IntakeDetail({visitor, canWrite, scope, onUpdate}: {
       void cache.invalidateQueries({queryKey: [...scope, 'assigned']})
       void message.success('通话记录已保存')
     },
-  })
-  const attachment = useMutation({
-    mutationFn: (material: Material) =>
-      download(base + '/materials/' + material.source_id + '/attachment', material.file_name || '材料附件'),
-    onError: error => {void message.error(error.message)},
   })
   const targetOptions = [
     {label: '顾问独立补录', value: 'manual' as const},
@@ -244,21 +310,8 @@ function IntakeDetail({visitor, canWrite, scope, onUpdate}: {
       <HistoryPaging before={beforeCall} count={calls.data?.length}
         reset={() => setBeforeCall(undefined)} next={() => setBeforeCall(calls.data?.at(-1)?.id)}/>
     </Card>
-    <Card title="游客提交的材料">
-      <ErrorNotice error={materials.error}/>
-      <Table size="small" rowKey="source_id" loading={materials.isFetching} pagination={false}
-        dataSource={materials.data || []} locale={{emptyText: '游客尚未提交材料'}} columns={[
-          {title: '材料', render: (_, row) => row.file_name || '文字资料'},
-          {title: '处理进度', dataIndex: 'status', render: value => <Tag>{materialStatuses[value]}</Tag>},
-          {title: '操作', render: (_, row) => <Space wrap>
-            <Button type="link" onClick={() => setTarget(row.source_id)} href="#intake-screening">查看与补录</Button>
-            {row.file_name && <Button type="link" loading={attachment.isPending && attachment.variables?.source_id === row.source_id}
-              disabled={attachment.isPending} onClick={() => attachment.mutate(row)}>下载原件</Button>}
-          </Space>},
-        ]}/>
-      <HistoryPaging before={beforeMaterial} count={materials.data?.length}
-        reset={() => setBeforeMaterial(undefined)} next={() => setBeforeMaterial(materials.data?.at(-1)?.source_id)}/>
-    </Card>
+    <VisitorMaterialsCard history={history} onView={row => setTarget(row.source_id)}
+      viewLabel="查看与补录" viewHref="#intake-screening"/>
     <Card title="资料补录与初筛" id="intake-screening">
       <Space orientation="vertical" size="middle" style={{width: '100%'}}>
         <label htmlFor="screening-source">补录对应资料</label>
@@ -286,7 +339,7 @@ function IntakeDetail({visitor, canWrite, scope, onUpdate}: {
         </>}
         {visitor.crm_lead_id && can('crm:read') &&
           <Link to={'/customers/' + visitor.crm_lead_id}>打开客户详情 · {visitor.crm_lead_id}</Link>}
-        {!visitor.crm_lead_id && <Alert showIcon type="info" title="尚未关联客户档案，请联系管理员"/>}
+        {!visitor.crm_lead_id && <Alert showIcon type="info" title="该历史记录尚未同步至客户管理"/>}
       </Space>
     </Card>
 

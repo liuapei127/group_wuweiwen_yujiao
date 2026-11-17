@@ -229,21 +229,9 @@ workflow:
         isInIteration: false
         isInLoop: false
         sourceType: llm
-        targetType: code
-      id: e-llm-clean
-      source: llm_reply
-      sourceHandle: source
-      target: clean_reply
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        isInLoop: false
-        sourceType: code
         targetType: answer
-      id: e-clean-answer
-      source: clean_reply
+      id: e-llm-answer
+      source: llm_reply
       sourceHandle: source
       target: answer_llm
       targetHandle: target
@@ -615,37 +603,7 @@ workflow:
       width: 244
       zIndex: 0
     - data:
-        code: |
-          import re
-
-          def main(text: str) -> dict:
-              value = text or ''
-              value = value.replace('<｜end▁of▁thinking｜>', '</think>')
-              value = re.sub(r'(?is)<think[^>]*>.*?</think>', '', value)
-              value = value.replace('<!--dify-deepseek-reasoning-->', '')
-              value = re.sub(r'(?is)</?think[^>]*>', '', value)
-              value = re.sub(r'\n{3,}', '\n\n', value)
-              return {'reply': value.strip()}
-        code_language: python3
-        desc: 去掉模型自带的思考段，只留对学生说的话。
-        outputs:
-          reply: {children: null, type: string}
-        selected: false
-        title: 去掉思考段
-        type: code
-        variables:
-        - value_selector: [llm_reply, text]
-          variable: text
-      height: 51
-      id: clean_reply
-      position: {x: 3300, y: -120}
-      positionAbsolute: {x: 3300, y: -120}
-      selected: false
-      type: custom
-      width: 244
-      zIndex: 0
-    - data:
-        answer: '{{#clean_reply.reply#}}'
+        answer: '{{#llm_reply.text#}}'
         selected: false
         title: 模型回复
         type: answer

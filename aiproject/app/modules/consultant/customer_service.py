@@ -13,26 +13,25 @@ from app.core.security.authorization import require_permission
 from app.core.security.credentials import utc_now
 from app.modules.auth.repository import AuthRepository
 from app.modules.profile.customer_import import (
-    EDUCATION_LABELS, PROJECT_LABELS, STAGE_LABELS, normalized_choice, normalized_name, read_import,
+    EDUCATION_LABELS, PROJECT_LABELS, STAGE_LABELS, normalized_choice, normalized_name, normalized_phone, read_import,
 )
+from app.modules.profile import repository as material_repository
 from app.modules.profile.dify_workflow import review_text
 from app.modules.profile.models import CustomerProfile, CustomerSource, ParseStatus, SourceType, VisitorMaterial
 from app.modules.profile.schemas import ScreeningInput, ScreeningStatus
 from app.modules.profile.screening import screen_profile
 from app.modules.profile.service import MAX_UPLOAD_BYTES, _RESULTS
 from app.modules.visitor import repository as website_repo
-from app.modules.visitor.models import VisitorAccount
+from app.modules.visitor.models import MISSING_NAME, VisitorAccount
 from app.shared.utils.time_util import now_naive
 
-from . import customer_repository as repository, intake_repository
+from . import customer_repository as repository
 from .customer_models import CustomerIdentity, CustomerImportPreview
-from .customer_schemas import ImportConfirm, SharedFields, VerifiedIdentity, WebsiteCustomerBinding
+from .customer_schemas import ImportConfirm, SharedFields, VerifiedIdentity
 from .models import CrmLead
 from .repository import ConsultantRepository
-from .schemas import LeadCreate
 
 
-MISSING_NAME = "未填写姓名"
 _ACCOUNT_FIELDS = frozenset({"customer_name", "nickname", "contact_info"})
 _SCREEN_FIELDS = frozenset({"age", "education_level", "education_stage", "intended_project", "intended_major"})
 
@@ -43,71 +42,14 @@ def list_managed_customers(
 ) -> dict:
     require_permission(principal, "crm:read")
     return repository.list_customers(
-        db, principal.employee_id, include_claimed="visitor-intake:read" in principal.permissions,
+        db, principal.employee_id,
         missing_name=MISSING_NAME, keyword=keyword, status=status, page=page, page_size=page_size,
     )
 
 
 def _admin(principal: EmployeePrincipal) -> None:
     if principal.role_code != "admin":
-        raise BusinessError(403, "只有系统管理员可以建立或关联客户档案")
-
-
-def bind_website_customer(db: Session, visitor_id: int, payload: WebsiteCustomerBinding, principal: EmployeePrincipal):
-    _admin(principal)
-    require_permission(principal, "website-accounts:manage")
-    try:
-        account = intake_repository.lock_visitor(db, visitor_id)
-        if account is None:
-            raise BusinessError(404, "官网账号不存在")
-        case = intake_repository.intake(db, visitor_id, lock=True)
-        if case is None:
-            raise BusinessError(409, "请先由顾问跟进该游客")
-        if case.crm_lead_id is not None:
-            if payload.lead_id and payload.lead_id != case.crm_lead_id:
-                raise BusinessError(409, "该官网账号已有客户档案")
-            return {"lead_id": case.crm_lead_id}
-        auth = AuthRepository(db)
-        advisor = auth.account(user_id=case.advisor_id)
-        if (advisor is None or advisor["user_type"] not in ("employee", "admin") or advisor["status"] != "normal"
-                or advisor["role_status"] != 1 or not {"crm:read", "crm:write"} <= auth.permissions(advisor["role_id"])):
-            raise BusinessError(409, "当前顾问账号或客户管理权限不可用")
-        crm = ConsultantRepository(db)
-        if payload.create:
-            lead = crm.create_lead(LeadCreate(
-                customer_name=account.name or MISSING_NAME, contact_info=account.contact,
-                source_channel="website", owner_employee_id=case.advisor_id,
-            ), commit=False)
-            lead.status = "contacting"
-        else:
-            lead = crm.lock_lead(payload.lead_id)
-            if lead is None or lead.owner_employee_id != case.advisor_id:
-                raise BusinessError(404, "当前顾问名下没有这份客户档案")
-            if repository.case_for_lead(db, lead.id) is not None:
-                raise BusinessError(409, "该客户档案已关联其他官网账号")
-            existing_name = "" if lead.customer_name == MISSING_NAME else lead.customer_name
-            account_name = "" if account.name == MISSING_NAME else account.name
-            if (existing_name and account_name and normalized_name(existing_name) != normalized_name(account_name)
-                    or lead.contact_info and account.contact and lead.contact_info != account.contact):
-                raise BusinessError(409, "已有档案与官网资料不一致，请先核对姓名和联系方式")
-            lead.customer_name = account.name = existing_name or account_name or MISSING_NAME
-            lead.contact_info = account.contact = lead.contact_info or account.contact
-            lead.profile_version += 1
-        case.crm_lead_id = lead.id
-        from .intake_service import _sync_call
-
-        for call in intake_repository.call_history(db, visitor_id):
-            _sync_call(db, lead, call)
-        auth.audit(principal.employee_id, "website_customer_bind", lead.id, {"visitor_id": visitor_id})
-        result = {"lead_id": lead.id}
-        db.commit()
-        return result
-    except IntegrityError:
-        db.rollback()
-        raise BusinessError(409, "该客户档案已关联其他官网账号") from None
-    except Exception:
-        db.rollback()
-        raise
+        raise BusinessError(403, "只有系统管理员可以核验客户身份")
 
 
 def _read_website_link(db, visitor_id, *, lock=False):
@@ -143,7 +85,7 @@ def _public_link(db, visitor, *, write=False):
     if write and website_repo.session_visitor(db, visitor.digest, utc_now(), lock=True) != account.id:
         raise BusinessError(401, "请重新登录官网")
     if lead is None:
-        raise BusinessError(409, "尚未关联客户档案")
+        raise BusinessError(409, "当前账号还没有客户记录")
     return lead, account
 
 
@@ -226,12 +168,23 @@ def sync_existing_website_profile(db, account, payload):
     lead = repository.lead_for_visitor(db, account.id, lock=True)
     if lead is not None:
         if payload.expected_version is None:
-            raise BusinessError(409, "资料已关联客户档案，请刷新后再保存")
+            raise BusinessError(409, "客户资料已更新，请刷新后再保存")
         _version(lead, payload.expected_version)
         _apply(lead, account, {
             "customer_name": payload.name, "nickname": payload.nickname, "contact_info": payload.contact,
         })
     return lead is not None
+
+
+def sync_website_booking_profile(db: Session, account: VisitorAccount, name: str | None, contact: str) -> bool:
+    lead = repository.lead_for_visitor(db, account.id, lock=True)
+    if lead is None:
+        return False
+    fields = {"contact_info": contact}
+    if name is not None:
+        fields["customer_name"] = name
+    _apply(lead, account, fields)
+    return True
 
 
 def _screening_input(fields):
@@ -254,6 +207,7 @@ def staff_profile(db, lead_id, staff):
     last = repository.newest_screening(db, lead.id)
     return {
         **fields, "website_linked": account is not None,
+        "visitor_id": account.id if account is not None and "visitor-intake:read" in staff.permissions else None,
         "readiness": readiness(fields),
         "screening": _screening_response(last, lead.profile_version) if last else None,
     }
@@ -310,10 +264,20 @@ def save_identity(db: Session, lead_id: int, payload: VerifiedIdentity, staff: E
 
 def _preview(db, lead, account, actor, file_name, content, extracted):
     text, name, mobile, proposed = extracted
-    identity = repository.identity_by_phone(db, mobile)
-    if identity is None or identity.lead_id != lead.id or identity.verified_name != name:
-        raise BusinessError(422, "无法确认资料归属，姓名和本人手机号需同时与当前客户的核验记录一致")
     current = _profile(lead, account)
+    identity = db.get(CustomerIdentity, lead.id)
+    phone_owner = repository.identity_by_phone(db, mobile)
+    if phone_owner is not None and phone_owner.lead_id != lead.id:
+        raise BusinessError(422, "文件中的手机号已核验为其他客户，请核对资料归属")
+    if identity is not None:
+        matches = identity.verified_name == name and identity.verified_mobile == mobile
+    else:
+        phones = {normalized_phone(current["contact_info"] or "")}
+        if account is not None:
+            phones.add(normalized_phone(account.username))
+        matches = normalized_name(current["customer_name"]) == name and mobile in phones
+    if not matches:
+        raise BusinessError(422, "无法确认资料归属，请核对文件中的姓名和本人手机号是否与当前客户一致")
     proposed = {k: v for k, v in proposed.items() if current[k] != v and (k != "nickname" or account)}
     if not proposed:
         raise BusinessError(422, "文件中没有可补充的资料字段")
@@ -348,6 +312,31 @@ def preview_staff(db, lead_id, staff, filename, content):
     return _preview(db, *_staff_link(db, lead_id, staff, write=True), ("employee", staff.employee_id), file_name, content, extracted)
 
 
+def _material_for_import(db, lead, account, source_id):
+    source = material_repository.visitor_source(db, account.id, source_id, lock=True) if account else None
+    if source is None or source.lead_id not in (None, lead.id):
+        raise BusinessError(404, "资料不存在")
+    content = material_repository.visitor_attachment(db, account.id, source_id)
+    if content is None:
+        if source.file_name:
+            raise BusinessError(404, "附件不存在")
+        content = (source.raw_content or "").encode("utf-8")
+    return source, source.file_name or "文字资料.txt", content
+
+
+def preview_staff_material(db, lead_id, source_id, staff):
+    require_permission(staff, "visitor-intake:read")
+    lead, account = _staff_link(db, lead_id, staff, write=True)
+    _, file_name, content = _material_for_import(db, lead, account, source_id)
+    db.rollback()
+    _, extracted = _extract_upload(file_name, content)
+    lead, account = _staff_link(db, lead_id, staff, write=True)
+    _, latest_name, latest_content = _material_for_import(db, lead, account, source_id)
+    if (latest_name, latest_content) != (file_name, content):
+        raise BusinessError(409, "材料已更新，请重新识别")
+    return _preview(db, lead, account, ("employee", staff.employee_id), file_name, content, extracted)
+
+
 def preview_visitor(db, visitor, filename, content):
     _public_link(db, visitor)
     db.rollback()
@@ -365,23 +354,31 @@ def _confirm(db, lead, account, actor, payload: ImportConfirm):
     selected = set(payload.fields)
     if not selected <= preview.proposed.keys():
         raise BusinessError(422, "请选择预览中已识别的字段")
+    source = None
+    if payload.source_id is not None:
+        source, file_name, content = _material_for_import(db, lead, account, payload.source_id)
+        if (file_name, content) != (preview.file_name, preview.file_content):
+            raise BusinessError(409, "材料与识别预览不一致，请重新识别")
     delta = {key: value for key, value in preview.proposed.items() if key in selected}
     _apply(lead, account, delta)
     source_types = {
         ".pdf": SourceType.pdf_resume, ".xlsx": SourceType.excel, ".xls": SourceType.excel,
         ".csv": SourceType.import_,
     }
-    source = CustomerSource(
-        source_type=source_types.get(PurePosixPath(preview.file_name).suffix.lower(), SourceType.text),
-        raw_content=preview.raw_content, file_name=preview.file_name, lead_id=lead.id, parse_status=ParseStatus.success,
-        file_content=preview.file_content if actor[0] == "employee" else None,
-        operator_id=actor[1] if actor[0] == "employee" else None,
-        parse_result={"customer_id": lead.id, "confirmed_fields": delta},
-    )
-    db.add(source)
-    db.flush()
-    if actor[0] == "visitor":
-        db.add(VisitorMaterial(source_id=source.id, visitor_id=actor[1], file_content=preview.file_content))
+    if source is None:
+        source = CustomerSource(
+            source_type=source_types.get(PurePosixPath(preview.file_name).suffix.lower(), SourceType.text),
+            raw_content=preview.raw_content, file_name=preview.file_name,
+            file_content=preview.file_content if actor[0] == "employee" else None,
+            operator_id=actor[1] if actor[0] == "employee" else None,
+        )
+        db.add(source)
+        db.flush()
+        if actor[0] == "visitor":
+            db.add(VisitorMaterial(source_id=source.id, visitor_id=actor[1], file_content=preview.file_content))
+    source.lead_id = lead.id
+    source.parse_status = ParseStatus.success
+    source.parse_result = {"customer_id": lead.id, "confirmed_fields": delta}
     db.delete(preview)
     result = _profile(lead, account)
     db.commit()
@@ -389,6 +386,8 @@ def _confirm(db, lead, account, actor, payload: ImportConfirm):
 
 
 def confirm_staff(db, lead_id, staff, payload):
+    if payload.source_id is not None:
+        require_permission(staff, "visitor-intake:read")
     return _confirm(db, *_staff_link(db, lead_id, staff, write=True), ("employee", staff.employee_id), payload)
 
 

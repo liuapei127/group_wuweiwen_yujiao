@@ -11,12 +11,12 @@ from app.modules.profile.service import MAX_UPLOAD_BYTES
 from app.modules.visitor.router import Principal as VisitorPrincipal
 
 from . import customer_service as service
-from .customer_schemas import ImportConfirm, ScreeningRequest, SharedFields, VerifiedIdentity, VersionedProfile, WebsiteCustomerBinding
+from .customer_schemas import ImportConfirm, ScreeningRequest, SharedFields, VerifiedIdentity, VersionedProfile
 
 
 staff_router = APIRouter(prefix="/api/v1/consultant/leads", tags=["客户详情"])
 visitor_router = APIRouter(prefix="/api/v1/visitors/customer-profile", tags=["官网客户资料"])
-admin_router = APIRouter(prefix="/api/v1/enterprise/website-accounts", tags=["官网客户档案"])
+admin_router = APIRouter(prefix="/api/v1/enterprise/website-accounts", tags=["官网客户身份核验"])
 Database = Annotated[Session, Depends(get_db)]
 Staff = Annotated[EmployeePrincipal, Depends(require_employee)]
 Upload = Annotated[UploadFile, File()]
@@ -54,6 +54,11 @@ def confirm_staff(lead_id: int, body: ImportConfirm, db: Database, staff: Staff)
     return success(service.confirm_staff(db, lead_id, staff, body))
 
 
+@staff_router.post("/{lead_id}/materials/{source_id}/imports/preview")
+def preview_staff_material(lead_id: int, source_id: int, db: Database, staff: Staff):
+    return success(service.preview_staff_material(db, lead_id, source_id, staff))
+
+
 @visitor_router.get("")
 def visitor_profile(db: Database, visitor: VisitorPrincipal, response: Response):
     response.headers["Cache-Control"] = "no-store"
@@ -74,11 +79,6 @@ async def preview_visitor(file: Upload, db: Database, visitor: VisitorPrincipal)
 @visitor_router.post("/imports/confirm")
 def confirm_visitor(body: ImportConfirm, db: Database, visitor: VisitorPrincipal):
     return success(service.confirm_visitor(db, visitor, body))
-
-
-@admin_router.put("/{visitor_id}/customer")
-def bind_website_customer(visitor_id: int, body: WebsiteCustomerBinding, db: Database, staff: Staff):
-    return success(service.bind_website_customer(db, visitor_id, body, staff))
 
 
 @admin_router.put("/customers/{lead_id}/identity")

@@ -28,7 +28,7 @@ def test_website_customer_booking_is_confirmed_and_scoped(monkeypatch):
     with Session(engine) as db:
         db.execute(text("""INSERT INTO visitor_account
             (id,username,name,contact,password_hash,created_at) VALUES
-            (1,'alice','Alice','demo','unused','2026-01-01'),
+            (1,'alice','未填写姓名','demo','unused','2026-01-01'),
             (2,'bob','Bob','demo','unused','2026-01-01')"""))
         db.execute(text("""INSERT INTO event_lecture
             (id,event_type,status,event_name,start_time,location,max_participants,current_participants,create_time)
@@ -71,6 +71,11 @@ def test_website_customer_booking_is_confirmed_and_scoped(monkeypatch):
         assert send("确认报名", sid).status_code == 404
         visitor = VisitorPrincipal(1, "token")
         assert client.post("/api/cs/chat", json={"query": "确认报名", "session_id": sid}).status_code == 404
+        incomplete = send("确认报名", sid).json()["data"]
+        assert "填写姓名" in incomplete["answer"] and "reservation_changed" not in incomplete
+        with Session(engine) as db:
+            db.get(VisitorAccount, 1).name = "Alice"
+            db.commit()
         assert send("确认报名", sid).json()["data"]["reservation_changed"]
         assert send("确认报名", sid).json()["data"]["reservation_changed"]
         assert "德国项目线下说明会" in send("我的预约", sid).json()["data"]["answer"]

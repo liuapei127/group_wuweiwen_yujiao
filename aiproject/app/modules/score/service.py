@@ -5,6 +5,7 @@ from app.core.security.authorization import require_student_scope
 from app.shared.utils.time_util import now_naive
 from .identity import default_exam_key, submission_hash
 from .repository import ScoreRepository
+from app.modules.teaching.service import named_score_course, score_course
 
 
 def _require_active_student(repo, student_id):
@@ -26,7 +27,13 @@ def create_score(body, db, p):
     repo = ScoreRepository(db)
     _require_active_student(repo, body.student_id)
     values = body.model_dump(exclude={"submission_key"})
-    values["exam_key"] = values.get("exam_key") or default_exam_key(body.course_name, body.semester)
+    if body.course_id:
+        course = score_course(db, body.student_id, body.course_id)
+    else:
+        course = named_score_course(db, body.student_id, body.course_name, body.study_stage)
+    if course:
+        values.update(course_id=course.id, course_name=course.name, study_stage=course.study_stage)
+    values["exam_key"] = values.get("exam_key") or default_exam_key(values["course_name"], body.semester, body.course_id)
     fingerprint = submission_hash(values)
     key = getattr(body, "submission_key", None)
     try:
@@ -75,6 +82,16 @@ def correct_score(score_id, body, db, p):
         if expected is not None and expected != row["version"]:
             raise BusinessError(409, "成绩版本已变化，请刷新后重试")
         values = body.model_dump(exclude={"expected_version", "correction_reason"})
+        if "course_id" not in body.model_fields_set:
+            values.pop("course_id")
+        if "study_stage" not in body.model_fields_set:
+            values.pop("study_stage")
+        course_id = body.course_id if "course_id" in body.model_fields_set else row["course_id"]
+        if row["course_id"] and not course_id:
+            raise BusinessError(422, "教学成绩不能移除关联课程")
+        if course_id:
+            course = score_course(db, body.student_id, course_id, existing_course_id=row["course_id"])
+            values.update(course_name=course.name, study_stage=course.study_stage)
         if all(row[k] == v for k, v in values.items()):
             return {"id": score_id, "version": row["version"], "unchanged": True}
         now = now_naive()

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import BusinessError
 from app.modules.student.notifications import save_student_result
 from app.modules.student_admin.models import StudentAdminService
+from app.modules.student_admin.models import LeaveAttachment
 from app.modules.consultant.errors import ConflictError
 
 from app.modules.student_admin.repository import StudentAdminRepository
@@ -37,10 +38,16 @@ class StudentAdminServiceLayer:
             approver_id = self.repo.class_teacher(student_id)
             if approver_id is None:
                 raise BusinessError(409, "尚未分配有效班主任")
+            attachment_id = str(payload.attachment_id) if payload.attachment_id else None
+            if attachment_id:
+                attachment = db.get(LeaveAttachment, attachment_id, with_for_update=True)
+                if attachment is None or attachment.student_id != student_id:
+                    raise BusinessError(422, "附件不存在或不属于该学生")
             row = StudentAdminService(
                 student_id=student_id, service_type="leave", leave_type=payload.leave_type,
                 start_time=payload.start_time, end_time=payload.end_time, reason=payload.reason,
                 status="pending", approver_id=approver_id, create_time=now, update_time=now,
+                attachment_url=attachment_id,
             )
             self.repo.add_leave(row)
             synchronize_source(db, "student_admin_service", row.id)

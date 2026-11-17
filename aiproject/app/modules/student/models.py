@@ -36,6 +36,7 @@ class AcademicDeadline(Base):
                                     primary_key=True)
     student_id: Mapped[int | None] = mapped_column(BigInteger().with_variant(BIGINT(unsigned=True), "mysql"))
     deadline_type: Mapped[str] = mapped_column(Enum("paper", "exam", "application", "visa", "other"))
+    study_stage: Mapped[str] = mapped_column(String(16), default="unspecified", server_default="unspecified")
     title: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text)
     deadline: Mapped[datetime] = mapped_column(DateTime)
@@ -43,6 +44,17 @@ class AcademicDeadline(Base):
     status: Mapped[str] = mapped_column(Enum("pending", "reminded", "done", "missed"), default="pending")
     create_time: Mapped[datetime] = mapped_column(DateTime)
     update_time: Mapped[datetime] = mapped_column(DateTime)
+
+
+class AcademicClassBatch(Base):
+    __tablename__ = "academic_class_batch"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    class_id: Mapped[int] = mapped_column(BigInteger)
+    actor_id: Mapped[int] = mapped_column(BigInteger)
+    payload_hash: Mapped[str] = mapped_column(String(64))
+    student_count: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime)
 
 
 class StudentAssistantConversation(Base):

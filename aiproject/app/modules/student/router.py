@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.concurrency import run_in_threadpool
 
@@ -9,6 +9,7 @@ from app.core.config import get_settings
 from app.core.exceptions import BusinessError
 from app.core.security import EmployeePrincipal, require_employee
 from app.core.responses import success
+from app.core.responses.streaming import chat_response
 from app.modules.customer_service.capacity import CsCapacityExceeded
 from app.modules.feedback import service as feedback
 from app.modules.feedback.schemas import StudentComplaintCreate
@@ -23,7 +24,7 @@ from app.modules.visitor.service import website_student
 from . import alerts, assistant_chat, assistant_session, notifications, service
 from .capacity import get_stu_capacity
 from .idempotency import replay_cache
-from .schemas import DeadlineWrite, ProgressWrite, StudentAssistantConversationCreate, StudentAssistantRequest
+from .schemas import DeadlineBatch, DeadlineWrite, ProgressWrite, StudentAssistantConversationCreate, StudentAssistantRequest
 from .service import student_policies
 
 _BEARER = HTTPBearer(auto_error=False)
@@ -130,21 +131,20 @@ async def student_assistant(
     if use_dify and not token:
         raise BusinessError(401, "请先登录官网")
 
-    try:
-        async with get_stu_capacity().slot(client_ip):
-            return success(
-                await assistant_session.run_turn(
-                    db,
-                    student_id=student_id,
-                    query=body.query,
-                    conversation_id=body.conversation_id,
-                    access_token=token if use_dify else None,
-                    use_dify=use_dify,
-                    mock_country=body.mock_country,
+    async def run(on_text=None):
+        try:
+            async with get_stu_capacity().slot(client_ip):
+                return await assistant_session.run_turn(
+                    db, student_id=student_id, query=body.query, conversation_id=body.conversation_id,
+                    access_token=token if use_dify else None, use_dify=use_dify,
+                    mock_country=body.mock_country, **({"on_text": on_text} if on_text else {}),
                 )
-            )
-    except CsCapacityExceeded as exc:
-        raise BusinessError(429, exc.message) from exc
+        except CsCapacityExceeded as exc:
+            raise BusinessError(429, exc.message) from exc
+
+    if "text/event-stream" in request.headers.get("accept", ""):
+        return chat_response(run)
+    return success(await run())
 
 
 @router.get("/profile")
@@ -195,6 +195,13 @@ def leaves(db: Database, principal: Principal, before_id: BeforeId = None, limit
     return success(StudentAdminServiceLayer(db).student_leaves(_student_id(db, principal), before_id, limit))
 
 
+@router.post("/leaves/attachments", status_code=201)
+def upload_leave_proof(db: Database, principal: Principal, file: UploadFile = File(...)):
+    from app.modules.student_admin.attachments import MAX_PROOF_BYTES, upload
+    student_id = _student_id(db, principal, lock=True)
+    return success(upload(db, student_id, file.filename, file.file.read(MAX_PROOF_BYTES + 1)))
+
+
 @router.post("/leaves", status_code=201)
 def submit_leave(payload: StudentLeaveCreate, db: Database, principal: Principal):
     return success(StudentAdminServiceLayer(db).submit_student_leave(_student_id(db, principal, lock=True), payload))
@@ -242,6 +249,11 @@ def academic_students(db: Database, advisor: Advisor):
     return success(service.scoped_students(db, advisor, "academics:read"))
 
 
+@academic_router.post("/classes/{class_id}/batch", status_code=201)
+def class_deadlines(class_id: int, payload: DeadlineBatch, db: Database, advisor: Advisor):
+    return success(service.class_deadlines(db, advisor, class_id, payload))
+
+
 @academic_router.get("/{student_id}")
 def staff_deadlines(
     student_id: int, db: Database, advisor: Advisor, limit: Limit = 20,
@@ -264,8 +276,9 @@ alert_router = APIRouter(prefix="/api/v1/student-admin/psych-alerts", tags=["内
 
 
 @alert_router.get("")
-def list_alerts(db: Database, advisor: Advisor, before_id: BeforeId = None, limit: Limit = 20):
-    return success(alerts.list_alerts(db, advisor, before_id, limit))
+def list_alerts(db: Database, advisor: Advisor, before_id: BeforeId = None, limit: Limit = 20,
+                student_id: Annotated[int | None, Query(gt=0)] = None):
+    return success(alerts.list_alerts(db, advisor, before_id, limit, student_id))
 
 
 @alert_router.get("/weekly")

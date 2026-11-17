@@ -1,4 +1,4 @@
-from datetime import timezone
+from datetime import datetime, timezone
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -42,6 +42,7 @@ def assigned_detail(db: Session, visitor_id: int, principal: EmployeePrincipal) 
 
 def claim(db: Session, visitor_id: int, principal: EmployeePrincipal) -> ClaimedVisitor:
     require_permission(principal, "visitor-intake:write")
+    require_permission(principal, "crm:write")
     try:
         account = repository.lock_visitor(db, visitor_id)
         if account is None:
@@ -52,6 +53,7 @@ def claim(db: Session, visitor_id: int, principal: EmployeePrincipal) -> Claimed
             db.add(case)
         elif case.advisor_id != principal.employee_id:
             raise BusinessError(409, "游客已被其他顾问认领")
+        _ensure_customer(db, account, case)
         reply = _visitor_details(account, case)
         db.commit()
     except IntegrityError:
@@ -61,11 +63,39 @@ def claim(db: Session, visitor_id: int, principal: EmployeePrincipal) -> Claimed
             raise
         if case.advisor_id != principal.employee_id:
             raise BusinessError(409, "游客已被其他顾问认领") from None
+        if case.crm_lead_id is None:
+            raise
         return _visitor_details(db.get(VisitorAccount, visitor_id), case)
     except Exception:
         db.rollback()
         raise
     return reply
+
+
+def _ensure_customer(db: Session, account: VisitorAccount, case: VisitorIntake) -> None:
+    if case.crm_lead_id is not None:
+        return
+    claimed_at = _local_time(case.claimed_at)
+    lead = CrmLead(
+        customer_name=account.name or "未填写姓名", contact_info=account.contact,
+        owner_employee_id=case.advisor_id, source_channel="website", status="contacting",
+        create_time=claimed_at, update_time=now_naive(),
+    )
+    db.add(lead)
+    db.flush()
+    case.crm_lead_id = lead.id
+    for call in repository.call_history(db, account.id):
+        _sync_call(db, lead, call)
+
+
+def backfill_claimed_customer(db: Session, visitor_id: int) -> bool:
+    # Match claim's account → intake locking order so a retry cannot create another customer.
+    account = repository.lock_visitor(db, visitor_id)
+    case = repository.intake(db, visitor_id, lock=True) if account is not None else None
+    if case is None or case.crm_lead_id is not None:
+        return False
+    _ensure_customer(db, account, case)
+    return True
 
 
 def add_call(db: Session, visitor_id: int, principal: EmployeePrincipal, payload: VisitorCallCreate) -> VisitorCallOut:
@@ -194,7 +224,7 @@ def _owned_case(db: Session, visitor_id: int, advisor_id: int, *, lock: bool = F
 
 def _visitor_details(account: VisitorAccount, case: VisitorIntake) -> ClaimedVisitor:
     return ClaimedVisitor(
-        visitor_id=account.id, registered_at=account.created_at, name=account.name,
+        visitor_id=account.id, registered_at=account.created_at, nickname=account.nickname, name=account.name,
         contact=account.contact, claimed_at=case.claimed_at, last_contact_at=case.last_contact_at,
         manual_source_id=case.manual_source_id, crm_lead_id=case.crm_lead_id,
     )
@@ -207,19 +237,23 @@ def create_lead(db: Session, visitor_id: int, principal: EmployeePrincipal, payl
     if payload.source_id != case.manual_source_id:
         _visitor_source(db, visitor_id, payload.source_id)
     if case.crm_lead_id is None:
-        raise BusinessError(409, "尚未关联客户档案，请联系管理员")
+        raise BusinessError(409, "该客户记录尚未生成，请重新打开跟进记录")
     return LeadOut.model_validate(_linked_lead(db, case))
 
 
 def _linked_lead(db: Session, case: VisitorIntake) -> CrmLead:
     lead = repository.lock_lead(db, case.crm_lead_id, case.advisor_id)
     if lead is None:
-        raise BusinessError(409, "关联客户档案不可用")
+        raise BusinessError(409, "当前客户记录不可用")
     return lead
 
 
+def _local_time(value: datetime) -> datetime:
+    return value.replace(tzinfo=timezone.utc).astimezone().replace(tzinfo=None)
+
+
 def _sync_call(db: Session, lead: CrmLead, call: VisitorCall) -> None:
-    recorded_at = call.recorded_at.replace(tzinfo=timezone.utc).astimezone().replace(tzinfo=None)
+    recorded_at = _local_time(call.recorded_at)
     db.add(CrmFollowUp(
         lead_id=lead.id, employee_id=call.advisor_id, follow_type="phone",
         content=call.notes, create_time=recorded_at,

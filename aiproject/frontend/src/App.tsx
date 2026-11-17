@@ -22,8 +22,13 @@ import {ApplicationProgress} from './pages/ApplicationProgress'
 import {VisitorIntake} from './pages/VisitorIntake'
 import {WebsiteContent} from './pages/WebsiteContent'
 import {WebsiteAccounts} from './pages/WebsiteAccounts'
+import {ClassManagement} from './pages/ClassManagement'
+import {TeacherManagement} from './pages/TeacherManagement'
+import {MyStudents} from './pages/MyStudents'
+import {TeachingCourses} from './pages/TeachingCourses'
+import {TicketRouting} from './pages/TicketRouting'
 
-const pages:Record<string,ReactNode>={'/dashboard':<Dashboard/>,'/assistant':<Assistant/>,'/customers':<Customers/>,'/visitor-intake':<VisitorIntake/>,'/reports':<><Reports/><WeeklySubmission/></>,'/reporting':<ReportCenter/>,'/student-alerts':<StudentAlerts/>,'/directory':<Directory/>,'/guides':<Guides/>,'/scores':<Scores/>,'/leaves':<Leaves/>,'/tickets':<Tickets/>,'/events':<Events/>,'/academic-deadlines':<StaffDeadlines/>,'/course-management':<StaffCourses/>,'/application-progress':<ApplicationProgress/>,'/todos':<Todos/>,'/notifications':<Notifications/>,'/queries':<Queries/>,'/commands':<Commands/>,'/settings/website-content':<WebsiteContent/>,'/settings/website-accounts':<WebsiteAccounts/>,'/settings/users':<Users/>,'/settings/roles':<Roles/>,'/settings/audit':<Audits/>}
+const pages:Record<string,ReactNode>={'/dashboard':<Dashboard/>,'/assistant':<Assistant/>,'/customers':<Customers/>,'/visitor-intake':<VisitorIntake/>,'/reports':<><Reports/><WeeklySubmission/></>,'/reporting':<ReportCenter/>,'/student-alerts':<StudentAlerts/>,'/directory':<Directory/>,'/guides':<Guides/>,'/scores':<Scores/>,'/leaves':<Leaves/>,'/tickets':<Tickets/>,'/events':<Events/>,'/academic-deadlines':<StaffDeadlines/>,'/course-management':<StaffCourses/>,'/class-management':<ClassManagement/>,'/my-students':<MyStudents/>,'/teaching-courses':<TeachingCourses/>,'/ticket-routing':<TicketRouting/>,'/teacher-management':<TeacherManagement/>,'/application-progress':<ApplicationProgress/>,'/todos':<Todos/>,'/notifications':<Notifications/>,'/queries':<Queries/>,'/commands':<Commands/>,'/settings/website-content':<WebsiteContent/>,'/settings/website-accounts':<WebsiteAccounts/>,'/settings/users':<Users/>,'/settings/roles':<Roles/>,'/settings/audit':<Audits/>}
 
 export default function App(){
   const {user,loading,can,logout}=useAuth()

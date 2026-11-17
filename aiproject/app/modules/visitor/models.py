@@ -7,6 +7,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
 
 
+MISSING_NAME = "未填写姓名"
+
+
 class VisitorAccount(Base):
     __tablename__ = "visitor_account"
     __table_args__ = {"mysql_engine": "InnoDB", "mysql_charset": "utf8mb4"}
@@ -18,6 +21,14 @@ class VisitorAccount(Base):
     contact: Mapped[str] = mapped_column(String(128))
     password_hash: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime)
+
+    @property
+    def has_name(self) -> bool:
+        return (self.name or "").strip() not in ("", MISSING_NAME)
+
+    @property
+    def contact_with_default(self) -> str:
+        return (self.contact or "").strip() or self.username
 
 
 class VisitorAvatar(Base):

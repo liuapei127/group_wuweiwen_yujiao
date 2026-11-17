@@ -3,6 +3,7 @@ from typing import Annotated
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, NaiveDatetime, StringConstraints, model_validator
+from uuid import UUID
 
 
 class StudentLeaveCreate(BaseModel):
@@ -14,6 +15,7 @@ class StudentLeaveCreate(BaseModel):
     start_time: NaiveDatetime
     end_time: NaiveDatetime
     reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4000)]
+    attachment_id: UUID | None = None
 
     @model_validator(mode="after")
     def validate_interval(self):
@@ -44,5 +46,6 @@ class LeaveOut(BaseModel):
     approver_id: int | None
     approval_comment: str | None
     approval_time: datetime | None
+    attachment_url: str | None = None
     create_time: datetime
     update_time: datetime

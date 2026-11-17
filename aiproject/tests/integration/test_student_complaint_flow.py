@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.core.exceptions import BusinessError
 from app.core.security import EmployeePrincipal
-from app.modules.auth.models import role_permissions, roles
+from app.modules.auth.models import audit_log, role_permissions, roles
 from app.modules.feedback import service
 from app.modules.feedback.models import student_feedback_ticket
 from app.modules.feedback.schemas import StudentComplaintCreate, TicketUpdate
@@ -18,7 +18,7 @@ def db(monkeypatch):
     monkeypatch.setattr(service, "get_settings", lambda: settings)
     engine = create_engine("sqlite://")
     with engine.begin() as conn:
-        for table in (student_feedback_ticket, todo_item, notification_log, roles, role_permissions):
+        for table in (student_feedback_ticket, todo_item, notification_log, roles, role_permissions, audit_log):
             table.create(conn)
         conn.execute(text("""CREATE TABLE sys_user (
             id INTEGER PRIMARY KEY, username TEXT, password_hash TEXT, real_name TEXT,

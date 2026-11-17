@@ -12,6 +12,14 @@ class TicketUpdate(Input):
     solution: str | None = Field(default=None,max_length=10000)
 
 
+class TicketRouting(Input):
+    expected_status: Literal["pending", "processing"]
+    expected_category: str | None
+    expected_assignee_id: int | None = Field(ge=1)
+    category: Literal["learning", "company"]
+    reason: str = Field(min_length=1, max_length=2000)
+
+
 class StudentComplaintCreate(Input):
     category: Literal["learning", "company"]
     title: str | None = Field(default=None, max_length=255)

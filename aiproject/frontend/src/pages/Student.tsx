@@ -10,18 +10,18 @@ import {StudentWellbeing} from './Wellbeing'
 import {StudentAssistant} from './StudentAssistant'
 import {ProgressPager, ProgressTable, type Progress} from './ApplicationProgress'
 
-type LeaveRequest = {leave_type: 'sick' | 'personal' | 'emergency'; start_time: string; end_time: string; reason: string}
+type LeaveRequest = {leave_type: 'sick' | 'personal' | 'emergency'; start_time: string; end_time: string; reason: string; attachment_id?: string}
 type ComplaintRequest = {category: 'learning' | 'company'; title?: string; content: string}
 type Leave = LeaveRequest & {id: number; status: string; approval_comment?: string}
 type Complaint = ComplaintRequest & {id: number; status: string; solution?: string}
-type Request = <T>(path: string, method?: string, body?: unknown) => Promise<T>
+type Request = <T>(path: string, method?: string, body?: unknown, onText?: (text: string) => void) => Promise<T>
 const prefix = '/api/v1/student'
 const pageSize = 20
 const studentTopics: GuideTopic[] = [
   {key: 'leaves', label: '请假申请', keywords: ['请假', '病假', '事假'], answer: '填写请假时间和原因，老师审批后可在站内通知查看结果。'},
   {key: 'complaints', label: '投诉反馈', keywords: ['投诉', '反馈'], answer: '学习相关投诉交老师处理，公司相关投诉交主管处理。'},
   {key: 'deadlines', label: '考务提醒', keywords: ['考试', '考务', '论文', '截止', '考期'], answer: '查看即将截止的考务待办，办完后可标记个人事项。'},
-  {key: 'progress', label: '申请进度', keywords: ['申请', '录取', '进度'], answer: '查看顾问更新的申请阶段、截止时间和下一步。'},
+  {key: 'progress', label: '申请进度', keywords: ['申请', '录取', '进度'], answer: '查看班主任更新的申请阶段、截止时间和下一步。'},
   {key: 'policies', label: '留学政策', keywords: ['政策', '签证', '准证'], answer: '查找学籍中对应留学地区的官方政策入口。'},
   {key: 'overseas', label: '海外生活', keywords: ['生活', '交通', '医疗', '求助'], answer: '查询学籍中对应地区的海外生活资料。'},
   {key: 'notifications', label: '站内通知', keywords: ['通知', '消息', '审批'], answer: '查阅请假审批或投诉处理结果。'},
@@ -234,9 +234,30 @@ function useStudentRecords<RecordType, Fields>(request: Request, kind: 'leaves' 
 
 function Leaves({request}: {request: Request}) {
   const {beforeId, setBeforeId, form, history, submit} = useStudentRecords<Leave, LeaveRequest>(request, 'leaves')
+  const [proof, setProof] = useState<{id: string; filename: string}>()
+  const [proofBusy, setProofBusy] = useState(false)
+  const [proofError, setProofError] = useState<Error>()
+  const [fileKey, setFileKey] = useState(0)
+  async function uploadProof(file?: File) {
+    setProof(undefined)
+    setProofError(undefined)
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      setProofError(new Error('附件须小于5MB'))
+      return
+    }
+    const payload = new FormData()
+    payload.set('file', file)
+    setProofBusy(true)
+    try {setProof(await request<{id: string; filename: string}>(prefix + '/leaves/attachments', 'POST', payload))}
+    catch (error) {setProofError(error as Error)}
+    finally {setProofBusy(false)}
+  }
   return <Space orientation="vertical" size="large" style={{width: '100%'}}>
     <Card title="提交请假">
-      <Form form={form} layout="vertical" onFinish={value => submit.mutate(value)} style={{maxWidth: 520}}>
+      <Form form={form} layout="vertical" onFinish={value => submit.mutate({...value, attachment_id: proof?.id}, {
+        onSuccess: () => {setProof(undefined); setProofError(undefined); setFileKey(key => key + 1)},
+      })} style={{maxWidth: 520}}>
         <Form.Item label="请假类型" name="leave_type" rules={[{required: true}]}>
           <select className="ant-input"><option value="">请选择</option><option value="sick">病假</option>
             <option value="personal">事假</option><option value="emergency">紧急事由</option></select>
@@ -244,7 +265,13 @@ function Leaves({request}: {request: Request}) {
         <Form.Item label="开始时间（北京时间）" name="start_time" rules={[{required: true}]}><Input type="datetime-local"/></Form.Item>
         <Form.Item label="结束时间（北京时间）" name="end_time" rules={[{required: true}]}><Input type="datetime-local"/></Form.Item>
         <Form.Item label="请假原因" name="reason" rules={[{required: true, whitespace: true}]}><Input.TextArea maxLength={4000}/></Form.Item>
-        <Button type="primary" htmlType="submit" loading={submit.isPending}>提交请假</Button>
+        <Form.Item label="证明附件（可选，PDF、JPG或PNG，5MB以内）">
+          <input key={fileKey} aria-label="请假证明附件" type="file" accept=".pdf,.jpg,.jpeg,.png" disabled={proofBusy || submit.isPending}
+            onChange={event => void uploadProof(event.target.files?.[0])}/>
+          {proof && <p>已上传 {proof.filename}</p>}
+          <ResultNotice error={proofError ?? null}/>
+        </Form.Item>
+        <Button type="primary" htmlType="submit" loading={submit.isPending} disabled={proofBusy}>提交请假</Button>
       </Form>
       <ResultNotice error={submit.error} sent={submit.isSuccess}/>
     </Card>

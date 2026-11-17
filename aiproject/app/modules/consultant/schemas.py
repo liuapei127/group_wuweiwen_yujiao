@@ -95,6 +95,7 @@ class LeadDetailOut(BaseModel):
 class VisitorQueueEntry(BaseModel):
     visitor_id: int
     registered_at: datetime
+    nickname: str | None = None
 
 
 class ClaimedVisitor(VisitorQueueEntry):

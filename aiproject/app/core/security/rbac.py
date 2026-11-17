@@ -21,6 +21,9 @@ PERMISSIONS = {
     'scores:read': ('查询授权学生成绩与历史', '成绩管理'),
     'scores:write': ('录入和更正授权学生成绩', '成绩管理'),
     'courses:manage': ('维护官网课程和项目', '课程管理'),
+    'classes:manage': ('维护班级、班主任和班级名册', '学生事务'),
+    'students:read': ('查看本人负责的班级和学生档案', '学生事务'),
+    'teaching:manage': ('维护教学课程和班级开课安排', '教学课程'),
     'student-alerts:read': ('查看分派给本人的学生心理预警', '心理预警'),
     'student-alerts:write': ('跟进分派给本人的学生心理预警', '心理预警'),
     'academics:read': ('查看授权学生的考务事项', '考务'),
@@ -31,6 +34,7 @@ PERMISSIONS = {
     'leaves:approve': ('审批分配给本人的请假', '请假审批'),
     'tickets:read': ('查询分配给本人的工单', '投诉工单'),
     'tickets:write': ('处理分配给本人的工单', '投诉工单'),
+    'tickets:route': ('纠正投诉分类并重新分派', '投诉工单'),
     'todos:read': ('查询本人待办', '我的待办'),
     'todos:write': ('创建和处理本人待办', '我的待办'),
     'notifications:read': ('查看本人通知', '站内通知'),
@@ -50,16 +54,18 @@ COMMON = {'dashboard:read','reports:read','reports:write','directory:read','guid
 SYSTEM_ADMIN_PERMISSIONS = frozenset({
     'dashboard:read', 'ai:use', 'directory:read', 'todos:read', 'todos:write', 'notifications:read',
     'events:manage', 'events:check_in', 'courses:manage', 'website-content:manage', 'website-accounts:manage',
-    'organizations:manage', 'users:manage', 'roles:manage', 'audit:read',
+    'organizations:manage', 'users:manage', 'roles:manage', 'audit:read', 'classes:manage', 'teaching:manage', 'tickets:route',
 })
 MANAGER_REPORT_PERMISSIONS = frozenset({
     'reports:operations:read', 'reports:summary:read', 'reports:formal:generate',
 })
 ROLE_DEFAULTS = {
     'admin': SYSTEM_ADMIN_PERMISSIONS,
-    'employee': COMMON | {'crm:read','crm:write','visitor-intake:read','visitor-intake:write'},
-    'manager': COMMON | MANAGER_REPORT_PERMISSIONS | {'crm:read','crm:write','directory:contacts','guides:write'},
-    'team_leader': COMMON | {'directory:contacts','scores:read','scores:write','leaves:read','leaves:approve'},
+    'employee': COMMON | {'crm:read','crm:write','visitor-intake:read','visitor-intake:write','applications:read'},
+    'manager': COMMON | MANAGER_REPORT_PERMISSIONS | {'crm:read','crm:write','directory:contacts','guides:write','tickets:route'},
+    'team_leader': COMMON | {'directory:contacts','students:read','scores:read','scores:write',
+                            'leaves:read','leaves:approve','academics:read','academics:write',
+                            'applications:read','applications:write','student-alerts:read','student-alerts:write'},
     'student': set(),
 }
 INTENT_PERMISSIONS = {
@@ -94,7 +100,7 @@ def route_permission(method, path):
         ('POST','/api/v1/consultant/leads/{lead_id}/screening'):'crm:write',
         ('POST','/api/v1/consultant/leads/{lead_id}/imports/preview'):'crm:write',
         ('POST','/api/v1/consultant/leads/{lead_id}/imports/confirm'):'crm:write',
-        ('PUT','/api/v1/enterprise/website-accounts/{visitor_id}/customer'):'website-accounts:manage',
+        ('POST','/api/v1/consultant/leads/{lead_id}/materials/{source_id}/imports/preview'):'crm:write',
         ('PUT','/api/v1/enterprise/website-accounts/customers/{lead_id}/identity'):'website-accounts:manage',
         ('GET','/api/v1/profile'):'crm:read',
         ('POST','/api/v1/profile/upload'):'crm:write',
@@ -150,16 +156,30 @@ def route_permission(method, path):
         ('POST','/api/v1/enterprise/events/{event_id}/registrations/{registration_id}/check-in'):'events:check_in',
         ('POST','/api/v1/enterprise/commands'):'commands:execute',
         ('GET','/api/v1/auth/me'):None, ('POST','/api/v1/auth/logout'):None,
+        ('PATCH','/api/v1/auth/profile'):None,
         ('POST','/api/v1/auth/password'):None,
         ('GET','/api/v1/enterprise/courses'):'courses:manage',
         ('POST','/api/v1/enterprise/courses'):'courses:manage',
         ('PUT','/api/v1/enterprise/courses/{course_id}'):'courses:manage',
+        ('GET','/api/v1/enterprise/classrooms/projects'):'classes:manage',
+        ('GET','/api/v1/enterprise/classrooms/teachers'):'classes:manage',
+        ('POST','/api/v1/enterprise/classrooms/student-placements'):'classes:manage',
+        ('POST','/api/v1/enterprise/classrooms/student-placements/batch'):'classes:manage',
+        ('GET','/api/v1/enterprise/classrooms/students'):'classes:manage',
+        ('PUT','/api/v1/enterprise/classrooms/projects/{project_id}'):'classes:manage',
+        ('GET','/api/v1/enterprise/classrooms'):'classes:manage',
+        ('POST','/api/v1/enterprise/classrooms'):'classes:manage',
+        ('PUT','/api/v1/enterprise/classrooms/{class_id}'):'classes:manage',
+        ('GET','/api/v1/enterprise/classrooms/{class_id}/students'):'classes:manage',
+        ('GET','/api/v1/enterprise/classrooms/enrollment-projects'):'website-accounts:manage',
+        ('GET','/api/v1/enterprise/classrooms/enrollment-projects/{project_id}/classes'):'website-accounts:manage',
         ('GET','/api/v1/student-admin/psych-alerts'):'student-alerts:read',
         ('GET','/api/v1/student-admin/psych-alerts/students'):'student-alerts:read',
         ('GET','/api/v1/student-admin/psych-alerts/weekly'):'student-alerts:read',
         ('POST','/api/v1/student-admin/psych-alerts'):'student-alerts:write',
         ('PUT','/api/v1/student-admin/psych-alerts/{alert_id}'):'student-alerts:write',
         ('GET','/api/v1/student-admin/academic-deadlines/students'):'academics:read',
+        ('POST','/api/v1/student-admin/academic-deadlines/classes/{class_id}/batch'):'academics:write',
         ('GET','/api/v1/student-admin/academic-deadlines/{student_id}'):'academics:read',
         ('POST','/api/v1/student-admin/academic-deadlines/{student_id}'):'academics:write',
         ('PUT','/api/v1/student-admin/academic-deadlines/{student_id}/{deadline_id}'):'academics:write',
@@ -194,6 +214,21 @@ def route_permission(method, path):
         ('GET','/api/v1/auth/students'):'users:manage',
         ('GET','/api/v1/portal/context'):'dashboard:read',
         ('GET','/api/v1/portal/students'):'scores:read',
+        ('GET','/api/v1/teacher/classes'):'students:read',
+        ('GET','/api/v1/enterprise/ticket-routing'):'tickets:route',
+        ('PUT','/api/v1/enterprise/ticket-routing/{ticket_id}'):'tickets:route',
+        ('GET','/api/v1/enterprise/tickets/{ticket_id}/history'):None,
+        ('GET','/api/v1/student-admin/leaves/{leave_id}/attachment'):'leaves:read',
+        ('GET','/api/v1/student-admin/leaves/{leave_id}'):'leaves:read',
+        ('GET','/api/v1/teaching/courses'):'teaching:manage',
+        ('POST','/api/v1/teaching/courses'):'teaching:manage',
+        ('PUT','/api/v1/teaching/courses/{course_id}'):'teaching:manage',
+        ('GET','/api/v1/teaching/classes/{class_id}/courses'):'teaching:manage',
+        ('PUT','/api/v1/teaching/classes/{class_id}/courses'):'teaching:manage',
+        ('GET','/api/v1/teaching/students/{student_id}/courses'):'scores:read',
+        ('GET','/api/v1/teacher/students'):'students:read',
+        ('GET','/api/v1/teacher/students/{student_id}'):'students:read',
+        ('GET','/api/v1/teacher/students/{student_id}/records/{kind}'):'students:read',
         ('GET','/api/v1/portal/health'):'dashboard:read',
         ('POST','/api/v1/ai/assistant/transcribe'):'ai:use',
         ('GET','/api/v1/ai/assistant/conversations'):'ai:use',
@@ -208,7 +243,10 @@ def route_permission(method, path):
 
 
 def effective_role_permissions(role_code: str, stored: set[str]) -> set[str]:
-    return stored & (SYSTEM_ADMIN_PERMISSIONS if role_code == 'admin' else PERMISSIONS.keys())
+    permitted = stored & (SYSTEM_ADMIN_PERMISSIONS if role_code == 'admin' else PERMISSIONS.keys())
+    if role_code in ("employee", "advisor"):
+        permitted.discard("applications:write")
+    return permitted
 
 
 def permission_catalog():

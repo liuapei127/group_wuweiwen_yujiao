@@ -66,6 +66,12 @@ class VisitorEventOut(EventOut):
     reservation_status: Literal["registered", "cancelled", "attended"] | None = None
 
 
+class VisitorReservationDetails(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    name: str = Field(min_length=1, max_length=64)
+
+
 class VisitorReservationOut(BaseModel):
     event: EventOut
     reservation: RegistrationOut

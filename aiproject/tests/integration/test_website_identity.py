@@ -51,6 +51,7 @@ def test_website_account_keeps_credentials_and_routes_by_authorized_student_acce
             db.execute(text("""INSERT INTO course_project (id, project_name, category, status) VALUES
                 (1, '德语入门', '语言', 1), (2, '下架课程', '语言', 0), (3, '留学项目', '项目', 1)
             """))
+            db.execute(text("UPDATE course_project SET price=800 WHERE id=1"))
             db.execute(text("""CREATE TABLE report_schedule(
                 id INTEGER PRIMARY KEY, report_type TEXT, schedule_cron TEXT, recipients JSON, enabled INTEGER,
                 last_run_time DATETIME, create_time DATETIME, update_time DATETIME
@@ -88,19 +89,24 @@ def test_website_account_keeps_credentials_and_routes_by_authorized_student_acce
             courses_url = website + "/courses"
             assert client.get(courses_url).status_code == 401
             page = client.get(courses_url, params={"limit": 1}, headers=old_session).json()["data"]
+            assert page["items"][0]["price"] is None
             assert page["items"][0]["project_name"] == "德语入门" and page["next_after_id"] == 1
             matches = client.get(courses_url, params={"keyword": "语言"}, headers=old_session).json()["data"]
             assert [item["id"] for item in matches["items"]] == [1]
             assert matches["next_after_id"] is None
             staff_courses = "/api/v1/enterprise/courses"
-            course = {"project_name": "新课程", "status": 0}
+            course = {"project_name": "新课程", "status": 0, "price": 900}
             assert client.post(staff_courses, headers=old_session, json=course).status_code == 401
             saved_course = client.post(staff_courses, headers=operator, json=course)
             assert saved_course.status_code == 201
+            assert saved_course.json()["data"]["price"] is None
             course_id = saved_course.json()["data"]["id"]
             assert client.get(courses_url, params={"keyword": "新课程"}, headers=old_session).json()["data"]["items"] == []
             assert client.put(f"{staff_courses}/{course_id}", headers=operator, json={**course, "status": 1}).status_code == 200
             assert len(client.get(courses_url, params={"keyword": "新课程"}, headers=old_session).json()["data"]["items"]) == 1
+            with Session(engine) as db:
+                assert db.execute(text("SELECT price FROM course_project WHERE id=:id"), {"id": course_id}).scalar_one() is None
+                assert db.execute(text("SELECT price FROM course_project WHERE id=1")).scalar_one() == 800
             material = client.post("/api/v1/visitor/materials", data={"raw_content": "原资料"}, headers=old_session)
             assert material.status_code == 201
             material_id = material.json()["data"]["source_id"]
@@ -160,7 +166,10 @@ def test_website_account_keeps_credentials_and_routes_by_authorized_student_acce
             assert client.put(internal + "/1", headers=advisor, json=follow).status_code == 200
             close = {"status": "resolved", "follow_record": "复核结案"}
             closed = client.put(internal + "/1", headers=advisor, json=close)
-            assert closed.json()["data"]["follow_record"] == "已联系\n复核结案"
+            entries = closed.json()["data"]["follow_record"].splitlines()
+            assert len(entries) == 2
+            assert entries[0].endswith("员工12：已联系")
+            assert entries[1].endswith("员工12：复核结案")
             assert client.put(internal + "/1", headers=advisor, json=follow).status_code == 409
             exam_id = created_exam.json()["data"]["id"]
             with Session(engine) as db:

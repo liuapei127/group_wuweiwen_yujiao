@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import String, cast, delete, func, literal, select, type_coerce, union_all
+from sqlalchemy import delete, func, literal, or_, select
 from sqlalchemy.orm import Session
 
 from app.modules.profile.models import CustomerProfile, CustomerSource, VisitorMaterial
@@ -9,51 +9,28 @@ from app.modules.visitor.models import VisitorAccount
 from .customer_models import CustomerIdentity, CustomerImportPreview
 from .models import CrmLead, VisitorIntake
 
-
 def list_customers(
-    db: Session, advisor_id: int, *, include_claimed: bool, missing_name: str,
+    db: Session, advisor_id: int, *, missing_name: str,
     keyword: str | None, status: str | None, page: int, page_size: int,
 ) -> dict:
     lead_name = CrmLead.customer_name
-    lead_status = type_coerce(CrmLead.status, String)
-    pending_status = literal("pending_binding")
-    # Existing CRM and website tables can have different MySQL collations.
-    mysql = db.get_bind().dialect.name in {"mysql", "mariadb"}
-    if mysql:
+    nickname = VisitorAccount.nickname
+    if db.get_bind().dialect.name in {"mysql", "mariadb"}:
         lead_name = lead_name.collate("utf8mb4_unicode_ci")
-        lead_status = lead_status.collate("utf8mb4_unicode_ci")
-        pending_status = pending_status.collate("utf8mb4_unicode_ci")
-    leads = select(
-        CrmLead.id, lead_name.label("customer_name"), lead_status.label("status"),
-        literal("lead").label("kind"),
-    ).where(CrmLead.owner_employee_id == advisor_id)
-    rows = leads
-    if include_claimed:
-        name = func.coalesce(
-            func.nullif(func.nullif(VisitorAccount.name, missing_name), ""),
-            func.nullif(VisitorAccount.nickname, ""),
-            literal("游客 ") + cast(VisitorIntake.visitor_id, String),
-        )
-        if mysql:
-            name = name.collate("utf8mb4_unicode_ci")
-        pending = select(
-            VisitorIntake.visitor_id.label("id"), name.label("customer_name"),
-            pending_status.label("status"), literal("visitor").label("kind"),
-        ).join(VisitorAccount, VisitorAccount.id == VisitorIntake.visitor_id).where(
-            VisitorIntake.advisor_id == advisor_id, VisitorIntake.crm_lead_id.is_(None),
-        )
-        rows = union_all(leads, pending)
-    customers = rows.subquery()
-    filtered = select(customers)
-    if keyword and keyword.strip():
-        filtered = filtered.where(customers.c.customer_name.contains(keyword.strip(), autoescape=True))
+        nickname = nickname.collate("utf8mb4_unicode_ci")
+    name = func.coalesce(func.nullif(func.nullif(lead_name, missing_name), ""), func.nullif(nickname, ""), lead_name)
+    filtered = (
+        select(CrmLead.id, name.label("customer_name"), CrmLead.status, literal("lead").label("kind"))
+        .outerjoin(VisitorIntake, VisitorIntake.crm_lead_id == CrmLead.id)
+        .outerjoin(VisitorAccount, VisitorAccount.id == VisitorIntake.visitor_id)
+        .where(CrmLead.owner_employee_id == advisor_id)
+    )
+    if keyword and (text := keyword.strip()):
+        filtered = filtered.where(or_(name.contains(text, autoescape=True), nickname.contains(text, autoescape=True)))
     if status:
-        filtered = filtered.where(customers.c.status == status)
+        filtered = filtered.where(CrmLead.status == status)
     total = db.scalar(select(func.count()).select_from(filtered.subquery()))
-    items = db.execute(
-        filtered.order_by(customers.c.kind.desc(), customers.c.id.desc())
-        .offset((page - 1) * page_size).limit(page_size)
-    ).mappings()
+    items = db.execute(filtered.order_by(CrmLead.id.desc()).offset((page - 1) * page_size).limit(page_size)).mappings()
     return {"total": total, "page": page, "page_size": page_size, "items": [dict(row) for row in items]}
 
 

@@ -44,7 +44,16 @@ class AuthRepository:
         explicit=set(self.db.execute(select(student_scopes.c.student_id).where(student_scopes.c.user_id==user_id)).scalars())
         # Existing class-teacher assignment is authoritative; no client-supplied scope.
         assigned=set(self.db.execute(select(student_info.c.user_id).where(student_info.c.class_teacher_id==user_id)).scalars())
-        ids=explicit|assigned
+        role = self.db.scalar(select(roles.c.role_code).join(
+            accounts, accounts.c.role_id == roles.c.id,
+        ).where(accounts.c.id == user_id))
+        ids = assigned if role in ("teacher", "team_leader") else explicit | assigned
+        if role in ("employee", "advisor"):
+            from app.modules.consultant.models import VisitorIntake
+            from app.modules.visitor.models import WebsiteStudentAccess
+            ids.update(self.db.scalars(select(WebsiteStudentAccess.student_id).join(
+                VisitorIntake, VisitorIntake.visitor_id == WebsiteStudentAccess.visitor_id,
+            ).where(VisitorIntake.advisor_id == user_id, WebsiteStudentAccess.enabled.is_(True))))
         if not ids:return set()
         return set(self.db.execute(select(accounts.c.id).where(accounts.c.id.in_(ids),accounts.c.user_type=='student',accounts.c.status=='normal')).scalars())
 

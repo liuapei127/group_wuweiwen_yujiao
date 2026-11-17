@@ -51,6 +51,8 @@ def booking_reply(db: Session, state: CustomerChatSession, query: str) -> Public
             return PublicChatReply(answer="请先问「有哪些活动」并选择一个场次，然后回复「确认报名」。")
         try:
             registration = events.reserve(db, pending["event_id"], customer_id=state.visitor_id)
+        except events.ReservationNameRequired:
+            return PublicChatReply(answer="请先在「个人信息」中填写姓名，再回复「确认报名」。也可以在「活动预约」中补填姓名并预约。")
         except BusinessError as exc:
             return PublicChatReply(answer=str(exc.detail))
         label = "已签到" if registration.status == "attended" else "已预约"

@@ -5,13 +5,14 @@ import {WebsiteCourses} from './WebsiteCourses'
 import {WebsitePolicies} from './WebsitePolicies'
 import {WebsiteGuide, type GuideTopic} from './WebsiteGuide'
 import {WebsiteAssistant} from './WebsiteAssistant'
-import {WebsiteAccountMenu} from './WebsiteAccountMenu'
+import {WebsiteAccountMenu, type WebsiteProfile} from './WebsiteAccountMenu'
 import {WebsiteCustomerProfile} from './CustomerWorkspace'
 import {publicWebsiteContentPath, websiteContentQueryKey, type WebsiteSection} from '../lib/websiteContent'
 import {Alert, App, Button, Card, Form, Input, List, Modal, Space, Tabs, Tag, Typography} from 'antd'
 import {ArrowLeftOutlined, ArrowRightOutlined, MessageOutlined} from '@ant-design/icons'
 import {useQuery, useQueryClient} from '@tanstack/react-query'
 import {mobileNumberMessage, mobileNumberPattern} from '../lib/mobile'
+import {readChatStream} from '../lib/chat-stream'
 import {newPasswordRules} from '../lib/password'
 import {PasswordChangeDialog} from '../components/PasswordChangeDialog'
 
@@ -126,7 +127,7 @@ const activityUrl = '/api/v1/visitor/events'
 const materialUrl = '/api/v1/visitor/materials'
 const statusNames: Record<string, string> = {
   registered: '已预约', cancelled: '已取消', attended: '已签到',
-  received: '已收到', needs_information: '待补充', reviewed: '已研判',
+  received: '已收到', imported: '已导入', needs_information: '待补充', reviewed: '已研判',
 }
 
 function displayTime(value: string) {
@@ -141,17 +142,21 @@ class VisitorApiError extends Error {
   }
 }
 
-async function visitorApi<T>(path: string, token: string, method = 'GET', body?: unknown): Promise<T> {
+async function visitorApi<T>(path: string, token: string, method = 'GET', body?: unknown, onText?: (text: string) => void): Promise<T> {
   const isFile = body instanceof FormData
   const response = await fetch(path, {
     method,
     headers: {
       ...(token ? {Authorization: 'Bearer ' + token} : {}),
+      ...(onText ? {Accept: 'text/event-stream'} : {}),
       ...(body !== undefined && !isFile ? {'Content-Type': 'application/json'} : {}),
     },
     body: isFile ? body : body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(onText ? 260000 : 30000),
   })
+  if (response.ok && onText && response.headers.get('content-type')?.includes('text/event-stream')) {
+    return readChatStream<T>(response, onText, (message, status) => new VisitorApiError(message, status))
+  }
   const result = await response.json().catch(() => ({}))
   if (!response.ok || result.code !== 0) {
     const detail = result.detail || result.message
@@ -314,7 +319,8 @@ export function Visitor() {
   }
 
   if (token && accountType === 'student') {
-    const request = <T,>(path: string, method?: string, body?: unknown) => visitorApi<T>(path, token, method, body)
+    const request = <T,>(path: string, method?: string, body?: unknown, onText?: (text: string) => void) =>
+      visitorApi<T>(path, token, method, body, onText)
       .catch((error: unknown) => {
         if (error instanceof VisitorApiError && (error.status === 401 || error.status === 403)) void identity.refetch()
         throw error
@@ -325,7 +331,7 @@ export function Visitor() {
           <Link to="/website" className="visitor-logo">粤教教育服务</Link>
           <span className="visitor-header-tag">学生服务中心</span>
         </div>
-        <div className="visitor-header-actions"><Button onClick={() => void navigate(customerProfilePath)}>我的资料</Button>{accountActions}</div>
+        <div className="visitor-header-actions">{accountActions}</div>
       </header>
       <Student request={request} accountRecords={<VisitorServices token={token} expire={expire} showAssistant/>}/>
       {changePassword}
@@ -344,7 +350,6 @@ export function Visitor() {
           {isServicesPage
             ? <Button icon={<ArrowLeftOutlined/>} onClick={() => void navigate(visitorHome)}>返回官网</Button>
             : <Button onClick={() => void navigate(visitorServicesPath)}>查看活动和资料</Button>}
-          <Button onClick={() => void navigate(customerProfilePath)}>我的资料</Button>
           {accountActions}
         </> : <Button type="primary" aria-haspopup="dialog" onClick={openLogin}>登录</Button>}
       </div>
@@ -427,9 +432,9 @@ export function Visitor() {
       intro={'你好，我是粤教升学助手。选国家和院校，一般可以按三步走：先看预算与学制，再看专业方向和院校匹配，最后确认签证与就业政策。\n\n如果有比较心仪的院校，或者更看重预算、学制还是专业排名？告诉我一个侧重点，我就能帮你把范围收窄。'}
       open={assistantOpen}
       onOpenChange={setAssistantOpen}
-      ask={async (query, _history, sessionId) => {
+      ask={async (query, _history, sessionId, onText) => {
         const path = token ? '/api/cs/visitor/chat' : '/api/cs/chat'
-        const send = (id?: string) => visitorApi<CustomerChatReply>(path, token, 'POST', customerChatBody(query, id))
+        const send = (id?: string) => visitorApi<CustomerChatReply>(path, token, 'POST', customerChatBody(query, id), onText)
         try {
           const reply = await send(sessionId).catch(error => {
             if (error instanceof VisitorApiError && error.status === 404 && sessionId) return send()
@@ -463,6 +468,9 @@ function VisitorServices({token, expire, showAssistant = false, vertical = false
   const [bookingBefore, setBookingBefore] = useState<number>()
   const [materialBefore, setMaterialBefore] = useState<number>()
   const [busy, setBusy] = useState<number>()
+  const [bookingEvent, setBookingEvent] = useState<number>()
+  const [bookingError, setBookingError] = useState<Error | null>(null)
+  const [bookingForm] = Form.useForm<{name: string}>()
   const [uploading, setUploading] = useState(false)
   const cache = useQueryClient()
   const {message} = App.useApp()
@@ -476,6 +484,11 @@ function VisitorServices({token, expire, showAssistant = false, vertical = false
     enabled: activeTab === 'events',
     staleTime: 0,
     refetchOnWindowFocus: true,
+  })
+  const profile = useQuery({
+    queryKey: ['visitor', 'profile', token],
+    queryFn: () => load<WebsiteProfile>('/api/v1/visitors/profile'),
+    enabled: bookingEvent !== undefined,
   })
   const bookings = useQuery({
     queryKey: ['visitor', 'bookings', bookingBefore],
@@ -491,14 +504,23 @@ function VisitorServices({token, expire, showAssistant = false, vertical = false
     void message.error((error as Error).message)
   }
 
-  async function changeBooking(eventId: number, cancel: boolean) {
+  async function changeBooking(eventId: number, cancel: boolean, name?: string) {
     setBusy(eventId)
+    setBookingError(null)
     try {
-      await visitorApi(activityUrl + '/' + eventId + '/reservation', token, cancel ? 'DELETE' : 'POST')
+      await visitorApi(activityUrl + '/' + eventId + '/reservation', token, cancel ? 'DELETE' : 'POST',
+        name === undefined ? undefined : {name: name.trim()})
+      setBookingEvent(undefined)
       setBookingBefore(undefined)
       void message.success(cancel ? '预约已取消' : '预约成功')
     } catch (error) {
-      report(error)
+      if (!cancel && name === undefined && error instanceof VisitorApiError && error.status === 422) {
+        setBookingEvent(eventId)
+      } else if (name !== undefined && error instanceof Error && !(error instanceof VisitorApiError && error.status === 401)) {
+        setBookingError(error)
+      } else {
+        report(error)
+      }
     } finally {
       await cache.invalidateQueries({queryKey: ['visitor']})
       setBusy(undefined)
@@ -528,6 +550,23 @@ function VisitorServices({token, expire, showAssistant = false, vertical = false
   }
 
   return <>
+    <Modal title="填写姓名后预约" open={bookingEvent !== undefined} centered destroyOnHidden
+      okText="确认预约" cancelText="取消" confirmLoading={busy !== undefined}
+      closable={busy === undefined} mask={{closable: busy === undefined}} keyboard={busy === undefined}
+      cancelButtonProps={{disabled: busy !== undefined}}
+      onCancel={() => {if (busy === undefined) setBookingEvent(undefined)}}
+      onOk={() => bookingForm.submit()}>
+      <VisitorError error={bookingError}/>
+      <Form form={bookingForm} name="website-booking" layout="vertical" clearOnDestroy disabled={busy !== undefined}
+        onFinish={({name}) => {
+          if (bookingEvent !== undefined && busy === undefined) void changeBooking(bookingEvent, false, name)
+        }}>
+        <Form.Item label="姓名" name="name" rules={[{required: true, whitespace: true, message: '请输入姓名'}]}>
+          <Input autoComplete="name" maxLength={64}/>
+        </Form.Item>
+        {profile.data && <Typography.Paragraph type="secondary">联系方式：{profile.data.contact}</Typography.Paragraph>}
+      </Form>
+    </Modal>
     <Tabs tabPlacement={vertical ? 'start' : 'top'} className={vertical ? 'visitor-services-tabs' : undefined}
       tabBarGutter={vertical ? 4 : undefined} activeKey={activeTab} onChange={setActiveTab} items={[
     {key: 'guide', label: '服务指引', children: <>
@@ -607,9 +646,9 @@ function VisitorServices({token, expire, showAssistant = false, vertical = false
       title="登录客服"
       hints={['活动怎么预约', '材料怎么交', '有哪些留学项目']}
       intro="这里是游客客服。请假、投诉、学籍进度请到学生页使用学生助手。"
-      ask={async (query, _history, sessionId) => {
+      ask={async (query, _history, sessionId, onText) => {
         const send = (id?: string) => visitorApi<CustomerChatReply>(
-          '/api/cs/visitor/chat', token, 'POST', customerChatBody(query, id),
+          '/api/cs/visitor/chat', token, 'POST', customerChatBody(query, id), onText,
         )
         const reply = await send(sessionId).catch(error => {
           if (error instanceof VisitorApiError && error.status === 401) expire()

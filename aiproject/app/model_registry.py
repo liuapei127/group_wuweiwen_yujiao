@@ -4,6 +4,8 @@ from importlib import import_module
 MODEL_MODULES = (
     "app.ai.assistant.models",
     "app.modules.auth.models",
+    "app.modules.classroom.models",
+    "app.modules.teaching.models",
     "app.modules.consultant.models",
     "app.modules.consultant.customer_models",
     "app.modules.customer_service.models",

@@ -39,13 +39,26 @@ def test_registered_visitors_can_manage_only_own_booking(isolated_portal):
             login = client.post(identity + "/login", json={"username": "13900001001", "password": password})
             assert login.status_code == 200
             assert login.json()["data"]["access_token"] != token
-            two = client.post(identity + "/register", json={**registration, "username": "13900001002"})
+            other_username = "13900001002"
+            two = client.post(identity + "/register", json={
+                "username": other_username, "password": password, "nickname": "游客昵称",
+            })
             assert two.status_code == 201
             bearer = {"Authorization": "Bearer " + token}
             other = {"Authorization": "Bearer " + two.json()["data"]["access_token"]}
+            profile = identity + "/profile"
+            with Session(engine) as db:
+                db.execute(update(VisitorAccount).where(VisitorAccount.username == other_username).values(contact=""))
+                db.commit()
+            other_profile = client.get(profile, headers=other).json()["data"]
+            assert other_profile["name"] == "" and other_profile["contact"] == other_username
 
             assert client.get(listing, headers=bearer).json()["data"][0]["id"] == event_id
             assert client.get("/api/v1/auth/me", headers=bearer).status_code == 401
+            assert client.post(reservation, headers=other).status_code == 422
+            assert client.post(reservation, headers=other, json={"name": "   "}).status_code == 422
+            assert client.post(reservation, headers=other, json={"name": "未填写姓名"}).status_code == 422
+            assert client.get(listing, headers=other).json()["data"][0]["current_participants"] == 0
             assert client.post(reservation, headers=bearer).json()["data"]["status"] == "registered"
             assert client.get(listing, headers=bearer).json()["data"][0]["reservation_status"] == "registered"
             assert client.get(listing, headers=other).json()["data"][0]["reservation_status"] is None
@@ -53,9 +66,16 @@ def test_registered_visitors_can_manage_only_own_booking(isolated_portal):
             own_bookings = client.get(listing + "/reservations", headers=bearer).json()["data"]
             assert own_bookings[0]["reservation"]["status"] == "registered"
             assert client.delete(reservation, headers=other).status_code == 404
-            assert client.post(reservation, headers=other).status_code == 409
+            details = {"name": "  访客二  "}
+            assert client.post(reservation, headers=other, json=details).status_code == 409
+            assert client.get(profile, headers=other).json()["data"]["name"] == ""
             assert client.delete(reservation, headers=bearer).json()["data"]["status"] == "cancelled"
-            assert client.post(reservation, headers=other).status_code == 200
+            assert client.post(reservation, headers=other, json=details).status_code == 200
+            assert client.post(reservation, headers=other, json={"name": "重复请求的姓名"}).status_code == 200
+            completed = client.get(profile, headers=other).json()["data"]
+            assert (completed["name"], completed["nickname"], completed["contact"]) == (
+                "访客二", "游客昵称", other_username,
+            )
 
             with Session(engine) as db:
                 row = db.scalar(select(VisitorAccount).where(VisitorAccount.username == "13900001001"))
