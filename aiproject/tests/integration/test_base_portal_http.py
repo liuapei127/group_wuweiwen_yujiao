@@ -6,6 +6,7 @@ from app.core.config import Settings
 from app.core.security import dependencies
 from app.core.security.base_session_schema import refresh_tokens, session_kids
 from app.core.security.credentials import hash_password
+from app.core.security.rbac import PERMISSIONS
 from app.modules.auth import base_portal, router as auth_router, service as auth_service
 from app.modules.auth.models import role_permissions, roles
 from tests.integration.test_ent_portal_routes import isolated_portal
@@ -113,13 +114,13 @@ def test_base_employee_cookies_refresh_replay_and_logout(isolated_portal, monkey
                     "username": "13900002104", "password": "synthetic-admin-password",
                 })
                 admin_access = {"Authorization": "Bearer " + login.json()["data"]["access_token"]}
-                assert set(login.json()["data"]["user"]["permissions"]) == {"users:manage", "roles:manage"}
-                assert admin.get("/api/v1/consultant/customers", headers=admin_access).status_code == 403
-                assert admin.get("/api/v1/consultant/visitor-intake/pending", headers=admin_access).status_code == 403
+                assert set(login.json()["data"]["user"]["permissions"]) == set(PERMISSIONS)
+                assert admin.get("/api/v1/consultant/customers", headers=admin_access).status_code == 200
+                assert admin.get("/api/v1/consultant/visitor-intake/pending", headers=admin_access).status_code == 200
                 assert admin.put("/api/v1/auth/roles/2", headers=admin_access, json={
                     "role_code": "admin", "role_name": "管理员", "status": 1,
                     "permissions": ["users:manage", "roles:manage", "crm:read"],
-                }).status_code == 422
+                }).status_code == 200
                 invalid = admin.post(reset, headers=admin_access, json={"new_password": "onlyletters"})
                 assert invalid.status_code == 422 and "onlyletters" not in invalid.text
                 assert admin.post(reset, headers=admin_access, json=next_password).json()["data"] == {

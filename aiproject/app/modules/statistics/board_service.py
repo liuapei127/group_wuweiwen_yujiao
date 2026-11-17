@@ -89,8 +89,8 @@ def operations(db, principal, kind, start, end, metric=None, offset=0, limit=30,
     if end < start or (end - start).days >= 366 or end == date.max:
         raise BusinessError(422, "请选择有效的日期范围，最长 366 天")
     if kind == "customers":
-        if ((metric in ("status", "channel", "follow_up") and not bucket)
-                or (bucket is not None and metric not in ("status", "channel", "follow_up", "lost"))
+        if ((metric in ("status", "channel", "follow_up", "country", "education", "project") and not bucket)
+                or (bucket is not None and metric not in ("status", "channel", "follow_up", "country", "education", "project", "lost"))
                 or (metric == "status" and bucket not in ("new", "contacting", "qualified", "signed", "lost"))
                 or (metric == "follow_up" and bucket not in ("phone", "wechat", "meeting", "email", "other", "未填写"))
                 or (department is not None and department_missing)):

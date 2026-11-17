@@ -44,3 +44,69 @@
 .employee-report-original {margin-top:12px}
 .employee-report-text {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.85}
 .employee-report-original > .employee-report-text {margin-top:12px}
+
+/* Report distributions keep numeric labels available in print and on narrow screens. */
+.report-donut-layout {display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.report-donut {width:164px;height:164px;border-radius:50%;display:grid;place-items:center;flex-shrink:0;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+.report-donut > div {width:116px;height:116px;background:#fff;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.report-donut strong {font-size:28px;color:#175e53}
+.report-donut span {color:#71817d;font-size:12px}
+.report-chart-legend {list-style:none;margin:0;padding:0;flex:1;min-width:150px}
+.report-chart-legend li {display:flex;gap:10px;align-items:center;margin:12px 0;font-size:13px}
+.report-chart-legend li > :nth-child(2) {flex:1;min-width:0;overflow-wrap:anywhere}
+.report-chart-legend li > :last-child {min-width:46px;text-align:right;color:#536963}
+.report-chart-dot {width:10px;height:10px;border-radius:50%;flex-shrink:0;print-color-adjust:exact}
+.report-chart-legend button,.report-inline-link {background:transparent;border:0;padding:0;text-align:left;font:inherit;color:#12685e;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.report-chart-legend button:focus-visible,.report-inline-link:focus-visible {outline:2px solid #23846f;outline-offset:3px}
+.report-columns {display:flex;align-items:flex-start;gap:12px;min-width:0;padding:12px 0 0}
+.report-column {flex:1;min-width:0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px}
+.report-column-plot {height:190px;width:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;border-bottom:1px solid #d8e5df;gap:6px}
+.report-column-plot button {display:block;flex-shrink:0;width:65%;max-width:56px;padding:0;border:0;border-radius:5px 5px 0 0;cursor:pointer;print-color-adjust:exact}
+.report-column-plot button:disabled {cursor:default;opacity:1}
+.report-column-plot button:focus-visible {outline:2px solid #13574d;outline-offset:3px}
+.report-column-count {font-weight:600;color:#26453e}
+.report-column-label {font-size:12px;overflow-wrap:anywhere}
+.report-column small {font-size:11px;color:#71817d}
+.report-series-legend {display:flex;flex-wrap:wrap;gap:18px;margin-bottom:12px;font-size:13px}
+.report-series-legend span {display:flex;align-items:center;gap:6px}
+.report-series-legend i {display:block;width:10px;height:10px;border-radius:2px;print-color-adjust:exact}
+.report-departments {display:grid;gap:20px}
+.report-department {display:grid;grid-template-columns:minmax(90px,1fr) minmax(0,4fr);gap:20px;align-items:center}
+.report-department strong {font-size:13px;overflow-wrap:anywhere}
+.report-department button {display:grid;grid-template-columns:72px minmax(0,1fr) 35px;align-items:center;gap:12px;width:100%;background:transparent;border:0;padding:5px 0;text-align:left;font:inherit;font-size:12px;cursor:pointer;color:inherit}
+.report-department button:disabled {cursor:default;opacity:1}
+.report-department button:focus-visible {outline:2px solid #23846f;outline-offset:2px}
+.report-department .report-center-bar-track i {display:block;height:8px;border-radius:10px;print-color-adjust:exact}
+.report-chart-detail {margin-top:16px}
+.report-chart-detail .ant-collapse-header {padding-inline:0!important}
+.report-center-two:empty {display:none}
+.report-center section[hidden] {display:none!important}
+@media(max-width:760px) {
+ .report-center .ant-card-body {padding:16px}
+ .report-department {grid-template-columns:minmax(0,1fr);gap:8px}
+ .report-donut-layout {gap:16px}
+ .report-center .ant-form-inline .ant-form-item {max-width:100%;margin-inline-end:8px}
+ .report-center .ant-form-item-control {min-width:0}
+ .report-center .ant-form-item-control-input-content > .ant-space {flex-wrap:wrap}
+}
+@media print {
+ .report-chart-detail {display:none}
+ .report-center section[hidden] {display:none!important}
+ .report-distribution,.report-department {break-inside:avoid}
+ .report-columns button,.report-donut,.report-center-bar i {print-color-adjust:exact;-webkit-print-color-adjust:exact}
+ .report-center .ant-form {display:none!important}
+}
+
+@media print {
+ .report-center {display:block!important}
+ .report-center > section:not([hidden]),.report-center .ant-space,.report-center .ant-space-item {display:block!important}
+ .report-center-heading {margin-bottom:16px}
+ .report-center .report-filter-panel {display:none!important}
+ .report-center .ant-card {break-inside:avoid;page-break-inside:avoid;margin-bottom:12px}
+ .report-center-two {display:block!important}
+ .report-center-grid {grid-template-columns:repeat(auto-fit,minmax(105px,1fr));margin:12px 0;gap:8px}
+ .report-center-metric strong {font-size:21px}
+ .report-center .report-center-table-link {display:inline!important;padding:0!important;height:auto!important;border:0!important;color:inherit!important}
+ .report-center .ant-table {font-size:11px}
+ .report-center section[hidden] {display:none!important}
+}

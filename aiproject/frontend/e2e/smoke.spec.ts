@@ -371,3 +371,191 @@ test('student assistant keeps the chosen conversation and draft after an older r
   await studentNav.getByRole('button', {name: '学生助手'}).click()
   await expect(input).toHaveValue('新会话里的草稿')
 })
+
+test.describe('local test login shortcuts', () => {
+  // Block the session worker so mocked auth calls cannot reach the real backend.
+  test.use({serviceWorkers:'block'})
+const quickLoginRoles = [
+  {role:'管理员',code:'admin',username:'19900001101',password:'001101'},
+  {role:'顾问',code:'advisor',username:'19900001102',password:'001102'},
+  {role:'主管',code:'manager',username:'19900001103',password:'001103'},
+  {role:'教师',code:'teacher',username:'19900001104',password:'001104'},
+]
+for (const account of quickLoginRoles) {
+  test('local quick login authenticates '+account.code+' through the normal API', async ({page}) => {
+    let loginCalls = 0
+    await page.route('**/api/v1/**', async route => {
+      const path = new URL(route.request().url()).pathname
+      const reply = (data:unknown) => route.fulfill({json:{code:0,data}})
+      if (path === '/api/v1/auth/status') return reply({mode:'base_rs256',ready:true})
+      if (path === '/api/v1/auth/login') {
+        loginCalls += 1
+        expect(route.request().postDataJSON()).toEqual({username:account.username,password:account.password})
+        return reply({access_token:'test-'+account.code,user:{id:1,username:account.username,
+          real_name:'快捷测试'+account.role,role_code:account.code,role_name:account.role,
+          permissions:['dashboard:read'],student_ids:[]}})
+      }
+      return reply({})
+    })
+    await page.goto('/customers/757')
+    await page.getByLabel('员工手机号').fill('15072228372')
+    await page.getByLabel('登录密码').fill('wrong-password')
+    await page.getByRole('button',{name:account.role+'一键登录',exact:true}).click()
+    await expect(page.locator('.user-menu')).toContainText('快捷测试'+account.role)
+    await expect(page).toHaveURL(/\/dashboard$/)
+    expect(loginCalls).toBe(1)
+  })
+}
+
+test('local quick login shows backend rejection and lets the user retry', async ({page}) => {
+  await page.route('**/api/v1/auth/status', route => route.fulfill({json:{code:0,data:{ready:true}}}))
+  await page.route('**/api/v1/auth/login', route => route.fulfill({status:401,json:{detail:'测试账号密码已变更'}}))
+  await page.goto('/')
+  await page.getByRole('button',{name:'顾问一键登录',exact:true}).click()
+  await expect(page.getByText('测试账号密码已变更',{exact:true})).toBeVisible()
+  await expect(page.getByRole('heading',{name:'登录你的工作空间'})).toBeVisible()
+  await expect(page.getByLabel('员工手机号')).toHaveValue('19900001102')
+  await expect(page.getByRole('button',{name:'主管一键登录',exact:true})).toBeEnabled()
+})
+
+})
+
+
+test.describe('todo status form initialization', () => {
+  test.use({serviceWorkers:'block'})
+  test('shows the current status on first open and when changing tasks', async ({page}) => {
+    const tasks = [
+      {id:71,title:'待处理任务',status:'pending',priority:'medium',todo_type:'custom'},
+      {id:72,title:'进行中任务',status:'in_progress',priority:'medium',todo_type:'custom'},
+    ]
+    let updated:unknown
+    await page.addInitScript(()=>sessionStorage.setItem('ent-token','test-todo-owner'))
+    await page.route('**/api/v1/**', async route => {
+      const path=new URL(route.request().url()).pathname
+      const reply=(data:unknown)=>route.fulfill({json:{code:0,data}})
+      if(path==='/api/v1/auth/me')return reply({id:10,real_name:'待办测试员工',role_code:'employee',role_name:'员工',
+        permissions:['todos:read','todos:write'],student_ids:[]})
+      if(path==='/api/v1/enterprise/todos')return reply(tasks)
+      if(path==='/api/v1/enterprise/todos/72'&&route.request().method()==='PATCH') {
+        updated=route.request().postDataJSON()
+        tasks[1].status='done'
+        return reply(tasks[1])
+      }
+      return reply({})
+    })
+    await page.goto('/todos')
+    await page.getByRole('row').filter({hasText:'待处理任务'}).getByRole('button',{name:'处理',exact:true}).click()
+    const dialog=page.getByRole('dialog',{name:'更新待办状态'})
+    await expect(dialog.getByLabel('当前状态')).toBeDisabled()
+    await expect(dialog.locator('.ant-form-item').filter({hasText:'当前状态'})).toContainText('待处理')
+    await expect(dialog.locator('.ant-form-item').filter({hasText:'目标状态'})).toContainText('已完成')
+    await dialog.getByRole('button',{name:/^取\s*消$/}).click()
+    await expect(dialog).toBeHidden()
+    await page.getByRole('row').filter({hasText:'进行中任务'}).getByRole('button',{name:'处理',exact:true}).click()
+    await expect(dialog.locator('.ant-form-item').filter({hasText:'当前状态'})).toContainText('进行中')
+    await expect(dialog.locator('.ant-form-item').filter({hasText:'目标状态'})).toContainText('已完成')
+    await dialog.getByRole('button',{name:'确认提交'}).click()
+    await expect(dialog).toBeHidden()
+    expect(updated).toEqual({expected_status:'in_progress',status:'done'})
+    await expect(page.getByRole('row').filter({hasText:'进行中任务'})).toContainText('已完成')
+    await page.getByRole('button',{name:/新增待办/}).click()
+    const create=page.getByRole('dialog',{name:'新增待办'})
+    await expect(create.getByLabel('待办标题')).toHaveValue('')
+    await expect(create.locator('.ant-form-item').filter({hasText:'优先级'})).toContainText('普通')
+  })
+})
+
+
+test.describe('report center review changes', () => {
+  test.use({serviceWorkers:'block'})
+  test('merges customer charts and separates report generation from PDF download', async ({page}) => {
+    let generated=0, pdfRequests=0, intelligenceRequests=0
+    let lastMetric=''
+    await page.addInitScript(()=>sessionStorage.setItem('ent-token','report-review'))
+    await page.route('**/api/v1/**',async route=>{
+      const url=new URL(route.request().url()), path=url.pathname
+      const reply=(data:unknown)=>route.fulfill({json:{code:0,data}})
+      if(path.endsWith('/auth/me'))return reply({id:10,real_name:'报表主管',role_code:'manager',role_name:'主管',permissions:['reports:operations:read','reports:summary:read'],student_ids:[]})
+      if(path.endsWith('/customers/intelligence')){intelligenceRequests++;return reply({})}
+      if(path.endsWith('/customers/analysis'))return reply({comparisons:{previous:{start:'2026-10-01',end:'2026-10-17',count:4,change:1,percent:25}},groups:{
+        intended_country:[{label:'德国',count:5,signed:2,signed_percent:40}],education_level:[{label:'本科',count:5,signed:2,signed_percent:40}],
+        intended_project:[{label:'预科',count:5,signed:2,signed_percent:40}],source_channel:[{label:'官网',count:5,signed:2,signed_percent:40}]}})
+      if(path.endsWith('/customers/archive')){generated++;return reply({archive_id:901})}
+      if(path.endsWith('/archive/901/pdf')){pdfRequests++;return route.fulfill({contentType:'application/pdf',body:'%PDF-1.4\n%%EOF'})}
+      if(path.endsWith('/board/customers')){
+        lastMetric=url.searchParams.get('metric')||''
+        return reply({department:'A',leads_by_status:{new:3,signed:2},transitions:{signed:7,lost:1},lost_reasons:{预算:1},follow_ups:{phone:3},
+          departments:[{department:'A',new:5,signed:7,lost:1}],status_history_since:'2026-01-01',
+          items:lastMetric?[{id:7,customer_name:'分组客户',status:'new',intended_country:'德国',education_level:'本科',intended_project:'预科'}]:[],has_more:false})
+      }
+      return reply([])
+    })
+    await page.goto('/reporting')
+    const panel=page.locator('#report-panel-customers')
+    await expect(panel.getByRole('region',{name:'来源渠道分析',exact:true})).toHaveCount(1)
+    await expect(panel.getByText('客户特征聚类与风险提示',{exact:true})).toHaveCount(0)
+    await expect(panel.getByText('已记录的转化路径',{exact:true})).toHaveCount(0)
+    await expect(panel.getByText('获客渠道分析',{exact:true})).toHaveCount(0)
+    await expect(panel.locator('[data-chart=donut]')).toHaveCount(1)
+    await expect(panel.locator('[data-chart=grouped]')).toHaveCount(1)
+    const metrics=await panel.locator('.report-center-grid').boundingBox()
+    const charts=await panel.getByRole('region',{name:'新增线索当前状态',exact:true}).boundingBox()
+    expect(metrics!.y).toBeLessThan(charts!.y)
+    await panel.getByRole('button',{name:'意向国家 · 德国 · 5 条明细',exact:true}).click()
+    await expect(page.getByRole('dialog').getByText('分组客户',{exact:true})).toBeVisible()
+    expect(lastMetric).toBe('country')
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toBeHidden()
+    await expect(panel.getByRole('button',{name:'下载 PDF',exact:true})).toBeDisabled()
+    await panel.getByRole('button',{name:'生成报告',exact:true}).click()
+    await expect(panel.getByRole('button',{name:'下载 PDF',exact:true})).toBeEnabled()
+    expect(generated).toBe(1);expect(pdfRequests).toBe(0);expect(intelligenceRequests).toBe(0)
+    const download=page.waitForEvent('download')
+    await panel.getByRole('button',{name:'下载 PDF',exact:true}).click()
+    expect((await download).suggestedFilename()).toContain('901.pdf')
+    expect(pdfRequests).toBe(1);expect(generated).toBe(1)
+    await panel.getByLabel('开始日期').fill('2026-10-01')
+    await expect(panel.getByRole('button',{name:/下载 PDF$/})).toBeDisabled()
+    await page.emulateMedia({media:'print'})
+    await expect(panel.locator('.report-filter-panel')).toBeHidden()
+    await expect(panel.locator('.report-center-table-link').first()).toBeVisible()
+    await expect(page.locator('.report-center > section:visible')).toHaveCount(1)
+  })
+
+  test('uses complaint donut and ordered columns and hides unconfigured timing panels',async({page})=>{
+    await page.addInitScript(()=>sessionStorage.setItem('ent-token','report-review'))
+    await page.route('**/api/v1/**',async route=>{
+      const url=new URL(route.request().url()),path=url.pathname
+      const reply=(data:unknown)=>route.fulfill({json:{code:0,data}})
+      if(path.endsWith('/auth/me'))return reply({id:10,real_name:'报表主管',role_code:'manager',role_name:'主管',permissions:['reports:operations:read','reports:summary:read'],student_ids:[]})
+      if(path.endsWith('/complaints/analysis'))return reply({first_response:{samples:0,average_hours:null},resolution:{samples:0,average_hours:null},overdue_days:null})
+      if(path.endsWith('/complaints/archive'))return route.fulfill({status:503,json:{detail:'报告生成失败，请重试'}})
+      if(path.endsWith('/board/complaints'))return reply({department:'A',complaints_by_status:{pending:2,processing:1,resolved:2},
+        categories:{服务:5},satisfaction:{'5':2,'3':1},backlog:{'14 天以上':2,'0–2 天':1,'7–13 天':0,'3–6 天':0},items:[],has_more:false})
+      if(path.endsWith('/board/employees'))return reply({expected:2,submitted:0,missing:2,departments:[{department:'A',expected:2,submitted:0,missing:2}],
+        items:[{employee_id:71,name:'同名员工',department:'A',report_days:0},{employee_id:72,name:'同名员工',department:'B',report_days:0}],has_more:false})
+      if(path.endsWith('/projects/health'))return reply({items:[{project_id:1,project_name:'预科项目',students:2,open_complaints:0,overdue_applications:0,overdue_deadlines:0,score:100}],note:'按当前班级统计'})
+      return reply([])
+    })
+    await page.goto('/reporting')
+    await page.getByRole('button',{name:'投诉周报',exact:true}).click()
+    const panel=page.locator('#report-panel-complaints')
+    await expect(panel.getByRole('region',{name:'投诉状态',exact:true})).toHaveAttribute('data-chart','donut')
+    const backlog=panel.getByRole('region',{name:'积压账龄',exact:true})
+    await expect(backlog).toHaveAttribute('data-chart','columns')
+    await expect(backlog.locator('.report-column-label')).toHaveText(['0–2 天','3–6 天','7–13 天','14 天以上'])
+    await expect(panel.getByRole('region',{name:'满意度分布',exact:true}).locator('.report-column-label')).toHaveText(['3 分','5 分'])
+    await expect(panel.getByText('投诉处理时效',{exact:true})).toHaveCount(0)
+    await expect(panel.getByText(/暂无样本|尚未配置|尚未设置投诉超时标准/)).toHaveCount(0)
+    await panel.getByRole('button',{name:'生成报告',exact:true}).click()
+    await expect(panel.getByText('报告生成失败，请重试',{exact:true})).toBeVisible()
+    await expect(panel.getByRole('button',{name:'下载 PDF',exact:true})).toBeDisabled()
+    await page.getByRole('button',{name:'员工日报周报',exact:true}).click()
+    const employees=page.locator('#report-panel-employees')
+    await expect(employees.getByRole('columnheader',{name:'员工编号',exact:true})).toBeVisible()
+    await expect(employees.getByRole('cell',{name:'同名员工',exact:true})).toHaveCount(2)
+    const metrics=await employees.locator('.report-center-grid').boundingBox()
+    const health=await employees.getByText('跨项目服务健康度',{exact:true}).boundingBox()
+    expect(metrics!.y).toBeLessThan(health!.y)
+  })
+})

@@ -103,6 +103,9 @@ def lead_dashboard(db: Session, scope, start: date, end: date, metric: str | Non
         lead.id, lead.customer_name, lead.status, lead.create_time, lead.lost_reason,
         func.coalesce(func.nullif(func.trim(lead.source_channel), ""), "未填写").label("channel"),
         func.nullif(func.trim(SysUser.department), "").label("department"),
+        func.coalesce(func.nullif(func.trim(lead.intended_country), ""), "未填写").label("country"),
+        func.coalesce(func.nullif(func.trim(lead.education_level), ""), "未填写").label("education"),
+        func.coalesce(func.nullif(func.trim(lead.intended_project), ""), "未填写").label("project"),
     ).outerjoin(SysUser, SysUser.id == lead.owner_employee_id)
     if scope is not None:
         population = population.where(*employee_filters(scope))
@@ -151,11 +154,15 @@ def lead_dashboard(db: Session, scope, start: date, end: date, metric: str | Non
             query = query.order_by(event.occurred_at.desc(), event.id.desc())
         else:
             query = select(customer.id, customer.customer_name, customer.status, customer.channel.label("source_channel"),
-                           customer.create_time.label("occurred_at"), customer.lost_reason.label("reason")).where(*filters, *new)
+                           customer.create_time.label("occurred_at"), customer.lost_reason.label("reason"),
+                           customer.country.label("intended_country"), customer.education.label("education_level"),
+                           customer.project.label("intended_project")).where(*filters, *new)
             if metric == "status":
                 query = query.where(customer.status == bucket)
             elif metric == "channel":
                 query = query.where(customer.channel == bucket)
+            elif metric in ("country", "education", "project"):
+                query = query.where(getattr(customer, metric) == bucket)
             query = query.order_by(customer.create_time.desc(), customer.id.desc())
         page = _page(db, query, offset, limit)
     return {"leads_by_status": counts, "transitions": transitions, "lost_reasons": reasons,

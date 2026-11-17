@@ -1,7 +1,7 @@
 """SQL for shared accounts and ENT-owned RBAC/session tables. No commits."""
 import json
 from datetime import timedelta
-from sqlalchemy import select, insert, update, delete, func, and_, inspect, table, column, BigInteger, String
+from sqlalchemy import select, insert, update, delete, func, inspect, table, column, BigInteger, String
 from .models import accounts, roles, role_permissions, student_scopes, sessions, login_attempts, audit_log
 from app.core.security.credentials import utc_now
 from app.core.security.rbac import effective_role_permissions
@@ -34,11 +34,11 @@ class AuthRepository:
     def permissions(self, role_id):
         if not role_id:
             return set()
-        stmt = select(roles.c.role_code, role_permissions.c.permission).join(
+        stmt = select(roles.c.role_code, role_permissions.c.permission).outerjoin(
             role_permissions, role_permissions.c.role_id == roles.c.id,
         ).where(roles.c.id == role_id)
         grants = self.db.execute(stmt).all()
-        return effective_role_permissions(grants[0].role_code, {row.permission for row in grants}) if grants else set()
+        return effective_role_permissions(grants[0].role_code, {row.permission for row in grants if row.permission}) if grants else set()
 
     def scope(self, user_id):
         explicit=set(self.db.execute(select(student_scopes.c.student_id).where(student_scopes.c.user_id==user_id)).scalars())
@@ -136,9 +136,12 @@ class AuthRepository:
 
     def admin_count(self):
         a=role_permissions.alias('manage_users');b=role_permissions.alias('manage_roles')
-        join=accounts.join(roles,roles.c.id==accounts.c.role_id).join(a,and_(a.c.role_id==roles.c.id,a.c.permission=='users:manage')).join(b,and_(b.c.role_id==roles.c.id,b.c.permission=='roles:manage'))
+        join=accounts.join(roles,roles.c.id==accounts.c.role_id)
+        has_users=select(a.c.role_id).where(a.c.role_id==roles.c.id,a.c.permission=='users:manage').exists()
+        has_roles=select(b.c.role_id).where(b.c.role_id==roles.c.id,b.c.permission=='roles:manage').exists()
         return self.db.execute(select(func.count(func.distinct(accounts.c.id))).select_from(join).where(
-            accounts.c.status=='normal',accounts.c.user_type.in_(['employee','admin']),roles.c.status==1)).scalar_one()
+            accounts.c.status=='normal',accounts.c.user_type.in_(['employee','admin']),roles.c.status==1,
+            (roles.c.role_code=='admin') | (has_users & has_roles))).scalar_one()
 
     def audits(self,limit):
         rows=[dict(r) for r in self.db.execute(select(audit_log).order_by(audit_log.c.id.desc()).limit(limit)).mappings()]

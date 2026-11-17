@@ -6,7 +6,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
+from app.core.config import Settings
 from app.core.database import Base, get_db
+from app.core.security import dependencies
 from app.core.security import EmployeePrincipal, require_employee
 from app.router_registry import register_routers
 from app.modules.consultant.models import CrmLead, CrmFollowUp
@@ -16,7 +18,10 @@ from app.modules.student_admin.repository import StudentAdminRepository
 from app.modules.consultant.errors import ConflictError
 
 @pytest.fixture
-def env():
+def env(monkeypatch):
+    # Keep blocked-mode assertions independent of local .env and process settings.
+    settings = Settings(_env_file=None, employee_identity_mode="blocked")
+    monkeypatch.setattr(dependencies, "get_settings", lambda: settings)
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     Base.metadata.create_all(engine)
     with Session(engine) as db:

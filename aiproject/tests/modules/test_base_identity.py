@@ -123,8 +123,7 @@ def test_employee_admin_and_student_are_distinct(db):
     assert employee.sub == "10" and employee.permissions == frozenset({"crm:read"})
     assert employee.ent_login_allowed is True
     assert admin.user_type == "admin" and admin.role_code == "admin"
-    assert admin.sub == "11" and admin.permissions == frozenset({"users:manage"})
-    assert admin.permissions != frozenset(PERMISSIONS)
+    assert admin.sub == "11" and admin.permissions == frozenset(PERMISSIONS)
     assert student.user_type == "student" and student.role_code == "student"
     assert student.sub == "12" and student.ent_login_allowed is False
     assert PLANTED_HASH not in repr((employee, admin, student))
@@ -189,9 +188,36 @@ def test_employee_role_does_not_change_account_class(db):
     assert employee_admin_role.user_type == "employee"
     assert admin_account.user_type == "admin"
     assert employee_admin_role.role_code == admin_account.role_code == "admin"
-    assert employee_admin_role.permissions == admin_account.permissions == frozenset({"users:manage"})
-    assert employee_admin_role.permissions != frozenset(PERMISSIONS)
+    assert employee_admin_role.permissions == admin_account.permissions == frozenset(PERMISSIONS)
     assert "not-a-catalogue-permission" not in employee_admin_role.permissions
+
+
+def test_admin_without_stored_grants_has_all_permissions_and_remains_an_admin(db):
+    from app.modules.auth.repository import AuthRepository
+    _role(db, 2, "admin", "管理员")
+    _user(db, 11, "admin.one", "admin", role_id=2)
+    repo = AuthRepository(db)
+    assert repo.permissions(2) == set(PERMISSIONS)
+    assert resolve_identity(db, 11).permissions == frozenset(PERMISSIONS)
+    assert repo.list_roles()[0]["permissions"] == sorted(PERMISSIONS)
+    assert repo.admin_count() == 1
+    db.execute(accounts.update().where(accounts.c.id == 11).values(status="disabled"))
+    assert repo.admin_count() == 0
+    assert _error(db, 11) == "disabled"
+
+
+def test_saving_admin_normalizes_all_permissions_and_audit(db):
+    import json
+    from types import SimpleNamespace
+    from app.modules.auth.schemas import RoleWrite
+    from app.modules.auth.models import audit_log
+    _role(db, 2, "admin", "管理员")
+    _user(db, 11, "admin.one", "admin", role_id=2)
+    AuthService(db).save_role(RoleWrite(role_code="admin", role_name="管理员", permissions=[]),
+                              SimpleNamespace(employee_id=11), role_id=2)
+    assert set(db.scalars(select(role_permissions.c.permission).where(role_permissions.c.role_id == 2))) == set(PERMISSIONS)
+    details = json.loads(db.scalar(select(audit_log.c.details)))
+    assert set(details["permissions"]) == set(PERMISSIONS)
 
 
 def test_student_can_be_identified_but_existing_login_rejects(db, monkeypatch):

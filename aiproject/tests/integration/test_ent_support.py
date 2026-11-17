@@ -5,7 +5,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, insert, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
+from app.core.config import Settings
 from app.core.database import Base, get_db
+from app.core.security import dependencies
 from app.core.security import EmployeePrincipal, require_employee
 from app.router_registry import register_routers
 from app.modules.student_admin.models import SysUser, StudentAdminService
@@ -17,7 +19,10 @@ from app.modules.todo.models import todo_item as todos, notification_log as noti
 from app.modules.todo.reminders import scan_reminders
 
 @pytest.fixture
-def env():
+def env(monkeypatch):
+    # Keep blocked-mode assertions independent of local .env and process settings.
+    settings = Settings(_env_file=None, employee_identity_mode="blocked")
+    monkeypatch.setattr(dependencies, "get_settings", lambda: settings)
     engine=create_engine("sqlite://",connect_args={"check_same_thread":False},poolclass=StaticPool)
     Base.metadata.create_all(engine)
     with Session(engine) as db:

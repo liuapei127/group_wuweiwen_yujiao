@@ -9,6 +9,7 @@ from app.core.config import Settings
 from app.core.database import Base,get_db,engine as production_engine
 from app.core.security import dependencies
 from app.modules.auth import service as auth_service
+from app.modules.statistics import service as statistics_service
 from app.model_registry import register_models
 from app.router_registry import register_routers
 
@@ -20,6 +21,7 @@ def isolated_portal(monkeypatch):
         settings=Settings(_env_file=None,employee_identity_mode=mode,auth_jwt_secret=secret)
         monkeypatch.setattr(auth_service,'get_settings',lambda:settings)
         monkeypatch.setattr(dependencies,'get_settings',lambda:settings)
+        monkeypatch.setattr(statistics_service,'get_settings',lambda:settings)
         db_engine=create_engine('sqlite://',connect_args={'check_same_thread':False},poolclass=StaticPool)
         if migrated:
             register_models();Base.metadata.create_all(db_engine)

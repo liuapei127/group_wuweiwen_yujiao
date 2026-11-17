@@ -237,3 +237,8 @@ Dify 须在调用前完成结构化（**非语音完成标志**）。
 - 可信 auth 中间件  
 
 *OpenAPI 以运行 `uvicorn app.main:app` 后 `/docs` 为准。*
+
+
+### 智报中心客户分组明细
+
+`GET /api/v1/reporting/board/customers` 的可选 `metric` 新增 `country`（意向国家）、`education`（学历）、`project`（意向项目），与既有 `channel` 一样必须提供 `bucket`。分组按去除首尾空格后的值匹配，空值统一为“未填写”。沿用现有日期范围、分页及服务端报表权限与组织范围；原有请求和返回字段继续保留。客户明细增加 `intended_country`、`education_level`、`intended_project`，供图表下钻展示。

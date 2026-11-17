@@ -1,0 +1,16 @@
+.wellbeing-trend-chart { margin: 0 0 24px; }
+.wellbeing-trend-chart figcaption { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.wellbeing-trend-legend { display: flex; gap: 20px; font-size: 13px; color: #5F706A; }
+.wellbeing-trend-legend span { display: inline-flex; align-items: center; gap: 8px; }
+.wellbeing-trend-legend i { width: 24px; border-top: 3px solid; }
+.wellbeing-trend-note { margin: 8px 0 12px; color: #5F706A; font-size: 13px; }
+.wellbeing-trend-scroll { overflow-x: auto; }
+.wellbeing-trend-scroll svg { display: block; width: 100%; min-width: 640px; max-height: 390px; }
+.wellbeing-trend-label { fill: #5F706A; font-size: 12px; }
+.wellbeing-trend-point { cursor: crosshair; outline: none; }
+.wellbeing-trend-guide { opacity: 0; }
+.wellbeing-trend-point:hover .wellbeing-trend-guide,
+.wellbeing-trend-point:focus .wellbeing-trend-guide { opacity: 1; }
+.wellbeing-trend-point:focus circle { stroke-width: 4px; }
+.wellbeing-trend-detail { display: flex; flex-wrap: wrap; gap: 8px 24px; padding: 12px 16px; margin-top: 12px; border-radius: 8px; background: #F2F7F5; color: #3C4B46; font-size: 13px; }
+@media print { .wellbeing-trend-scroll svg { min-width: 0; max-height: none; } }

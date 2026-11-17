@@ -98,7 +98,7 @@ def save_checkin(db, student_id, body):
 
 
 def can_view_all_weeks(principal: EmployeePrincipal) -> bool:
-    return principal.role_code == "manager" and "reports:wellbeing:read" in principal.permissions
+    return principal.role_code in ("admin", "manager") and "reports:wellbeing:read" in principal.permissions
 
 
 def weekly_student_ids(db: Session, principal: EmployeePrincipal) -> frozenset[int]:

@@ -10,10 +10,10 @@ PERMISSIONS = {
     'crm:read': ('查询本人客户、详情和跟进', '客户管理'),
     'crm:write': ('创建、修改客户及跟进', '客户管理'),
     'reports:read': ('查询本人日报', '员工日报'),
-    'reports:formal:generate': ('生成授权范围内的员工正式报告', '智能报告'),
-    'reports:operations:read': ('查看授权范围内的经营与投诉统计', '智能报告'),
-    'reports:wellbeing:read': ('查看全体学生心理健康周报', '智能报告'),
-    'reports:summary:read': ('查看授权范围内的日报汇总', '智能报告'),
+    'reports:formal:generate': ('生成授权范围内的员工正式报告', '智报中心'),
+    'reports:operations:read': ('查看授权范围内的经营与投诉统计', '智报中心'),
+    'reports:wellbeing:read': ('查看全体学生心理健康周报', '智报中心'),
+    'reports:summary:read': ('查看授权范围内的日报汇总', '智报中心'),
     'reports:write': ('提交本人日报', '员工日报'),
     'directory:read': ('查询组织与同事', '组织目录'),
     'directory:contacts': ('查看同事联系方式', '组织目录'),
@@ -52,11 +52,7 @@ PERMISSIONS = {
 COMMON = {'dashboard:read','reports:read','reports:write','directory:read','guides:read',
           'tickets:read','tickets:write','todos:read','todos:write','notifications:read',
           'queries:read','commands:execute','ai:use'}
-SYSTEM_ADMIN_PERMISSIONS = frozenset({
-    'dashboard:read', 'ai:use', 'directory:read', 'todos:read', 'todos:write', 'notifications:read',
-    'events:manage', 'events:check_in', 'courses:manage', 'website-content:manage', 'website-accounts:manage',
-    'organizations:manage', 'users:manage', 'roles:manage', 'audit:read', 'classes:manage', 'teaching:manage', 'tickets:route',
-})
+SYSTEM_ADMIN_PERMISSIONS = frozenset(PERMISSIONS)
 MANAGER_REPORT_PERMISSIONS = frozenset({
     'reports:operations:read', 'reports:summary:read', 'reports:formal:generate', 'reports:wellbeing:read',
 })
@@ -255,7 +251,9 @@ def route_permission(method, path):
 
 
 def effective_role_permissions(role_code: str, stored: set[str]) -> set[str]:
-    permitted = stored & (SYSTEM_ADMIN_PERMISSIONS if role_code == 'admin' else PERMISSIONS.keys())
+    if role_code == 'admin':
+        return set(SYSTEM_ADMIN_PERMISSIONS)
+    permitted = stored & PERMISSIONS.keys()
     if role_code != "manager":
         permitted.discard("reports:wellbeing:read")
     if role_code in ("employee", "advisor"):

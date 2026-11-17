@@ -51,6 +51,15 @@ def test_report_analysis_uses_organization_scope_and_recorded_audit(isolated_por
         assert result["comparisons"]["year_ago"]["percent"]==0
         assert result["groups"]["intended_country"]==[
             {"label":"新加坡","count":1,"signed":1,"signed_percent":100}]
+        # Feature drill-downs use the same date window and manager scope as their charts.
+        for metric, bucket in (("country", "新加坡"), ("education", "高中"), ("project", "未填写")):
+            detail_params = {**params, "metric": metric, "bucket": bucket}
+            response = client.get(root+"customers", params=detail_params, headers=headers)
+            assert response.status_code == 200, response.text
+            assert [row["id"] for row in response.json()["data"]["items"]] == [1]
+            assert client.get(root+"customers", params=detail_params).status_code == 401
+            assert client.get(root+"customers", params={**params, "metric": metric}, headers=headers).status_code == 422
+            assert client.get(root+"customers", params={**detail_params, "bucket": "不存在的分组"}, headers=headers).json()["data"]["items"] == []
         response=client.get(root+"complaints/analysis",params=params,headers=headers)
         assert response.status_code==200, response.text
         assert response.json()["data"]["first_response"]=={"samples":1,"average_hours":2}

@@ -80,7 +80,7 @@ def summarize_employee(employee_id: Annotated[int, Path(ge=1)], db: DB, staff: S
 
 @router.get("/board/customers")
 def customers(start: date, end: date, db: DB, staff: Staff,
-              metric: Literal["new", "signed", "lost", "status", "channel", "follow_up"] | None = None,
+              metric: Literal["new", "signed", "lost", "status", "channel", "follow_up", "country", "education", "project"] | None = None,
               offset: Offset = 0, limit: Limit = 30,
               bucket: Annotated[str | None, Query(max_length=255)] = None,
               department: Annotated[str | None, Query(max_length=128)] = None, department_missing: bool = False):

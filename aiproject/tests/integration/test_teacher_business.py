@@ -319,7 +319,7 @@ def test_wellbeing_week_scope_and_archives_follow_the_class_roster(teacher_world
     assert teacher["items"] == [{"status": "pending", "risk_level": "low", "count": 1}]
     assert teacher["records_suppressed"] and teacher["emotion_tags"] == teacher["emotion_scores"] == []
     assert read("other")["items"] == [{"status": "pending", "risk_level": "high", "count": 1}]
-    assert client.get(endpoint + "/week", headers=auth("admin"), params=body).status_code == 403
+    assert read("admin")["eligible"] == manager["eligible"]
     assert client.get(endpoint + "/week", headers=auth("advisor"), params=body).status_code == 403
     assert client.get(endpoint + "/cases", headers=auth("manager")).status_code == 403
     assert client.post(endpoint + "/reports", headers=auth("manager"), json=body).status_code == 403

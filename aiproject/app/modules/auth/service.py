@@ -272,8 +272,9 @@ class AuthService:
         requested = set(body.permissions)
         if requested - PERMISSIONS.keys():
             raise BusinessError(422, '包含未注册的功能权限')
-        if body.role_code == 'admin' and requested - SYSTEM_ADMIN_PERMISSIONS:
-            raise BusinessError(422, '系统管理员只能配置管理及通用工作权限，请将业务权限分配给业务角色')
+        if body.role_code == 'admin':
+            requested = set(SYSTEM_ADMIN_PERMISSIONS)
+            body = body.model_copy(update={'permissions': sorted(requested)})
         try:
             self.repo.lock_policy()
             old=self.repo.role(role_id) if role_id else None

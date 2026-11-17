@@ -1,31 +1,31 @@
 import {useState} from 'react'
-import {App, Button, Card, Drawer, Form, Input, Select, Space, Table, Tag, Typography} from 'antd'
+import {App, Button, Card, Checkbox, Drawer, Form, Input, Select, Space, Table, Tag, Typography} from 'antd'
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {useAuth} from '../auth'
 import {ErrorNotice} from '../components/shared'
 import {api, download, query} from '../lib/api'
 import {ReportSchedules} from './ReportSchedules'
 import {ReportHistory} from './ReportHistory'
-import {OperationAnalysis, CustomerIntelligence, ProjectHealth} from './ReportAnalysis'
+import {OperationAnalysis, useOperationAnalysis, ProjectHealth} from './ReportAnalysis'
 import {EmployeeReportReader, type StaffDetail} from './EmployeeReportReader'
 import {WellbeingBoard} from './Wellbeing'
 import {today} from './reportDates'
-import {CountBars, Metric, statuses} from './ReportMetrics'
+import {Metric, statuses} from './ReportMetrics'
+import {CustomerFeatureCharts, DepartmentChart, DistributionChart} from './ReportCharts'
 import './report-center.css'
 
 const root = '/api/v1/reporting'
 type Counts = Record<string,number>
 type Row = {id:number;record_id?:number;customer_name?:string;title?:string;status:string;category?:string;occurred_at?:string;
-  create_time?:string;reason?:string;satisfaction?:number;follow_type?:string;source_channel?:string}
+  create_time?:string;reason?:string;satisfaction?:number;follow_type?:string;source_channel?:string;intended_country?:string;education_level?:string;intended_project?:string}
 type Comparison = {start:string;end:string;count:number;change:number;percent:number|null}
 type Operations = {leads_by_status?:Counts;complaints_by_status?:Counts;transitions?:Counts;lost_reasons?:Counts;
   follow_ups?:Counts;source_channels?:Counts;categories?:Counts;satisfaction?:Counts;backlog?:Counts;as_of?:string;
   status_history_since?:string;department:string|null;departments?:{department:string|null;new:number;signed:number;lost:number}[];
   comparisons?:{previous?:Comparison;year_ago?:Comparison};items:Row[];has_more:boolean}
-type OperationDetail = {title:string;metric:'new'|'signed'|'lost'|'backlog'|'status'|'channel'|'follow_up'|'category'|'satisfaction';
+type OperationDetail = {title:string;metric:'new'|'signed'|'lost'|'backlog'|'status'|'channel'|'follow_up'|'category'|'satisfaction'|'country'|'education'|'project';
   bucket?:string;department?:string;department_missing?:boolean}
 const followLabels:Record<string,string>={phone:'电话',wechat:'微信',meeting:'面谈',email:'邮件',other:'其他'}
-const channelLabels:Record<string,string>={website:'官网'}
 const countSum=(counts:Counts)=>Object.values(counts).reduce((a,b)=>a+b,0)
 type Employee = {employee_id:number;name:string;department:string|null;report_days:number;submitted_at:string|null}
 type Dept = {department:string|null;expected:number;submitted:number;missing:number}
@@ -61,119 +61,133 @@ export function ReportCenter() {
 }
 
 function OperationBoard({kind}: {kind:'customers'|'complaints'}) {
-  const {user} = useAuth()
-  const {message} = App.useApp()
-  const cache = useQueryClient()
-  const now = today()
-  const [range, setRange] = useState({start:now.slice(0,8)+'01',end:now})
-  const [selection, setSelection] = useState<OperationDetail>()
-  const [offset,setOffset] = useState(0)
-  const endpoint = root+'/board/'+kind
-  const result = useQuery({queryKey:[user?.id,endpoint,range],queryFn:()=>api<Operations>(endpoint+query(range))})
-  const detail = useQuery({queryKey:[user?.id,endpoint,range,selection,offset],enabled:!!selection,
+  const {user}=useAuth()
+  const {message}=App.useApp()
+  const cache=useQueryClient()
+  const now=today()
+  const [range,setRange]=useState({start:now.slice(0,8)+'01',end:now})
+  const [rangeForm]=Form.useForm()
+  const [selection,setSelection]=useState<OperationDetail>()
+  const [offset,setOffset]=useState(0)
+  const [includeAI,setIncludeAI]=useState(false)
+  const [generated,setGenerated]=useState<{archive_id:number;ai_summary?:string}>()
+  const [downloading,setDownloading]=useState(false)
+  const endpoint=root+'/board/'+kind
+  const customer=kind==='customers'
+  const result=useQuery({queryKey:[user?.id,endpoint,range],queryFn:()=>api<Operations>(endpoint+query(range))})
+  const analysis=useOperationAnalysis(kind,range.start,range.end,customer)
+  const detail=useQuery({queryKey:[user?.id,endpoint,range,selection,offset],enabled:!!selection,
     queryFn:()=>api<Operations>(endpoint+query({...range,metric:selection?.metric,bucket:selection?.bucket,
       department:selection?.department,department_missing:selection?.department_missing,offset}))})
-  const archive = useMutation({mutationFn:(include_ai:boolean)=>api<{archive_id:number}>(endpoint+'/archive',{method:'POST',body:{...range,include_ai},timeout:55000}),
-    onSuccess: async ({archive_id})=>{
-      await cache.invalidateQueries({queryKey:[user?.id,'report-archive']})
-      void message.success('报表已归档')
-      await download(root+'/archive/'+archive_id+'/pdf',(kind==='customers'?'客户经营报告-':'投诉处理周报-')+archive_id+'.pdf')
-        .catch((error:Error)=>void message.error(error.message))
+  const archive=useMutation({mutationFn:(body:{start:string;end:string;include_ai:boolean})=>
+    api<{archive_id:number;ai_summary?:string}>(endpoint+'/archive',{method:'POST',body,timeout:130000}),
+    onMutate:()=>setGenerated(undefined),
+    onSuccess:report=>{
+      setGenerated(report)
+      void cache.invalidateQueries({queryKey:[user?.id,'report-archive']})
+      void message.success('报告已生成，可点击下载 PDF')
     }})
+  async function generateReport() {
+    try {
+      const value=await rangeForm.validateFields()
+      setRange(value);setSelection(undefined)
+      archive.mutate({...value,include_ai:!customer&&includeAI})
+    } catch { /* Form validation displays field errors. */ }
+  }
+  async function downloadReport() {
+    if(!generated)return
+    setDownloading(true)
+    try {await download(root+'/archive/'+generated.archive_id+'/pdf',(customer?'客户经营报告-':'投诉处理周报-')+generated.archive_id+'.pdf')}
+    catch(error){void message.error((error as Error).message)}
+    finally {setDownloading(false)}
+  }
   const data=result.data
-  const customer=kind==='customers'
-  const counts = (customer ? data?.leads_by_status : data?.complaints_by_status) || {}
-  const total = countSum(counts)
-  const historyComplete = !!data?.status_history_since && range.start>=data.status_history_since
-  const followUps=data?.follow_ups||{}
-  const channels=data?.source_channels||{}
+  const counts=(customer?data?.leads_by_status:data?.complaints_by_status)||{}
+  const total=countSum(counts)
+  const historyComplete=!!data?.status_history_since&&range.start>=data.status_history_since
   const signedLabel=historyComplete?'周期签约':'已记录签约'
   const lostLabel=historyComplete?'周期流失':'已记录流失'
   function open(metric:OperationDetail['metric'],title:string,filters:Omit<OperationDetail,'metric'|'title'>={}) {
-    setOffset(0)
-    setSelection({metric,title,...filters})
+    setOffset(0);setSelection({metric,title,...filters})
+  }
+  function openDepartment(department:string|null,metric:'new'|'signed'|'lost') {
+    const label=department||'未填写部门'
+    const title=metric==='new'?'新增线索':metric==='signed'?'签约记录':'流失记录'
+    open(metric,label+' · '+title,department===null?{department_missing:true}:{department})
   }
   function departmentCount(department:string|null,metric:'new'|'signed'|'lost',value:number) {
-    const label=department||'未填写部门'
-    const kind=metric==='new'?'新增线索':metric==='signed'?'签约记录':'流失记录'
-    const filter=department===null?{department_missing:true}:{department}
-    return value>0?<Button type="link" className="report-center-table-link"
-      aria-label={label+' · '+kind+' · '+value+' 条明细'} onClick={()=>open(metric,label+' · '+kind,filter)}>{value}</Button>:value
+    return value>0?<Button type="link" className="report-center-table-link" onClick={()=>openDepartment(department,metric)}>{value}</Button>:value
   }
+  const comparisons=customer?analysis.data?.comparisons:data?.comparisons
   return <Space orientation="vertical" size="middle" style={{width:'100%'}}>
-    <Card className="report-center-panel">
-      <Form layout="inline" initialValues={range} onFinish={(value)=>{setRange(value);setSelection(undefined)}}>
+    <Card className="report-center-panel report-filter-panel">
+      <Form form={rangeForm} layout="inline" initialValues={range} disabled={archive.isPending||downloading}
+        onValuesChange={()=>setGenerated(undefined)} onFinish={value=>{setRange(value);setSelection(undefined);setGenerated(undefined)}}>
         <Form.Item name="start" label="开始日期" rules={[{required:true}]}><Input type="date"/></Form.Item>
         <Form.Item name="end" label="结束日期" rules={[{required:true}]}><Input type="date"/></Form.Item>
         <Form.Item><Button htmlType="submit" type="primary" loading={result.isFetching}>查询</Button></Form.Item>
         <Form.Item><Space wrap>
-          <Button loading={archive.isPending} onClick={()=>archive.mutate(false)}>归档并下载 PDF</Button>
-          {!customer&&<Button disabled={archive.isPending} onClick={()=>archive.mutate(true)}>生成 AI 摘要并下载</Button>}
+          {!customer&&<Checkbox checked={includeAI} onChange={event=>{setIncludeAI(event.target.checked);setGenerated(undefined)}}>包含 AI 摘要</Checkbox>}
+          <Button loading={archive.isPending} onClick={()=>void generateReport()}>生成报告</Button>
+          <Button disabled={!generated||archive.isPending} loading={downloading} onClick={()=>void downloadReport()}>下载 PDF</Button>
         </Space></Form.Item>
       </Form>
-      <ErrorNotice error={result.error || archive.error}/>
+      <ErrorNotice error={result.error||archive.error||analysis.error}/>
     </Card>
-    <ReportHistory kind={customer ? 'customer_ops' : 'complaint_weekly'}/>
-    <OperationAnalysis kind={kind} start={range.start} end={range.end}/>
-    {customer&&<CustomerIntelligence key={range.start+'-'+range.end} start={range.start} end={range.end}/>}
-    {data && <>
-      <Typography.Text type="secondary">范围 · {data.department || '全公司'}</Typography.Text>
+    {data&&<>
+      <Typography.Text type="secondary">范围 · {data.department||'全公司'}</Typography.Text>
       <div className="report-center-grid">
         <Metric label={customer?'周期新增线索':'周期新增投诉'} value={total} drill={()=>open('new',customer?'新增线索':'新增投诉')}/>
-        {customer ? <>
+        {customer?<>
           <Metric label={signedLabel} value={data.transitions?.signed||0} drill={()=>open('signed','签约记录')}/>
           <Metric label={lostLabel} value={data.transitions?.lost||0} drill={()=>open('lost','流失记录')}/>
-        </> : <>
-          {data.comparisons?.previous&&<ComparisonCard label="较上一周期" value={data.comparisons.previous}/>}
-          {data.comparisons?.year_ago&&<ComparisonCard label="较去年同期" value={data.comparisons.year_ago}/>}
-          <Metric label="当前待处理积压" value={countSum(data.backlog||{})} drill={()=>open('backlog','当前投诉积压')}/>
-        </>}
+        </>:<Metric label="当前待处理积压" value={countSum(data.backlog||{})} drill={()=>open('backlog','当前投诉积压')}/>}
+        {comparisons?.previous&&<ComparisonCard label="较上一周期" value={comparisons.previous}/>}
+        {comparisons?.year_ago&&<ComparisonCard label="较去年同期" value={comparisons.year_ago}/>}
       </div>
-      {customer && !historyComplete && <Typography.Text type="secondary">
-        {data.status_history_since?`签约和流失历史自 ${data.status_history_since} 起完整统计。所选周期显示已记录数量。`:'所选周期显示已记录的签约和流失数量。'}
+      {customer&&<Typography.Text type="secondary">新增线索当前状态按本期新增客户统计；签约和流失按本期状态变更记录统计。
+        {!historyComplete&&(data.status_history_since?' 历史自 '+data.status_history_since+' 起完整，之前仅显示已记录数量。':' 所选周期仅显示已记录的签约和流失数量。')}
       </Typography.Text>}
-      {!customer && data.as_of && <Typography.Text type="secondary">积压按当前状态统计，截至 {data.as_of.replace('T',' ')}。</Typography.Text>}
+      {!customer&&data.as_of&&<Typography.Text type="secondary">积压按当前状态统计，截至 {data.as_of.replace('T',' ')}。</Typography.Text>}
       <div className="report-center-two">
-        <CountBars title={customer?'新增线索当前状态':'投诉状态'} counts={counts}
+        <DistributionChart title={customer?'新增线索当前状态':'投诉状态'} counts={counts} variant={customer?'horizontal':'donut'}
           drill={bucket=>open('status',statuses[bucket]||bucket,{bucket})}/>
-        {customer ? <CountBars title="已记录的流失原因" counts={data.lost_reasons||{}} labels={{}}
-          drill={bucket=>open('lost','流失原因 · '+bucket,{bucket})}/> : <>
-          <CountBars title="投诉分类" counts={data.categories||{}} labels={{}}
-            drill={bucket=>open('category','投诉分类 · '+bucket,{bucket})}/>
-          <CountBars title="积压账龄" counts={data.backlog||{}}
+        {customer?<DistributionChart title="已记录的流失原因" counts={data.lost_reasons||{}} labels={{}}
+          drill={bucket=>open('lost','流失原因 · '+bucket,{bucket})}/>:<>
+          <DistributionChart title="投诉分类" counts={data.categories||{}} labels={{}} drill={bucket=>open('category','投诉分类 · '+bucket,{bucket})}/>
+          <DistributionChart title="积压账龄" counts={data.backlog||{}} variant="columns" order={['0–2 天','3–6 天','7–13 天','14 天以上']}
             drill={bucket=>open('backlog','积压账龄 · '+bucket,{bucket})}/>
-          <CountBars title="满意度分布" counts={data.satisfaction||{}}
-            drill={bucket=>open('satisfaction','满意度 · '+bucket+' 分',{bucket})}/>
+          <DistributionChart title="满意度分布" counts={data.satisfaction||{}} variant="columns" order={['1','2','3','4','5']}
+            labels={{'1':'1 分','2':'2 分','3':'3 分','4':'4 分','5':'5 分'}}
+            summary={'有效评分 '+countSum(data.satisfaction||{})+' 条'} drill={bucket=>open('satisfaction','满意度 · '+bucket+' 分',{bucket})}/>
         </>}
       </div>
-      {customer && <>
-        <Card title="分部门经营数据">
-          <Table rowKey={row=>row.department===null?'missing':'dept-'+row.department} pagination={false}
-            dataSource={data.departments||[]} columns={[
+      {customer&&<>
+        {analysis.data?.groups&&<CustomerFeatureCharts groups={analysis.data.groups} onDrill={(metric,bucket)=>open(metric,'客户分组 · '+bucket,{bucket})}/>}
+        <DepartmentChart rows={data.departments||[]} onDrill={openDepartment}/>
+        <DistributionChart title="客户跟进分析" counts={data.follow_ups||{}} labels={followLabels}
+          summary={'周期内记录 '+countSum(data.follow_ups||{})+' 次跟进'} drill={bucket=>open('follow_up','跟进方式 · '+(followLabels[bucket]||bucket),{bucket})}/>
+        {!!data.departments?.length&&<Card title="分部门经营明细"><Table rowKey={row=>row.department??'missing'} pagination={false} scroll={{x:500}}
+          dataSource={data.departments} columns={[
             {title:'部门',render:(_,row)=>row.department||'未填写部门'},
             {title:'新增线索',render:(_,row)=>departmentCount(row.department,'new',row.new)},
             {title:'已记录签约',render:(_,row)=>departmentCount(row.department,'signed',row.signed)},
             {title:'已记录流失',render:(_,row)=>departmentCount(row.department,'lost',row.lost)},
-          ]}/>
-        </Card>
-        <div className="report-center-two">
-          <CountBars title="客户跟进分析" counts={followUps} labels={followLabels} percentages
-            summary={`周期内记录 ${countSum(followUps)} 次跟进`}
-            drill={bucket=>open('follow_up','跟进方式 · '+(followLabels[bucket]||bucket),{bucket})}/>
-          <CountBars title="获客渠道分析" counts={channels} labels={channelLabels} percentages
-            summary={`周期内新增 ${countSum(channels)} 条线索`}
-            drill={bucket=>open('channel','获客渠道 · '+(channelLabels[bucket]||bucket),{bucket})}/>
-        </div>
+          ]}/></Card>}
       </>}
     </>}
+    {!customer&&<OperationAnalysis kind={kind} start={range.start} end={range.end}/>}
+    {generated?.ai_summary&&<Card title="报告摘要"><Typography.Paragraph style={{whiteSpace:'pre-wrap'}}>{generated.ai_summary}</Typography.Paragraph></Card>}
+    <ReportHistory kind={customer?'customer_ops':'complaint_weekly'}/>
     <Drawer open={!!selection} onClose={()=>setSelection(undefined)} size="large" title={selection?.title}>
       <ErrorNotice error={detail.error}/>
       <Table<Row> rowKey={row=>row.record_id??row.id} loading={detail.isFetching} dataSource={detail.data?.items||[]} pagination={false}
         columns={[{title:'编号',dataIndex:'id'},{title:customer?'客户':'投诉',render:(_,row)=>row.customer_name||row.title||'—'},
           {title:'状态',render:(_,row)=>statuses[row.status]||row.status},
+          ...(['country','education','project'].includes(selection?.metric||'')?[{title:'客户特征',render:(_:unknown,row:Row)=>[row.intended_country,row.education_level,row.intended_project].filter(Boolean).join(' · ')}]:[]),
           {title:'时间（北京时间）',render:(_,row)=>(row.occurred_at||row.create_time||'').replace('T',' ')},
           ...(selection?.metric==='follow_up'?[{title:'跟进方式',render:(_:unknown,row:Row)=>followLabels[row.follow_type||'']||row.follow_type||'—'}]:
-            customer?[{title:'渠道 / 原因',render:(_:unknown,row:Row)=>[channelLabels[row.source_channel||'']||row.source_channel,row.reason].filter(Boolean).join(' · ')||'—'}]:
+            customer?[{title:'渠道 / 原因',render:(_:unknown,row:Row)=>[row.source_channel,row.reason].filter(Boolean).join(' · ')||'—'}]:
               [{title:'分类',render:(_:unknown,row:Row)=>row.category?.trim()||'未分类'},
                {title:'满意度',render:(_:unknown,row:Row)=>row.satisfaction??'—'}]),
         ]}/>
@@ -223,7 +237,7 @@ function EmployeeBoard() {
   const row=roster.data
   const sectionNames:Record<string,string>={work_summary:'工作总结',key_progress_summary:'关键进展',risk_summary:'风险事项',next_work_suggestions:'下一步建议'}
   return <Space orientation="vertical" size="middle" style={{width:'100%'}}>
-    <Card><Space wrap>
+    <Card className="report-filter-panel"><Space wrap>
       <Input aria-label="统计日期" type="date" value={anchor} onChange={e=>{setAnchor(e.target.value);setOffset(0);setReport(undefined)}}/>
       <Select aria-label="统计周期" value={period} options={[{label:'员工日报',value:'day'},{label:'员工周报',value:'week'}]} onChange={v=>{setPeriod(v);setOffset(0);setReport(undefined)}}/>
       <Select allowClear placeholder="全部部门" aria-label="部门" value={department} style={{minWidth:135}}
@@ -234,8 +248,6 @@ function EmployeeBoard() {
       {can('reports:formal:generate') && <Button type="primary" loading={generate.isPending} disabled={!anchor}
         onClick={()=>generate.mutate()}>生成并归档 AI 报告</Button>}
     </Space><ErrorNotice error={roster.error||generate.error}/></Card>
-    <ReportHistory kind={period === 'day' ? 'daily_summary' : 'weekly_summary'}/>
-    <ProjectHealth/>
     {row && <>
       <div className="report-center-grid">
         <Metric label="应提交" value={row.expected}/><Metric label="已提交" value={row.submitted}/>
@@ -250,6 +262,7 @@ function EmployeeBoard() {
       </Card>
       <Card title="员工提交名单">
         <Table<Employee> rowKey="employee_id" size="small" pagination={false} dataSource={row.items} columns={[
+          {title:'员工编号',dataIndex:'employee_id'},
           {title:'员工',dataIndex:'name'},{title:'部门',dataIndex:'department'},
           {title:'提交状态',render:(_,e)=><Tag color={e.report_days?'green':undefined}>{e.report_days?'已提交':'未提交'}</Tag>},
           {title:period==='day'?'提交天数':'本周提交',render:(_,e)=>period==='day'?e.report_days:e.report_days?'已交周报':'未交周报'},{title:'操作',render:(_,e)=><Button type="link" onClick={()=>setSelected(e.employee_id)}>查看详情</Button>},
@@ -257,6 +270,8 @@ function EmployeeBoard() {
         <Pages offset={offset} more={row.has_more} move={setOffset}/>
       </Card>
     </>}
+    <ProjectHealth/>
+    <ReportHistory kind={period === 'day' ? 'daily_summary' : 'weekly_summary'}/>
     {report && <Card title="已归档的正式 AI 报告" extra={<Button onClick={()=>void download(root+'/archive/'+report.archive_id+'/pdf','正式报告-'+report.archive_id+'.pdf').catch((error:Error)=>void message.error(error.message))}>下载 PDF</Button>}>
       {Object.entries(report.sections).map(([key,value])=><section key={key}>
         <Typography.Title level={5}>{sectionNames[key]}</Typography.Title><Typography.Paragraph style={{whiteSpace:'pre-wrap'}}>{value}</Typography.Paragraph>
