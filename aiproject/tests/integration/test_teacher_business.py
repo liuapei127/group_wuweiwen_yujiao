@@ -46,6 +46,8 @@ def teacher_world(isolated_portal, monkeypatch):
         db.execute(text("""CREATE TABLE student_psych_alert (id INTEGER PRIMARY KEY, student_id INTEGER,
             teacher_id INTEGER, status TEXT, risk_level TEXT DEFAULT 'high', trigger_reason TEXT DEFAULT '测试观察',
             follow_record TEXT, create_time DATETIME DEFAULT CURRENT_TIMESTAMP, update_time DATETIME, resolved_time DATETIME)"""))
+        db.execute(text("""CREATE TABLE student_psych_record (id INTEGER PRIMARY KEY, student_id INTEGER,
+            emotion_tag TEXT, emotion_score INTEGER, interaction_content TEXT, record_date DATE, create_time DATETIME)"""))
         for rid, code in [(1, "admin"), (2, "employee"), (3, "manager"), (5, "team_leader"), (6, "student")]:
             db.execute(roles.insert().values(id=rid, role_code=code, role_name=code, status=1))
             grants = ROLE_DEFAULTS[code]
@@ -261,3 +263,82 @@ def test_leave_proof_ownership_and_complaint_rerouting(teacher_world):
     assert history.status_code == 200 and len(history.json()["data"]) == 1
     with Session(engine) as db:
         assert db.scalar(select(todo_item.c.assignee_id).where(todo_item.c.related_type == "student_feedback_ticket", todo_item.c.related_id == tid)) == 11
+
+
+
+def test_wellbeing_week_scope_and_archives_follow_the_class_roster(teacher_world):
+    from datetime import date, datetime
+    from sqlalchemy import Column, Integer, MetaData, Table
+    from app.modules.statistics.scheduled_repository import generated
+    from app.modules.statistics.wellbeing_models import WellbeingCheckin, WellbeingConsent
+
+    client, engine = teacher_world
+    Table("report_generation", MetaData(), Column("id", Integer, primary_key=True),
+          *(Column(col.name, col.type) for col in generated.c if col.name != "id")).create(engine)
+    stamp = datetime(2026, 11, 10, 10)
+    with Session(engine) as db:
+        for uid in (23, 24, 25, 26, 27):
+            db.execute(accounts.insert().values(
+                id=uid, username=f"1390000{uid:04}", password_hash="unused", real_name=f"学生{uid}",
+                role_id=6, user_type="student", status="disabled" if uid == 27 else "normal",
+                create_time=stamp, update_time=stamp,
+            ))
+        # A legacy teacher assignment without an actual enrollment cannot widen the report scope.
+        db.execute(text("INSERT INTO student_info (user_id, class_teacher_id) VALUES (23, 30)"))
+        db.execute(text("INSERT INTO student_psych_alert (student_id, teacher_id, status, risk_level, create_time) "
+                        "VALUES (21,30,'pending','low',:stamp),(22,31,'pending','high',:stamp),"
+                        "(23,NULL,'pending','medium',:stamp),(27,30,'pending','high',:stamp)"),
+                   {"stamp": stamp})
+        for uid in range(21, 28):
+            db.add(WellbeingConsent(student_id=uid, granted=uid != 26, version="v1", updated_at=stamp))
+            db.add(WellbeingCheckin(student_id=uid, day=stamp.date(), emotion="good", stress="light", updated_at=stamp))
+            db.execute(text("INSERT INTO student_psych_record (student_id,emotion_tag,emotion_score,record_date) "
+                            "VALUES (:uid,'焦虑',65,:day)"), {"uid": uid, "day": stamp.date()})
+        db.execute(text("INSERT INTO student_psych_record (student_id,emotion_tag,emotion_score,record_date) "
+                        "VALUES (21,'焦虑',65,'2026-11-10'),(21,'稀少标签',NULL,'2026-11-10'),"
+                        "(21,'焦虑',65,'2026-11-01')"))
+        db.commit()
+
+    endpoint = "/api/v1/reporting/wellbeing"
+    body = {"anchor": date(2026, 11, 11).isoformat()}
+    def read(role):
+        response = client.get(endpoint + "/week", headers=auth(role), params=body)
+        assert response.status_code == 200, response.text
+        return response.json()["data"]
+
+    manager = read("manager")
+    assert manager["eligible"] == 6 and manager["participants"] == 5
+    assert manager["emotion"] == [{"day": "2026-11-10", "label": "good", "count": 5}]
+    assert {item["risk_level"] for item in manager["items"]} == {"low", "medium", "high"}
+    assert manager["emotion_tags"] == [{"label": "焦虑", "count": 6}]
+    assert manager["emotion_scores"] == [{"label": "60–79", "count": 6}]
+    assert manager["records_suppressed"] is False
+    assert manager["alert_reasons"] == [{"label": "其他原因", "count": 3}]
+    teacher = read("teacher")
+    assert teacher["eligible"] == 1 and teacher["participants"] is None
+    assert teacher["items"] == [{"status": "pending", "risk_level": "low", "count": 1}]
+    assert teacher["records_suppressed"] and teacher["emotion_tags"] == teacher["emotion_scores"] == []
+    assert read("other")["items"] == [{"status": "pending", "risk_level": "high", "count": 1}]
+    assert client.get(endpoint + "/week", headers=auth("admin"), params=body).status_code == 403
+    assert client.get(endpoint + "/week", headers=auth("advisor"), params=body).status_code == 403
+    assert client.get(endpoint + "/cases", headers=auth("manager")).status_code == 403
+    assert client.post(endpoint + "/reports", headers=auth("manager"), json=body).status_code == 403
+
+    response = client.post(endpoint + "/reports", headers=auth("teacher"), json=body)
+    assert response.status_code == 201, response.text
+    archive_id = response.json()["data"]["archive_id"]
+    archives = "/api/v1/reporting/archive"
+    assert client.get(archives, headers=auth("teacher")).json()["data"][0]["id"] == archive_id
+    with Session(engine) as db:
+        enrollment = db.get(ClassEnrollment, 21)
+        enrollment.class_id = 2
+        db.commit()
+    assert read("teacher")["eligible"] == 0
+    assert read("other")["eligible"] == 2
+    assert read("manager")["eligible"] == 6
+    assert client.get(archives, headers=auth("teacher")).json()["data"] == [
+        {"id": archive_id, "unavailable": True},
+    ]
+    assert client.get(f"{archives}/{archive_id}/pdf", headers=auth("teacher")).status_code == 403
+    assert client.post(f"{endpoint}/reports/{archive_id}/review", headers=auth("teacher"),
+                       json={"suggestion": "存档范围已变化"}).status_code == 404

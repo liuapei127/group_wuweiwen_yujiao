@@ -8,7 +8,7 @@ from app.core.database import get_db
 from app.core.responses import success
 from app.core.security import EmployeePrincipal, require_employee
 
-from . import board_service as service, employee_conflicts
+from . import board_service as service, employee_conflicts, analysis, rules
 from .periods import beijing_now
 
 router = APIRouter(prefix="/api/v1/reporting", tags=["智报中心"])
@@ -16,6 +16,46 @@ DB = Annotated[Session, Depends(get_db)]
 Staff = Annotated[EmployeePrincipal, Depends(require_employee)]
 Offset = Annotated[int, Query(ge=0, le=100000)]
 Limit = Annotated[int, Query(ge=1, le=100)]
+
+
+@router.get("/rules")
+def read_rules(db: DB, staff: Staff):
+    return success(rules.get_rules(db, staff))
+
+
+@router.put("/rules")
+def save_rules(body: rules.RuleUpdate, db: DB, staff: Staff):
+    return success(rules.update_rules(db, staff, body))
+
+
+@router.get("/board/customers/analysis")
+def customer_analysis(start: date, end: date, db: DB, staff: Staff):
+    return success(analysis.customer_analysis(db, staff, start, end))
+
+
+@router.get("/board/customers/intelligence")
+def customer_intelligence(start: date, end: date, db: DB, staff: Staff):
+    return success(analysis.customer_intelligence(db, staff, start, end))
+
+
+@router.post("/board/customers/summary")
+def customer_summary(body: service.OperationArchiveRequest, db: DB, staff: Staff):
+    return success(analysis.customer_summary(db, staff, body.start, body.end))
+
+
+@router.get("/board/projects/health")
+def project_health(db: DB, staff: Staff):
+    return success(analysis.project_health(db, staff))
+
+
+@router.post("/board/complaints/{ticket_id}/classification")
+def classify_complaint(ticket_id: Annotated[int, Path(ge=1)], db: DB, staff: Staff):
+    return success(analysis.classify_complaint(db, staff, ticket_id))
+
+
+@router.get("/board/complaints/analysis")
+def complaint_analysis(start: date, end: date, db: DB, staff: Staff):
+    return success(analysis.complaint_analysis(db, staff, start, end))
 
 
 @router.get("/board/employees")
@@ -30,6 +70,12 @@ def employees(db: DB, staff: Staff, anchor: date | None = None, period: Literal[
 def employee(employee_id: Annotated[int, Path(ge=1)], db: DB, staff: Staff, anchor: date | None = None,
              period: Literal["day", "week"] = "day"):
     return success(service.employee_detail(db, staff, anchor or beijing_now().date(), period, employee_id))
+
+
+@router.post("/board/employees/{employee_id}/summary")
+def summarize_employee(employee_id: Annotated[int, Path(ge=1)], db: DB, staff: Staff, anchor: date,
+                       period: Literal["day", "week"] = "day"):
+    return success(service.summarize_employee(db, staff, anchor, period, employee_id))
 
 
 @router.get("/board/customers")

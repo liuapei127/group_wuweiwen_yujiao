@@ -12,6 +12,7 @@ PERMISSIONS = {
     'reports:read': ('查询本人日报', '员工日报'),
     'reports:formal:generate': ('生成授权范围内的员工正式报告', '智能报告'),
     'reports:operations:read': ('查看授权范围内的经营与投诉统计', '智能报告'),
+    'reports:wellbeing:read': ('查看全体学生心理健康周报', '智能报告'),
     'reports:summary:read': ('查看授权范围内的日报汇总', '智能报告'),
     'reports:write': ('提交本人日报', '员工日报'),
     'directory:read': ('查询组织与同事', '组织目录'),
@@ -57,7 +58,7 @@ SYSTEM_ADMIN_PERMISSIONS = frozenset({
     'organizations:manage', 'users:manage', 'roles:manage', 'audit:read', 'classes:manage', 'teaching:manage', 'tickets:route',
 })
 MANAGER_REPORT_PERMISSIONS = frozenset({
-    'reports:operations:read', 'reports:summary:read', 'reports:formal:generate',
+    'reports:operations:read', 'reports:summary:read', 'reports:formal:generate', 'reports:wellbeing:read',
 })
 ROLE_DEFAULTS = {
     'admin': SYSTEM_ADMIN_PERMISSIONS,
@@ -125,15 +126,18 @@ def route_permission(method, path):
         ('POST','/api/v1/employee-reports/transcribe'):'reports:write',
         ('POST','/api/v1/reporting/employee-reports/formal-summary'):'reports:formal:generate',
         ('GET','/api/v1/reporting/schedules'):None,
+        ('GET','/api/v1/reporting/rules'):'users:manage',
+        ('PUT','/api/v1/reporting/rules'):'users:manage',
         ('PUT','/api/v1/reporting/schedules'):None,
         ('GET','/api/v1/reporting/archive'):None,
         ('GET','/api/v1/reporting/archive/{report_id}/pdf'):None,
-        ('GET','/api/v1/reporting/wellbeing/week'):'student-alerts:read',
+        ('GET','/api/v1/reporting/wellbeing/week'):None,
         ('POST','/api/v1/reporting/wellbeing/reports'):'student-alerts:read',
         ('POST','/api/v1/reporting/wellbeing/reports/{archive_id}/review'):'student-alerts:write',
         ('GET','/api/v1/reporting/wellbeing/cases'):'student-alerts:write',
         ('POST','/api/v1/reporting/wellbeing/cases'):'student-alerts:write',
         ('GET','/api/v1/reporting/wellbeing/cases/{case_id}'):'student-alerts:write',
+        ('POST','/api/v1/reporting/wellbeing/cases/{case_id}/suggestion'):'student-alerts:write',
         ('POST','/api/v1/reporting/wellbeing/cases/{case_id}/follow-ups'):'student-alerts:write',
         ('GET','/api/v1/reporting/wellbeing/calendar'):'student-alerts:read',
         ('POST','/api/v1/reporting/wellbeing/calendar'):'student-alerts:write',
@@ -142,7 +146,15 @@ def route_permission(method, path):
         ('PUT','/api/v1/reporting/board/conflicts/{conflict_id}'):'reports:formal:generate',
         ('GET','/api/v1/reporting/board/employees'):'reports:summary:read',
         ('GET','/api/v1/reporting/board/employees/{employee_id}'):'reports:summary:read',
+        ('POST','/api/v1/reporting/board/employees/{employee_id}/summary'):'reports:formal:generate',
         ('GET','/api/v1/reporting/board/customers'):'reports:operations:read',
+        ('GET','/api/v1/reporting/board/customers/analysis'):'reports:operations:read',
+        ('GET','/api/v1/reporting/board/customers/intelligence'):'reports:operations:read',
+        ('POST','/api/v1/reporting/board/customers/summary'):'reports:operations:read',
+        ('GET','/api/v1/reporting/board/projects/health'):'reports:summary:read',
+        ('POST','/api/v1/reporting/board/complaints/{ticket_id}/classification'):'tickets:route',
+        ('GET','/api/v1/reporting/board/complaints/analysis'):'reports:operations:read',
+        ('GET','/api/v1/reporting/wellbeing/trend'):None,
         ('GET','/api/v1/reporting/board/complaints'):'reports:operations:read',
         ('POST','/api/v1/reporting/board/{kind}/archive'):'reports:operations:read',
         ('GET','/api/v1/reporting/operations'):'reports:operations:read',
@@ -244,6 +256,8 @@ def route_permission(method, path):
 
 def effective_role_permissions(role_code: str, stored: set[str]) -> set[str]:
     permitted = stored & (SYSTEM_ADMIN_PERMISSIONS if role_code == 'admin' else PERMISSIONS.keys())
+    if role_code != "manager":
+        permitted.discard("reports:wellbeing:read")
     if role_code in ("employee", "advisor"):
         permitted.discard("applications:write")
     return permitted

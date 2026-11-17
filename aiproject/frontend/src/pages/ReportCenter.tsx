@@ -2,9 +2,12 @@ import {useState} from 'react'
 import {App, Button, Card, Drawer, Form, Input, Select, Space, Table, Tag, Typography} from 'antd'
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {useAuth} from '../auth'
-import {ActionModal, ErrorNotice, DataResult, type ActionSpec} from '../components/shared'
+import {ErrorNotice} from '../components/shared'
 import {api, download, query} from '../lib/api'
 import {ReportSchedules} from './ReportSchedules'
+import {ReportHistory} from './ReportHistory'
+import {OperationAnalysis, CustomerIntelligence, ProjectHealth} from './ReportAnalysis'
+import {EmployeeReportReader, type StaffDetail} from './EmployeeReportReader'
 import {WellbeingBoard} from './Wellbeing'
 import {today} from './reportDates'
 import {CountBars, Metric, statuses} from './ReportMetrics'
@@ -27,13 +30,12 @@ const countSum=(counts:Counts)=>Object.values(counts).reduce((a,b)=>a+b,0)
 type Employee = {employee_id:number;name:string;department:string|null;report_days:number;submitted_at:string|null}
 type Dept = {department:string|null;expected:number;submitted:number;missing:number}
 type Employees = {expected:number;submitted:number;missing:number;departments:Dept[];items:Employee[];has_more:boolean}
-type StaffDetail = {real_name:string;weekly_report?:{week_start:string;content:string;key_progress?:string;risks?:string;next_plan?:string};reports:{id:number;report_date:string;content:string;key_progress?:unknown;risks?:unknown;next_plan?:string}[]}
 
 export function ReportCenter() {
   const {can} = useAuth()
   const operations = can('reports:operations:read')
   const staff = can('reports:summary:read')
-  const psych = can('student-alerts:read')
+  const psych = can('student-alerts:read') || can('reports:wellbeing:read')
   const [selected, select] = useState<string>()
   const [visited, setVisited] = useState<string[]>([])
   const panels = [
@@ -111,6 +113,9 @@ function OperationBoard({kind}: {kind:'customers'|'complaints'}) {
       </Form>
       <ErrorNotice error={result.error || archive.error}/>
     </Card>
+    <ReportHistory kind={customer ? 'customer_ops' : 'complaint_weekly'}/>
+    <OperationAnalysis kind={kind} start={range.start} end={range.end}/>
+    {customer&&<CustomerIntelligence key={range.start+'-'+range.end} start={range.start} end={range.end}/>}
     {data && <>
       <Typography.Text type="secondary">范围 · {data.department || '全公司'}</Typography.Text>
       <div className="report-center-grid">
@@ -229,6 +234,8 @@ function EmployeeBoard() {
       {can('reports:formal:generate') && <Button type="primary" loading={generate.isPending} disabled={!anchor}
         onClick={()=>generate.mutate()}>生成并归档 AI 报告</Button>}
     </Space><ErrorNotice error={roster.error||generate.error}/></Card>
+    <ReportHistory kind={period === 'day' ? 'daily_summary' : 'weekly_summary'}/>
+    <ProjectHealth/>
     {row && <>
       <div className="report-center-grid">
         <Metric label="应提交" value={row.expected}/><Metric label="已提交" value={row.submitted}/>
@@ -256,40 +263,10 @@ function EmployeeBoard() {
       </section>)}
     </Card>}
     <Drawer title={employee.data?.real_name||'员工日报'} onClose={()=>setSelected(undefined)} open={!!selected} size="large">
-      <DataResult data={employee.data?.weekly_report?{周报起始:employee.data.weekly_report.week_start,工作总结:employee.data.weekly_report.content,关键进展:employee.data.weekly_report.key_progress,风险事项:employee.data.weekly_report.risks,下一步:employee.data.weekly_report.next_plan}:employee.data?.reports.map(x=>({日期:x.report_date,工作总结:x.content,关键进展:x.key_progress,风险事项:x.risks,下一步:x.next_plan}))||[]}/>
-      {selected && anchor && period==='week' && <EmployeeConflicts employee={selected} anchor={anchor}/>}
+      {selected && <EmployeeReportReader key={selected+'-'+anchor+'-'+period}
+        employeeId={selected} period={period} detail={employee.data}
+        loading={employee.isFetching} error={employee.error}/>}
     </Drawer>
     <ErrorNotice error={employee.error}/>
   </Space>
-}
-
-type Finding = {id:number;summary:string;daily_excerpt:string;weekly_excerpt:string;status:string;verify_note?:string}
-
-function EmployeeConflicts({employee,anchor}:{employee:number;anchor:string}) {
-  const {user,can}=useAuth()
-  const cache=useQueryClient()
-  const [action,setAction]=useState<ActionSpec|null>(null)
-  const path=root+'/board/employees/'+employee+'/conflicts'+query({anchor})
-  const key=[user?.id,'report-conflicts',employee,anchor]
-  const rows=useQuery({queryKey:key,queryFn:()=>api<Finding[]>(path)})
-  const scan=useMutation({mutationFn:()=>api<Finding[]>(path,{method:'POST',timeout:55000}),
-    onSuccess:value=>cache.setQueryData(key,value)})
-  const manage=can('reports:formal:generate')
-  return <Card size="small" title="日报与周报冲突事项" extra={manage&&
-    <Button loading={scan.isPending} onClick={()=>scan.mutate()}>运行 AI 比对</Button>}>
-    <ErrorNotice error={rows.error||scan.error}/>
-    {rows.data?.length===0&&<Typography.Text type="secondary">暂无比对记录</Typography.Text>}
-    {rows.data?.map(row=><div key={row.id} style={{marginBottom:16}}>
-      <Space><Typography.Text strong>{row.summary}</Typography.Text>
-        <Tag>{row.status==='pending'?'待核验':row.status==='verified'?'已核验':'已忽略'}</Tag></Space>
-      <Typography.Paragraph>日报 · {row.daily_excerpt}<br/>周报 · {row.weekly_excerpt}</Typography.Paragraph>
-      {row.verify_note&&<Typography.Paragraph>{row.verify_note}</Typography.Paragraph>}
-      {manage&&row.status==='pending'&&<Button onClick={()=>setAction({
-        title:'核验冲突事项',method:'PUT',path:root+'/board/conflicts/'+row.id,
-        fields:[{name:'status',label:'核验结果',kind:'select',required:true,options:[{value:'verified',label:'确认冲突'},{value:'dismissed',label:'忽略'}]},
-          {name:'verify_note',label:'核验说明',kind:'textarea',required:true}],
-      })}>核验</Button>}
-    </div>)}
-    <ActionModal action={action} onClose={()=>setAction(null)}/>
-  </Card>
 }

@@ -18,9 +18,10 @@ def test_customer_schedule_keeps_daily_and_accepts_weekly():
 
 def test_student_checkin_requires_consent_and_allows_one_editable_record():
     from app.modules.statistics.wellbeing_models import WellbeingConsent, WellbeingCheckin
+    from app.modules.statistics.analysis_models import ReportRules
 
     engine = create_engine("sqlite://")
-    Base.metadata.create_all(engine, tables=[WellbeingConsent.__table__, WellbeingCheckin.__table__])
+    Base.metadata.create_all(engine, tables=[WellbeingConsent.__table__, WellbeingCheckin.__table__, ReportRules.__table__])
     with Session(engine) as db:
         with pytest.raises(BusinessError) as blocked:
             save_checkin(db, 1, CheckinInput(emotion="poor", stress="moderate"))
@@ -200,7 +201,8 @@ def test_wellbeing_reuses_draft_and_rejects_empty_archive(monkeypatch):
                                   student_ids=frozenset({1, 2, 3, 4, 5}))
     stats = {"period_start": date(2026, 11, 9), "period_end": date(2026, 11, 15), "eligible": 5,
              "participants": None, "suppressed": True, "items": [], "emotion": [], "stress": []}
-    monkeypatch.setattr(wellbeing, "desk_week", lambda *_: stats)
+    monkeypatch.setattr(wellbeing, "weekly_student_ids", lambda *_: principal.student_ids)
+    monkeypatch.setattr(wellbeing, "week_statistics", lambda *_: stats)
     monkeypatch.setattr(wellbeing.report_ai, "suggest", lambda *_: "建议安排回访")
     with Session(engine) as db:
         db.add(SysUser(id=1, real_name="测试教师", user_type="employee"))

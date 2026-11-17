@@ -127,11 +127,18 @@ def weekly_alerts(db: Session, principal: EmployeePrincipal, anchor) -> dict:
 
     require_permission(principal, "student-alerts:read")
     start, end = periods.week_bounds(anchor)
+    return {"period_start": start, "period_end": end, "items": weekly_alert_totals(
+        db, principal.student_ids, start, end, teacher_id=principal.employee_id,
+    )}
+
+
+def weekly_alert_totals(db: Session, student_ids: frozenset[int], start, end, *, teacher_id: int | None = None):
     stmt = select(_alert.c.status, _alert.c.risk_level, func.count()).where(
-        _alert.c.teacher_id == principal.employee_id, _alert.c.student_id.in_(principal.student_ids),
+        _alert.c.student_id.in_(student_ids),
         _alert.c.create_time >= datetime.combine(start, time.min),
         _alert.c.create_time < datetime.combine(end + timedelta(days=1), time.min),
     ).group_by(_alert.c.status, _alert.c.risk_level)
-    return {"period_start": start, "period_end": end, "items": [
-        {"status": status, "risk_level": risk, "count": count} for status, risk, count in db.execute(stmt)
-    ]}
+    if teacher_id is not None:
+        stmt = stmt.where(_alert.c.teacher_id == teacher_id)
+    return [{"status": status, "risk_level": risk, "count": count}
+            for status, risk, count in db.execute(stmt)]

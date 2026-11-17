@@ -12,6 +12,7 @@ from app.modules.organization.membership import clear_expired_primary
 from app.modules.todo.reminders import scan_reminders
 from app.modules.student.service import scan_academic_reminders
 from app.modules.statistics.scheduled import scan_reports
+from app.modules.statistics.rule_signals import scan_operational_signals
 
 def main():
     parser=argparse.ArgumentParser()
@@ -28,6 +29,7 @@ def main():
             (None, scan_reminders),
             ("academic_notifications_processed", scan_academic_reminders),
             ("report_snapshots_created", scan_reports),
+            ("report_rule_notifications_created", scan_operational_signals),
         ):
             try:
                 with SessionLocal() as db:

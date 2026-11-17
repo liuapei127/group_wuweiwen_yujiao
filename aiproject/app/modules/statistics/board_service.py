@@ -1,4 +1,5 @@
 from calendar import monthrange
+import json
 from datetime import date, timedelta
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
@@ -6,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import BusinessError
 from app.core.security.authorization import require_permission
 
-from . import board_repository as repo, scheduled_repository
+from . import board_repository as repo, formal_dify, scheduled_repository
 from .periods import beijing_now
 from .service import _period_bounds, _report_department, report_scope_label
 
@@ -33,6 +34,35 @@ def employee_detail(db, principal, anchor, period, employee_id):
     if detail is None:
         raise BusinessError(404, "员工不存在或不在你的报表范围")
     return detail
+
+
+def summarize_employee(db, principal, anchor, period, employee_id):
+    require_permission(principal, "reports:formal:generate")
+    detail = employee_detail(db, principal, anchor, period, employee_id)
+    if period == "week":
+        reports = [detail["weekly_report"]] if detail["weekly_report"] else []
+    else:
+        reports = detail["reports"]
+    if not reports:
+        raise BusinessError(422, "该员工在所选周期尚未提交报告")
+    start, end = _period_bounds(anchor, period)
+    payload = json.dumps({
+        "period": {"start": start.isoformat(), "end": end.isoformat()},
+        "employees": [{
+            "name": detail["real_name"],
+            "report_date": (row.get("report_date") or row["week_start"]).isoformat(),
+            **{key: row.get(key) for key in ("content", "key_progress", "risks", "next_plan")},
+        } for row in reports],
+    }, ensure_ascii=False, separators=(",", ":"))
+    if len(payload) > 50_000:
+        raise BusinessError(422, "报告内容超过工作流上限，请缩小报告范围")
+    db.rollback()
+    sections = formal_dify.generate_summary("weekly" if period == "week" else "daily", payload)
+    current = employee_detail(db, principal, anchor, period, employee_id)
+    source = "weekly_report" if period == "week" else "reports"
+    if current[source] != detail[source]:
+        raise BusinessError(409, "报告已更新，请刷新原文后重新生成总结")
+    return {"sections": sections}
 
 
 def _complaint_comparison_periods(start, end):

@@ -1,4 +1,4 @@
-.report-center {display:grid;gap:16px}
+.report-center {display:grid;grid-template-columns:minmax(0,1fr);gap:16px;min-width:0}
 .report-center-heading {display:flex;align-items:center;justify-content:space-between;gap:12px}
 .report-center-heading h2.ant-typography {margin:0}
 .report-center-shortcuts,.report-center-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px}
@@ -19,8 +19,28 @@
 @media(max-width:760px) {.report-center-two {grid-template-columns:minmax(0,1fr)}}
 .report-center-bar i {display:block;height:9px;background:#318d79;border-radius:16px}
 .report-center .ant-form-inline {gap:8px 0}
+.report-history.ant-collapse {background:#fff}
+.wellbeing-distributions {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.wellbeing-distributions > :last-child {grid-column:1/-1}
+.wellbeing-distributions > :nth-child(5) {grid-column:1/-1}
+.wellbeing-donut-layout {display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.wellbeing-donut {width:156px;height:156px;border-radius:50%;display:grid;place-items:center;flex-shrink:0}
+.wellbeing-donut > div {width:112px;height:112px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.wellbeing-donut strong {font-size:30px;color:#175e53}
+.wellbeing-donut span {color:#71817d;font-size:13px}
+.wellbeing-chart-legend {list-style:none;margin:0;padding:0;flex:1;min-width:200px}
+.wellbeing-chart-legend li {display:flex;gap:10px;align-items:center;margin:12px 0}
+.wellbeing-chart-legend li > :nth-child(2) {flex:1}
+.wellbeing-chart-legend li > :last-child {min-width:46px;text-align:right;color:#71817d}
+.wellbeing-chart-dot {width:9px;height:9px;border-radius:50%}
+@media(max-width:1000px) {.wellbeing-distributions {grid-template-columns:minmax(0,1fr)}}
 @media print {
-  .app-shell .desktop-sider,.app-shell .app-header,.app-shell .app-footer,.report-center .ant-btn,.report-center-shortcuts {display:none!important}
+  .app-shell .desktop-sider,.app-shell .app-header,.app-shell .app-footer,.report-center .ant-btn,.report-center-shortcuts,.report-history {display:none!important}
   .report-center .ant-card {break-inside:avoid}
   .report-center .ant-card-body {padding:14px}
 }
+
+.employee-report-reader {display:grid;gap:28px;min-width:0}
+.employee-report-original {margin-top:12px}
+.employee-report-text {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.85}
+.employee-report-original > .employee-report-text {margin-top:12px}

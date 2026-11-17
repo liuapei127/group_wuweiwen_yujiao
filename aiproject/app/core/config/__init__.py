@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     dify_ent_chatflow_api_key: SecretStr = SecretStr('')
     dify_report_transcription_api_key: SecretStr = SecretStr('')
     dify_employee_formal_api_key: SecretStr = SecretStr('')
+    dify_reporting_analysis_api_key: SecretStr = SecretStr('')
     reporting_llm_base_url: str = ""
     reporting_llm_api_key: SecretStr = SecretStr("")
     reporting_llm_model: str = ""

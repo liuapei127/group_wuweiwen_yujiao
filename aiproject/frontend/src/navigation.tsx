@@ -4,7 +4,7 @@ export const navigation=[
  {path:'/assistant',title:'AI 助手',permission:'ai:use',icon:<RobotOutlined/>},
  {path:'/customers',title:'客户管理',permission:'crm:read',icon:<TeamOutlined/>},
  {path:'/visitor-intake',title:'游客跟进',permission:'visitor-intake:read',icon:<CustomerServiceOutlined/>},
- {path:'/reporting',title:'智报中心',permission:'reports:operations:read',alternatePermission:'reports:summary:read',extraPermission:'student-alerts:read',icon:<FileTextOutlined/>},
+ {path:'/reporting',title:'智报中心',permission:'reports:operations:read',alternatePermission:'reports:summary:read',extraPermissions:['student-alerts:read','reports:wellbeing:read'],icon:<FileTextOutlined/>},
  {path:'/reports',title:'员工日报',permission:'reports:read',icon:<FileTextOutlined/>},
  {path:'/directory',title:'组织与同事',permission:'directory:read',icon:<ApartmentOutlined/>},
  {path:'/guides',title:'新人指南',permission:'guides:read',icon:<BookOutlined/>},
@@ -28,6 +28,7 @@ export const navigation=[
  {path:'/settings/website-content',title:'官网内容管理',permission:'website-content:manage',adminOnly:true,icon:<FileTextOutlined/>},
  {path:'/settings/website-accounts',title:'官网账号',permission:'website-accounts:manage',icon:<UserOutlined/>},
  {path:'/settings/users',title:'员工管理',permission:'users:manage',icon:<UserOutlined/>},
+ {path:'/settings/report-rules',title:'报表规则',permission:'users:manage',adminOnly:true,icon:<FileTextOutlined/>},
  {path:'/settings/roles',title:'角色权限',permission:'roles:manage',icon:<SafetyCertificateOutlined/>},
  {path:'/settings/audit',title:'安全审计',permission:'audit:read',icon:<HistoryOutlined/>},
 ]
@@ -38,12 +39,13 @@ export const navGroups=[
  {label:'客户与业务',paths:['/customers','/visitor-intake','/reporting','/reports','/queries','/commands']},
  {label:'学生事务',paths:['/my-students','/scores','/teaching-courses','/course-management','/class-management','/teacher-management','/student-alerts','/academic-deadlines','/application-progress']},
  {label:'组织与协同',paths:['/directory','/guides','/leaves','/events','/tickets','/ticket-routing']},
- {label:'系统管理',paths:['/settings/website-content','/settings/website-accounts','/settings/users','/settings/roles','/settings/audit']},
+ {label:'系统管理',paths:['/settings/website-content','/settings/website-accounts','/settings/users','/settings/report-rules','/settings/roles','/settings/audit']},
 ]
 export const permissionNames:Record<string,string>={
  'students:read':'查看负责的班级与学生','teaching:manage':'维护教学课程与开课安排',
  'academics:read':'查看考务','academics:write':'维护考务','applications:read':'查看申请进度',
- 'applications:write':'维护申请进度','student-alerts:read':'查看心理预警与周报',
+ 'applications:write':'维护申请进度','student-alerts:read':'查看心理预警与班级周报',
+ 'reports:wellbeing:read':'查看全体学生心理健康周报',
  'student-alerts:write':'处理预警与关怀','classes:manage':'管理班级与入班','tickets:route':'纠正投诉分类和分派',
  'website-content:manage':'维护官网栏目与卡片',
  'website-accounts:manage':'管理官网学生身份授权',

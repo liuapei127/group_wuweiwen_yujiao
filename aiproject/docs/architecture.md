@@ -205,3 +205,21 @@ assistant_knowledge与student.repository提供按国家过滤的已核对公开F
 前端StudentHome为默认欢迎页；StudentLife按浏览国家展示同一资料，可切换国家，不修改学籍；StudentAssistantGuide呈现步骤与确认。全部源码共用，两个国家分别验证。生成图片是场景示意，不代表实际合作院校、医院或服务地点。
 
 学生/api/v1/student/complaints保持路径与本人权限，列表扩展为本人投诉与建议，响应增加ticket_type供界面区分；不包含咨询记录，不改变员工可见范围。对应隔离测试覆盖建议不丢失及其他学生不可见。
+
+员工日报周报详情展示已提交的报告原文。员工周报详情提供按该员工本周原文生成 AI 总结的操作。单人总结 POST /api/v1/reporting/board/employees/{employee_id}/summary 复用正式报告 Dify 工作流，要求 reports:summary:read 与 reports:formal:generate，并按所选员工和日期范围读取已提交正文。等待模型期间释放数据库事务，返回前再次核对授权和原文版本。
+
+智报中心各模块的历史报告读取 report_generation 归档记录。GET /api/v1/reporting/archive 可选按 kind 筛选并指定 limit，沿用 before_id 和账号、组织、班级的归档授权。各模块每页显示五条，计划与归档页汇集账号可访问的类型。
+
+analysis 与 analysis_repository 承担新增报表分析。客户经营 analysis 接口提供新增客户同环比及国家、学历、项目、渠道特征分群，签约比例采用同批客户当前状态。投诉 analysis 接口从 ticket_processed 审计读取首次 processing 与 resolved 的时间，统一 UTC 审计与北京时间业务记录后计算耗时，无历史审计的工单不推断耗时。wellbeing/trend 提供当前授权学生范围的近八周统计。心理周报 AI 输入扩展至预警交叉统计、情绪标签、分值及预警原因，模型返回前按全部输入字段复核版本。
+
+030_report_analysis_rules.sql 增加报表规则、定时 AI 选项和自评提醒去重表，由 analysis_models 注册。规则留空时相应判定停用，管理员使用 users:manage 配置并通过版本号防止覆盖更新。高价值候选采用已有研判匹配度阈值；项目健康度按未解决投诉、过期申请和过期考务涉及学生比例及配置权重计算。客户 K-means 以年龄、匹配度、未联系天数为标准化特征，缺失有效特征的客户单独计数；不推断未记录的状态路径。
+
+归档 shared 查询为新增可选范围，经营与员工报告依生成者组织归属、保存时的成员快照再次核验，心理报告依当前班级学生集合核验。PDF 下载使用同一 shared 范围。定时计划 include_ai 可选生成正式员工报告或汇总摘要；未设置选项的旧计划继续采用统计快照。扫描器持有计划行锁直到归档及 last_run_time 同一事务提交，AI 失败回滚后重试。
+
+rule_signals 按管理员配置发送客户跟进、投诉超时和升级提醒，按收件人、事项、规则版本与重复周期去重。学生自评在原有授权及同日记录锁内检查连续条件，自评提示须人工核验；同一连续区间同一规则版本仅建一次预警。关怀建议仅生成草稿，依据个案说明及最近十条跟进，由原跟进入口人工确认后保存。投诉 AI 分类也通过原分类分派入口人工核验，提交时仍检查原状态与分派版本。
+
+增强 AI 使用独立的 docs/dify/report-analysis.yml 工作流，配置 DIFY_REPORTING_ANALYSIS_API_KEY。原员工正式报告继续使用原工作流密钥。工作流返回固定四段式结构，分类场景仅在 work_summary 返回 learning 或 company，其余字段须为非空字符串。新增本地配置密钥存于已忽略的运行配置文件，仓库不保存密钥。本地已应用 030 迁移并启动扫描器；其他环境须先应用迁移并配置增强工作流。
+
+心理健康周报按当前学生归属授权。经理使用 029 迁移授予的 reports:wellbeing:read 查看全体正常状态学生的群体汇总。班主任的周报范围来自当前班级名册，自评汇总仍要求有效授权并遵守最小样本门槛。班主任的草稿、定时生成、归档和 PDF 下载按同一班级范围核对。个人预警和关怀个案沿用各自的权限。
+
+心理周报分布图在 wellbeing_repository 读取所选周 student_psych_record 的 emotion_tag、emotion_score 和 student_psych_alert 的 trigger_reason。心理记录沿用有效自评授权与每组五名不同学生的展示门槛，数量按记录条数统计。分值使用二十分区间及未评分、无效分值分组。预警原因按关键词优先归入学习压力、生活适应、人际关系、情绪困扰和其他原因，返回分类计数。风险等级和当前处理状态由本周新增预警的交叉统计汇总。

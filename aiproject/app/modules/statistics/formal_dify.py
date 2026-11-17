@@ -13,9 +13,9 @@ def generate_summary(report_kind: FormalReportKind, report_payload: str) -> Form
     return run_summary_workflow(report_kind, report_payload)
 
 
-def run_summary_workflow(report_kind: str, report_payload: str) -> FormalReportSections:
+def run_summary_workflow(report_kind: str, report_payload: str, *, api_key: str | None = None) -> FormalReportSections:
     settings = get_settings()
-    key = settings.dify_employee_formal_api_key.get_secret_value().strip()
+    key = (api_key or settings.dify_employee_formal_api_key.get_secret_value()).strip()
     if not key:
         raise BusinessError(503, "员工正式报告工作流尚未配置")
     try:

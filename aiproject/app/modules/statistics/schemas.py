@@ -53,3 +53,4 @@ class ScheduleWrite(BaseModel):
     run_at: time
     enabled: bool = True
     weekly: bool | None = None
+    include_ai: bool | None = None

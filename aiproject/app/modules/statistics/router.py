@@ -9,7 +9,7 @@ from app.core.database import get_db
 from app.core.responses import success
 from app.core.security import EmployeePrincipal, require_employee
 
-from .schemas import FormalReportRequest, ScheduleWrite
+from .schemas import FormalReportRequest, ScheduleKind, ScheduleWrite
 from . import scheduled
 from .pdf import render_report
 from .periods import beijing_now
@@ -76,8 +76,11 @@ def configure_schedule(
 def archive(
     db: Annotated[Session, Depends(get_db)], principal: Annotated[EmployeePrincipal, Depends(require_employee)],
     before_id: Annotated[int | None, Query(ge=1)] = None,
+    kind: ScheduleKind | None = None,
+    limit: Annotated[int, Query(ge=1, le=20)] = 20,
+    shared: bool = False,
 ):
-    return success(scheduled.archive(db, principal, before_id))
+    return success(scheduled.archive(db, principal, before_id, kind=kind, limit=limit, shared=shared))
 
 
 @router.get("/archive/{report_id}/pdf", response_class=Response, responses={
@@ -87,8 +90,9 @@ def archive_pdf(
     report_id: Annotated[int, Path(ge=1)],
     db: Annotated[Session, Depends(get_db)],
     principal: Annotated[EmployeePrincipal, Depends(require_employee)],
+    shared: bool = False,
 ):
-    report = scheduled.archived_report(db, principal, report_id)
+    report = scheduled.archived_report(db, principal, report_id, shared=shared)
     return Response(render_report(report), media_type="application/pdf", headers={
         "Content-Disposition": f'attachment; filename="report-{report_id}.pdf"',
         "Cache-Control": "no-store",

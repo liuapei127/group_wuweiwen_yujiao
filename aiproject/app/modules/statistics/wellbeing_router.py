@@ -8,6 +8,7 @@ from app.core.security.authorization import require_permission, require_student_
 from app.modules.student.router import Database, Principal, _student_id
 
 from . import wellbeing as service
+from . import analysis
 from .board_router import DB, Staff, Offset, Limit
 from .periods import beijing_now
 
@@ -41,6 +42,11 @@ def week(db: DB, staff: Staff, anchor: date | None = None):
     return success(service.desk_week(db, staff, anchor or beijing_now().date()))
 
 
+@staff_router.get("/trend")
+def trend(db: DB, staff: Staff, anchor: date | None = None):
+    return success(analysis.wellbeing_trend(db, staff, anchor or beijing_now().date()))
+
+
 @staff_router.post("/reports", status_code=201)
 def generate(body: service.ReportInput, db: DB, staff: Staff):
     return success(service.generate(db, staff, body))
@@ -65,6 +71,11 @@ def new_case(body: service.StaffCareInput, db: DB, staff: Staff):
 @staff_router.get("/cases/{case_id}")
 def case(case_id: RecordId, db: DB, staff: Staff):
     return success(service.case_detail(db, staff, case_id))
+
+
+@staff_router.post("/cases/{case_id}/suggestion")
+def care_suggestion(case_id: RecordId, db: DB, staff: Staff):
+    return success(service.case_suggestion(db, staff, case_id))
 
 
 @staff_router.post("/cases/{case_id}/follow-ups", status_code=201)

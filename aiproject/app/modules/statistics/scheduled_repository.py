@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import BigInteger, Date, DateTime, JSON, SmallInteger, String, column, insert, select, table, update
+from sqlalchemy import BigInteger, Date, DateTime, JSON, SmallInteger, String, column, insert, select, table, update, or_
 from sqlalchemy.orm import Session
 
 from app.modules.auth.models import accounts
@@ -52,16 +52,32 @@ def _completed_reports(employee_id: int, kinds: tuple[str, ...]):
     )
 
 
-def own_reports(db: Session, employee_id: int, kinds: tuple[str, ...], before_id: int | None):
+def own_reports(db: Session, employee_id: int, kinds: tuple[str, ...], before_id: int | None, limit: int):
     query = _completed_reports(employee_id, kinds)
     if before_id is not None:
         query = query.where(generated.c.id < before_id)
-    return [dict(row) for row in db.execute(query.order_by(generated.c.id.desc()).limit(20)).mappings()]
+    return [dict(row) for row in db.execute(query.order_by(generated.c.id.desc()).limit(limit)).mappings()]
 
 
 def own_report(db: Session, employee_id: int, kinds: tuple[str, ...], report_id: int) -> dict | None:
     row = db.execute(_completed_reports(employee_id, kinds).where(
         generated.c.id == report_id,
+    )).mappings().one_or_none()
+    return dict(row) if row else None
+
+
+def shared_candidates(db, owners, kinds, before_id, limit):
+    query = select(generated).where(
+        generated.c.report_type.in_(kinds), generated.c.status == "completed",
+        or_(generated.c.report_type == "psych_weekly", generated.c.generated_by.in_(owners)))
+    if before_id is not None:
+        query = query.where(generated.c.id < before_id)
+    return [dict(row) for row in db.execute(query.order_by(generated.c.id.desc()).limit(limit)).mappings()]
+
+
+def report_candidate(db, report_id, kinds):
+    row = db.execute(select(generated).where(
+        generated.c.id == report_id, generated.c.report_type.in_(kinds), generated.c.status == "completed"
     )).mappings().one_or_none()
     return dict(row) if row else None
 

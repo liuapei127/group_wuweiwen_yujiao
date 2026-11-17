@@ -6,11 +6,14 @@ import {ActionModal, DetailDrawer, ErrorNotice, type ActionSpec} from '../compon
 import {api, query} from '../lib/api'
 import {CountBars, Metric} from './ReportMetrics'
 import {today} from './reportDates'
+import {ReportHistory} from './ReportHistory'
+import {WellbeingCharts, type WellbeingDistributionData} from './WellbeingCharts'
+import {WellbeingTrend} from './ReportAnalysis'
 
 const staff = '/api/v1/reporting/wellbeing'
 const student = '/api/v1/student/wellbeing'
 type Count = {day:string;label:string;count:number}
-type Snapshot = {period_start:string;period_end:string;eligible:number;participants:number|null;suppressed:boolean;
+type Snapshot = WellbeingDistributionData & {period_start:string;period_end:string;eligible:number;participants:number|null;suppressed:boolean;
   emotion:Count[];stress:Count[];items:{status:string;risk_level:string;count:number}[]}
 type Archive = Snapshot & {archive_id:number;ai_summary?:string;review_status:string}
 type Case = {id:number;student_id:number;note:string;status:string;created_at:string;followups?:unknown[]}
@@ -20,7 +23,6 @@ type Panel = {version:string;description:string;granted:boolean;checkins:Checkin
 type Request = <T,>(path:string,method?:string,body?:unknown)=>Promise<T>
 const emotion: Record<string,string> = {very_good:'非常好',good:'良好',neutral:'平稳',poor:'低落',very_poor:'很低落'}
 const stress: Record<string,string> = {none:'无压力',light:'轻度',moderate:'中度',high:'较高'}
-const risk: Record<string,string> = {low:'低风险',medium:'中风险',high:'高风险'}
 const caseStates: Record<string,string> = {open:'待跟进',following:'跟进中',closed:'已结案'}
 const options = (labels:Record<string,string>) => Object.entries(labels).map(([value,label])=>({value,label}))
 
@@ -45,6 +47,8 @@ function DailyCheckins({data}:{data:Snapshot}) {
 
 export function WellbeingBoard() {
   const {user,can}=useAuth()
+  const fullSchool=can('reports:wellbeing:read')
+  const canPrepare=can('student-alerts:read') && !fullSchool
   const write=can('student-alerts:write')
   const cache=useQueryClient()
   const {message}=App.useApp()
@@ -60,7 +64,7 @@ export function WellbeingBoard() {
     queryFn:()=>api<{items:Case[];has_more:boolean}>(staff+'/cases'+query({offset:casePage}))})
   const detail=useQuery({queryKey:[user?.id,'wellbeing-case',activeCase],enabled:write&&!!activeCase,
     queryFn:()=>api<Case>(staff+'/cases/'+activeCase)})
-  const calendar=useQuery({queryKey:[user?.id,'wellbeing-calendar'],queryFn:()=>api<Event[]>(staff+'/calendar')})
+  const calendar=useQuery({queryKey:[user?.id,'wellbeing-calendar'],enabled:can('student-alerts:read'),queryFn:()=>api<Event[]>(staff+'/calendar')})
   const students=useQuery({queryKey:[user?.id,'wellbeing-students'],enabled:write,
     queryFn:()=>api<{id:number;real_name:string}[]>('/api/v1/student-admin/psych-alerts/students')})
   const generate=useMutation({mutationFn:(include_ai:boolean)=>api<Archive>(staff+'/reports',{
@@ -77,17 +81,28 @@ export function WellbeingBoard() {
     void message.success('心理周报已发布')
     void cache.invalidateQueries({queryKey:[user?.id,'report-archive']})
   }})
+  const careSuggestion=useMutation({
+    mutationFn:(id:number)=>api<{suggestion:string}>(staff+'/cases/'+id+'/suggestion',{method:'POST',timeout:130000}),
+    onSuccess:(result,id)=>setAction({
+      title:'核验关怀建议（依据个案说明和最近十条跟进）',path:staff+'/cases/'+id+'/follow-ups',method:'POST',
+      fields:[{name:'status',label:'跟进状态',kind:'select',required:true,initial:'following',options:options(caseStates)},
+        {name:'note',label:'关怀计划与回访安排',kind:'textarea',required:true,initial:result.suggestion}],
+    }),
+  })
   const data=weekly.data
   const canDraft=!!data&&(!data.suppressed||data.items.length>0)
   const draftIsCurrent=draft&&data&&draft.period_start===data.period_start
-  const risks:Record<string,number>={}
-  for(const row of data?.items||[])risks[risk[row.risk_level]||row.risk_level]=(risks[risk[row.risk_level]||row.risk_level]||0)+row.count
   return <Space orientation="vertical" style={{width:'100%'}} size="middle">
     <Card><Space wrap>
       <Input aria-label="心理报告日期" type="date" value={anchor} disabled={generate.isPending||publish.isPending} onChange={event=>{setAnchor(event.target.value);setDraft(undefined)}}/>
-      <Button disabled={!canDraft||generate.isPending||publish.isPending} loading={generate.isPending&&generate.variables===false} onClick={()=>generate.mutate(false)}>生成周报草稿</Button>
-      <Button type="primary" disabled={!data||data.suppressed||generate.isPending||publish.isPending} loading={generate.isPending&&generate.variables===true} onClick={()=>generate.mutate(true)}>生成 AI 建议</Button>
-    </Space>{data&&!canDraft&&<div className="report-center-empty-note"><Typography.Text type="secondary">本周暂无可归档的心理统计。</Typography.Text></div>}</Card>
+      {canPrepare && <><Button disabled={!canDraft||generate.isPending||publish.isPending} loading={generate.isPending&&generate.variables===false} onClick={()=>generate.mutate(false)}>生成周报草稿</Button>
+      <Button type="primary" disabled={!data||data.suppressed||generate.isPending||publish.isPending} loading={generate.isPending&&generate.variables===true} onClick={()=>generate.mutate(true)}>生成 AI 建议</Button></>}
+    </Space>
+      {data && <div className="report-center-empty-note"><Typography.Text type="secondary">
+        {data.period_start} 至 {data.period_end} · {fullSchool ? '全体在读学生' : '我负责的班级'}
+      </Typography.Text></div>}
+      {data&&canPrepare&&!canDraft&&<div className="report-center-empty-note"><Typography.Text type="secondary">本周暂无可归档的心理统计。</Typography.Text></div>}</Card>
+    <ReportHistory kind="psych_weekly"/>
     <ErrorNotice error={weekly.error||generate.error||publish.error}/>
     {data && <>
       <div className="report-center-grid">
@@ -96,7 +111,8 @@ export function WellbeingBoard() {
         <Metric label="自评覆盖率" value={data.eligible&&!data.suppressed?Math.round((data.participants??0)*100/data.eligible)+'%':'—'}/>
       </div>
       <DailyCheckins data={data}/>
-      {data.items.length>0&&<CountBars title="授权范围预警风险" counts={risks}/>}
+      <WellbeingCharts data={data}/>
+      <WellbeingTrend anchor={anchor}/>
     </>}
     {draftIsCurrent && <Card title={draft.review_status==='published'?'心理周报已发布':'心理周报待审核'}>
       <Space orientation="vertical" style={{width:'100%'}}>
@@ -112,10 +128,12 @@ export function WellbeingBoard() {
       fields:[{name:'student_id',label:'学生',kind:'select',required:true,
         options:students.data?.map(s=>({value:s.id,label:s.real_name}))||[]},{name:'note',label:'说明',kind:'textarea',required:true}],
     })}>新增个案</Button>}>
-      <ErrorNotice error={cases.error||detail.error}/>
+      <ErrorNotice error={cases.error||detail.error||careSuggestion.error}/>
       <Table<Case> rowKey="id" pagination={false} dataSource={cases.data?.items||[]} columns={[
         {title:'编号',dataIndex:'id'},{title:'学生编号',dataIndex:'student_id'},{title:'状态',render:(_,row)=><Tag>{caseStates[row.status]}</Tag>},
         {title:'操作',render:(_,row)=><Space><Button type="link" onClick={()=>setActiveCase(row.id)}>查看</Button>
+          {row.status!=='closed'&&<Button type="link" loading={careSuggestion.isPending&&careSuggestion.variables===row.id}
+            onClick={()=>careSuggestion.mutate(row.id)}>生成关怀建议</Button>}
           {row.status!=='closed'&&<Button type="link" onClick={()=>setAction({
             title:'关怀跟进',path:staff+'/cases/'+row.id+'/follow-ups',method:'POST',
             fields:[{name:'status',label:'状态',kind:'select',required:true,initial:'following',options:options(caseStates)},
@@ -127,7 +145,7 @@ export function WellbeingBoard() {
         <Button disabled={!cases.data?.has_more} onClick={()=>setCasePage(i=>i+30)}>下一页</Button>
       </Space>
     </Card>}
-    <Card title="关怀日历" extra={write&&<Button onClick={()=>setAction({
+    {can('student-alerts:read') && <Card title="关怀日历" extra={write&&<Button onClick={()=>setAction({
       title:'添加关怀安排',path:staff+'/calendar',method:'POST',
       fields:[{name:'title',label:'标题',required:true},{name:'day',label:'日期',kind:'date',required:true},
         {name:'note',label:'说明',kind:'textarea',required:true}],
@@ -135,7 +153,7 @@ export function WellbeingBoard() {
       <ErrorNotice error={calendar.error}/>
       <Table<Event> rowKey="id" pagination={false} dataSource={calendar.data||[]}
         columns={[{title:'日期',dataIndex:'day'},{title:'标题',dataIndex:'title'},{title:'说明',dataIndex:'note'}]}/>
-    </Card>
+    </Card>}
     <ActionModal action={action} onClose={()=>setAction(null)}/>
     <DetailDrawer data={activeCase?detail.data||{}:null} onClose={()=>setActiveCase(undefined)} title="关怀个案详情"/>
   </Space>

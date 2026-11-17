@@ -6,10 +6,13 @@ from sqlalchemy import distinct, func, select
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import BusinessError
-from app.core.security.authorization import require_permission, require_student_scope
+from app.core.security import EmployeePrincipal
+from app.core.security.authorization import require_permission
+from app.modules.classroom.models import ClassEnrollment, ProjectClass
+from app.modules.student_admin.models import SysUser
 from app.modules.student import alerts
 
-from . import report_ai, scheduled_repository
+from . import report_ai, scheduled_repository, wellbeing_repository
 from .periods import beijing_now, week_bounds
 from .wellbeing_models import WellbeingCase, WellbeingCheckin, WellbeingConsent, WellbeingEvent, WellbeingFollowup
 
@@ -87,14 +90,33 @@ def save_checkin(db, student_id, body):
         row = WellbeingCheckin(student_id=student_id, day=now.date())
         db.add(row)
     row.emotion, row.stress, row.updated_at = body.emotion, body.stress, now
+    db.flush()
+    from .rule_signals import check_student_self_assessment
+    check_student_self_assessment(db, student_id, now.date())
     db.commit()
     return {"day": now.date()}
 
 
-def desk_week(db: Session, principal, anchor: date):
-    require_permission(principal, "student-alerts:read")
+def can_view_all_weeks(principal: EmployeePrincipal) -> bool:
+    return principal.role_code == "manager" and "reports:wellbeing:read" in principal.permissions
+
+
+def weekly_student_ids(db: Session, principal: EmployeePrincipal) -> frozenset[int]:
+    students = select(SysUser.id).where(SysUser.user_type == "student", SysUser.status == "normal")
+    if not can_view_all_weeks(principal):
+        require_permission(principal, "student-alerts:read")
+        students = students.join(ClassEnrollment, ClassEnrollment.student_id == SysUser.id).join(
+            ProjectClass, ProjectClass.id == ClassEnrollment.class_id,
+        ).where(ProjectClass.teacher_id == principal.employee_id)
+    return frozenset(db.scalars(students))
+
+
+def desk_week(db: Session, principal: EmployeePrincipal, anchor: date):
+    return week_statistics(db, anchor, weekly_student_ids(db, principal))
+
+
+def week_statistics(db: Session, anchor: date, population: frozenset[int]):
     start, end = week_bounds(anchor)
-    population = set(principal.student_ids)
     consented = set(db.scalars(select(WellbeingConsent.student_id).where(
         WellbeingConsent.student_id.in_(population), WellbeingConsent.granted.is_(True),
         WellbeingConsent.version == CONSENT_VERSION,
@@ -102,7 +124,9 @@ def desk_week(db: Session, principal, anchor: date):
     check = WellbeingCheckin
     filters = (check.student_id.in_(consented), check.day.between(start, end))
     participants = db.scalar(select(func.count(distinct(check.student_id))).where(*filters))
-    data = {**alerts.weekly_alerts(db, principal, anchor), "eligible": len(population),
+    data = {"period_start": start, "period_end": end,
+            "items": alerts.weekly_alert_totals(db, population, start, end),
+            "eligible": len(population),
             "participants": participants if participants >= MIN_GROUP else None, "suppressed": participants < MIN_GROUP, "emotion": [], "stress": []}
     if not data["suppressed"]:
         for key in ("emotion", "stress"):
@@ -112,6 +136,7 @@ def desk_week(db: Session, principal, anchor: date):
             groups = db.execute(select(check.day, field, count).where(*filters).group_by(
                 check.day, field).having(count >= MIN_GROUP).order_by(check.day, field))
             data[key] = [{"day": day, "label": tag, "count": count} for day, tag, count in groups]
+    data.update(wellbeing_repository.weekly_distributions(db, population, consented, start, end, MIN_GROUP))
     return data
 
 
@@ -148,6 +173,20 @@ def case_detail(db, principal, case_id):
     return {**_case_view(row), "followups": [
         {"note": item.note, "actor_id": item.actor_id, "created_at": item.created_at} for item in actions
     ]}
+
+
+def case_suggestion(db, principal, case_id):
+    original = case_detail(db, principal, case_id)
+    db.rollback()
+    suggestion = report_ai.care_suggestion({
+        "note": original["note"], "latest_followups": original["followups"][:10],
+    })
+    current = case_detail(db, principal, case_id)
+    if current != original:
+        raise BusinessError(409, "关怀记录已更新，请刷新后重试")
+    if len(suggestion) > 2000:
+        raise BusinessError(502, "关怀建议超过可保存长度，请重新生成")
+    return {"suggestion": suggestion, "requires_review": True}
 
 
 def followup(db, principal, case_id, body):
@@ -192,13 +231,17 @@ def generate(db, principal, body):
     from fastapi.encoders import jsonable_encoder
 
     require_permission(principal, "student-alerts:read")
+    if can_view_all_weeks(principal):
+        raise BusinessError(403, "全体学生心理健康周报仅供查看")
     ai_stats = None
     ai_summary = None
-    ai_fields = ("eligible", "participants", "emotion", "stress")
+    ai_fields = ("eligible", "participants", "emotion", "stress", "items",
+                 "emotion_tags", "emotion_scores", "alert_reasons", "records_suppressed", "milestones")
     if body.include_ai:
-        initial = jsonable_encoder(desk_week(db, principal, body.anchor))
+        initial_scope = weekly_student_ids(db, principal)
+        initial = jsonable_encoder(week_statistics(db, body.anchor, initial_scope))
         _validate_report_data(initial, True)
-        ai_stats = {key: initial[key] for key in ai_fields}
+        ai_stats = {key: initial.get(key) for key in ai_fields}
         db.rollback()
         ai_summary = report_ai.suggest("心理周报", ai_stats)
 
@@ -206,17 +249,18 @@ def generate(db, principal, body):
     db.rollback()
     if not scheduled_repository.lock_employee(db, principal.employee_id):
         raise BusinessError(403, "员工账号不可用")
-    stats = jsonable_encoder(desk_week(db, principal, body.anchor))
+    population = weekly_student_ids(db, principal)
+    stats = jsonable_encoder(week_statistics(db, body.anchor, population))
     _validate_report_data(stats, body.include_ai)
     if ai_stats is not None:
-        if ai_stats != {key: stats[key] for key in ai_fields}:
+        if population != initial_scope or ai_stats != {key: stats.get(key) for key in ai_fields}:
             raise BusinessError(409, "统计数据已更新，请重新生成 AI 建议")
         stats["ai_summary"] = ai_summary
     stats["review_status"] = "draft"
     rid = scheduled_repository.save_wellbeing_draft(
         db, principal.employee_id,
         {"period_start": stats["period_start"], "period_end": stats["period_end"], "scope_version": 1,
-         "student_ids": sorted(principal.student_ids), "statistics": stats}, beijing_now(),
+         "student_ids": sorted(population), "statistics": stats}, beijing_now(),
     )
     db.commit()
     return {"archive_id": rid, **stats}
@@ -227,11 +271,15 @@ def review(db, principal, archive_id, body):
     from .scheduled_repository import generated
 
     require_permission(principal, "student-alerts:write")
+    if can_view_all_weeks(principal):
+        raise BusinessError(403, "全体学生心理健康周报仅供查看")
     row = db.execute(select(generated.c.report_content).where(
         generated.c.id == archive_id, generated.c.generated_by == principal.employee_id,
         generated.c.report_type == "psych_weekly", generated.c.status == "completed",
     ).with_for_update()).scalar_one_or_none()
-    if not row or row.get("scope_version") != 1 or not set(row.get("student_ids", [])).issubset(principal.student_ids):
+    recorded = row.get("student_ids") if isinstance(row, dict) else None
+    if (not isinstance(recorded, list) or row.get("scope_version") != 1
+            or not set(recorded).issubset(weekly_student_ids(db, principal))):
         raise BusinessError(404, "周报不存在或已超出权限范围")
     stats = row.get("statistics", {})
     if stats.get("review_status") != "draft":

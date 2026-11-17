@@ -9,13 +9,13 @@ from app.core.exceptions import BusinessError
 from app.core.security import EmployeePrincipal
 from app.modules.auth.repository import AuthRepository
 from app.modules.organization.membership import managed_employees_query
-from app.modules.student import alerts
 
 from . import board_service, wellbeing
 from . import repository as statistics_repository
 from . import scheduled_repository as repository, service
 from .periods import beijing_now as _now, week_bounds, week_monday
-from .schemas import ScheduleWrite
+from .schemas import ScheduleKind, ScheduleWrite
+from .analysis_models import ReportScheduleOptions
 
 logger = logging.getLogger(__name__)
 
@@ -29,13 +29,14 @@ REPORTS = {
 _WEEKLY = {"weekly_summary", "psych_weekly", "complaint_weekly"}
 
 
-def _allowed_kinds(db: Session, principal: EmployeePrincipal) -> tuple[str, ...]:
+def _allowed_kinds(db: Session, principal: EmployeePrincipal, *, archive: bool = False) -> tuple[str, ...]:
     kinds = []
     for kind, (_, permission) in REPORTS.items():
-        if permission not in principal.permissions:
-            continue
         if kind == "psych_weekly":
-            kinds.append(kind)
+            if (archive if wellbeing.can_view_all_weeks(principal) else permission in principal.permissions):
+                kinds.append(kind)
+            continue
+        if permission not in principal.permissions:
             continue
         try:
             service._report_department(db, principal)
@@ -56,11 +57,15 @@ def preferences(db: Session, principal: EmployeePrincipal):
     kinds = _allowed_kinds(db, principal)
     if not kinds:
         raise BusinessError(403, "缺少报表计划权限")
-    rows = {row["report_type"]: _schedule_view(row) for row in repository.own_schedules(db, principal.employee_id)
-            if row["report_type"] in kinds}
+    rows = {}
+    for row in repository.own_schedules(db, principal.employee_id):
+        if row["report_type"] not in kinds:
+            continue
+        option = db.get(ReportScheduleOptions, row["id"])
+        rows[row["report_type"]] = {**_schedule_view(row), "include_ai": bool(option and option.include_ai)}
     return {"items": [
         {"kind": kind, "title": REPORTS[kind][0], "weekly": kind in _WEEKLY,
-         "run_at": "09:00", "enabled": False, "last_run_time": None, **rows.get(kind, {})}
+         "run_at": "09:00", "enabled": False, "include_ai": False, "last_run_time": None, **rows.get(kind, {})}
         for kind in kinds
     ]}
 
@@ -68,6 +73,9 @@ def preferences(db: Session, principal: EmployeePrincipal):
 def configure(db: Session, principal: EmployeePrincipal, payload: ScheduleWrite):
     if payload.kind not in _allowed_kinds(db, principal):
         raise BusinessError(403, "缺少该报表的查看权限")
+    if payload.include_ai and payload.kind in ("daily_summary", "weekly_summary"):
+        from app.core.security.authorization import require_permission
+        require_permission(principal, "reports:formal:generate")
     if payload.weekly is not None and payload.kind != "customer_ops" and payload.weekly != (payload.kind in _WEEKLY):
         raise BusinessError(422, "此报表的生成频率固定")
     if payload.run_at.tzinfo is not None or payload.run_at.second or payload.run_at.microsecond:
@@ -84,11 +92,19 @@ def configure(db: Session, principal: EmployeePrincipal, payload: ScheduleWrite)
         now = _now()
         values = {"schedule_cron": cron, "enabled": int(payload.enabled), "update_time": now}
         if previous:
+            schedule_id = previous["id"]
             db.execute(update(repository.schedules).where(repository.schedules.c.id == previous["id"]).values(**values))
         else:
-            db.execute(insert(repository.schedules).values(
+            result = db.execute(insert(repository.schedules).values(
                 **values, report_type=payload.kind, recipients=[principal.employee_id], create_time=now,
             ))
+            schedule_id = result.lastrowid
+        if payload.include_ai is not None:
+            option = db.get(ReportScheduleOptions, schedule_id)
+            if option is None:
+                option = ReportScheduleOptions(schedule_id=schedule_id)
+                db.add(option)
+            option.include_ai = payload.include_ai
         db.commit()
     except Exception:
         db.rollback()
@@ -96,30 +112,67 @@ def configure(db: Session, principal: EmployeePrincipal, payload: ScheduleWrite)
     return preferences(db, principal)
 
 
-def archive(db: Session, principal: EmployeePrincipal, before_id: int | None):
-    kinds = _allowed_kinds(db, principal)
+def archive(db: Session, principal: EmployeePrincipal, before_id: int | None, *,
+            kind: ScheduleKind | None = None, limit: int = 20, shared: bool = False):
+    kinds = _allowed_kinds(db, principal, archive=True)
+    if kind is not None:
+        kinds = (kind,) if kind in kinds else ()
     if not kinds:
         raise BusinessError(403, "缺少报表归档权限")
     department, members = _current_scope(db, principal, kinds)
-    return [
-        _visible_report(row, principal, department, members)
-        for row in repository.own_reports(db, principal.employee_id, kinds, before_id)
-    ]
+    if shared:
+        return _shared_archive(db, principal, kinds, before_id, limit, department, members)
+    rows = repository.own_reports(db, principal.employee_id, kinds, before_id, limit)
+    students = (wellbeing.weekly_student_ids(db, principal)
+                if any(row["report_type"] == "psych_weekly" for row in rows) else frozenset())
+    return [_visible_report(row, principal, department, members, students) for row in rows]
 
 
-def archived_report(db: Session, principal: EmployeePrincipal, report_id: int) -> dict:
-    kinds = _allowed_kinds(db, principal)
+def archived_report(db: Session, principal: EmployeePrincipal, report_id: int, *, shared: bool = False) -> dict:
+    kinds = _allowed_kinds(db, principal, archive=True)
     if not kinds:
         raise BusinessError(403, "缺少报表归档权限")
-    row = repository.own_report(db, principal.employee_id, kinds, report_id)
+    row = repository.report_candidate(db, report_id, kinds) if shared else repository.own_report(
+        db, principal.employee_id, kinds, report_id)
     if row is None:
         raise BusinessError(404, "报告不存在")
     department, members = _current_scope(db, principal, (row["report_type"],))
-    visible = _visible_report(row, principal, department, members)
+    if shared and row["report_type"] != "psych_weekly" and row["generated_by"] not in _shared_owners(db, principal, department, members):
+        raise BusinessError(404, "报告不存在或不在授权范围")
+    students = (wellbeing.weekly_student_ids(db, principal)
+                if row["report_type"] == "psych_weekly" else frozenset())
+    visible = _visible_report(row, principal, department, members, students)
     if visible.get("unavailable"):
         raise BusinessError(403, "当前权限范围已变更，无法下载该报告")
     db.rollback()
     return visible
+
+
+def _shared_owners(db, principal, department, members):
+    if department is None and principal.role_code == "admin":
+        from app.modules.student_admin.models import SysUser
+        from sqlalchemy import select
+        return set(db.scalars(select(SysUser.id).where(SysUser.user_type.in_(("employee", "admin")))))
+    return members | {principal.employee_id}
+
+
+def _shared_archive(db, principal, kinds, before_id, limit, department, members):
+    owners = _shared_owners(db, principal, department, members)
+    students = wellbeing.weekly_student_ids(db, principal) if "psych_weekly" in kinds else frozenset()
+    result = []
+    cursor = before_id
+    while len(result) < limit:
+        rows = repository.shared_candidates(db, owners, kinds, cursor, 100)
+        if not rows:
+            break
+        for row in rows:
+            visible = _visible_report(row, principal, department, members, students)
+            if not visible.get("unavailable"):
+                result.append(visible)
+                if len(result) == limit:
+                    break
+        cursor = rows[-1]["id"]
+    return result
 
 
 def _current_scope(db: Session, principal: EmployeePrincipal, kinds: tuple[str, ...]):
@@ -133,11 +186,12 @@ def _current_scope(db: Session, principal: EmployeePrincipal, kinds: tuple[str, 
     return None, set()
 
 
-def _visible_report(row: dict, principal: EmployeePrincipal, department: str | int | None, department_members: set[int]) -> dict:
+def _visible_report(row: dict, principal: EmployeePrincipal, department: str | int | None,
+                    department_members: set[int], student_ids: frozenset[int]) -> dict:
     scope = row.pop("report_content")
     if isinstance(scope, dict) and scope.get("scope_version") == 1:
         if row["report_type"] == "psych_weekly":
-            allowed = isinstance(scope.get("student_ids"), list) and set(scope["student_ids"]).issubset(principal.student_ids)
+            allowed = isinstance(scope.get("student_ids"), list) and set(scope["student_ids"]).issubset(student_ids)
         elif isinstance(department, int):
             recorded = scope.get("department_members")
             allowed = isinstance(recorded, list) and set(recorded).issubset(department_members)
@@ -202,14 +256,44 @@ def _generate_due_report(db: Session, row, now: datetime) -> bool:
         return False
     weekly_customers = kind == "customer_ops" and row["schedule_cron"].split()[-1:] == ["1"]
     anchor = timing.date() - timedelta(days=1)
-    snapshot = _snapshot(db, principal, kind, anchor, weekly_customers=weekly_customers)
+    students = frozenset()
+    if kind == "psych_weekly":
+        students = wellbeing.weekly_student_ids(db, principal)
+        snapshot = wellbeing.week_statistics(db, anchor, students)
+        scope = None
+    else:
+        snapshot = _snapshot(db, principal, kind, anchor, weekly_customers=weekly_customers)
+        scope = service._report_department(db, principal)
     periods = jsonable_encoder(snapshot)
-    scope = service._report_department(db, principal) if kind != "psych_weekly" else None
+    option = db.get(ReportScheduleOptions, row["id"])
+    formal = False
+    if option and option.include_ai:
+        from . import formal_dify, report_ai
+        from .schemas import EmployeeReportSummary, FormalReportSections
+        if kind in ("daily_summary", "weekly_summary"):
+            if "reports:formal:generate" not in principal.permissions:
+                return False
+            period = "day" if kind == "daily_summary" else "week"
+            stats = EmployeeReportSummary.model_validate(snapshot)
+            text, contributors = service._report_payload(db, stats, scope, period)
+            sections = formal_dify.generate_summary("daily" if period == "day" else "weekly", text) if contributors else FormalReportSections(
+                work_summary="本期无相关记录", key_progress_summary="本期无相关记录",
+                risk_summary="本期无相关记录", next_work_suggestions="本期无相关记录")
+            periods["sections"] = sections.model_dump()
+            formal = True
+        elif kind == "customer_ops":
+            periods["ai_summary"] = report_ai.customer_summary(periods)
+        elif kind == "psych_weekly" and periods["suppressed"]:
+            periods["ai_status"] = "参与人数低于展示门槛，本次归档统计快照"
+        else:
+            periods["ai_summary"] = report_ai.suggest("心理周报" if kind == "psych_weekly" else "投诉", periods)
     department_members = sorted(db.scalars(managed_employees_query(scope))) if isinstance(scope, int) else None
     payload = {**periods, "scope_version": 1, "department": periods.get("department"),
                "department_members": department_members,
-               "student_ids": sorted(principal.student_ids) if kind == "psych_weekly" else [],
+               "student_ids": sorted(students),
                "statistics": periods}
+    if formal:
+        payload.update(format="formal", contributor_ids=sorted(contributors))
     repository.record_report(db, employee_id, kind, "客户经营周报" if weekly_customers else REPORTS[kind][0], payload, now)
     db.execute(update(repository.schedules).where(repository.schedules.c.id == row["id"]).values(last_run_time=now))
     return True
@@ -235,8 +319,6 @@ def _snapshot(db: Session, principal: EmployeePrincipal, kind: str, anchor, *, w
         submissions = board_service.employee_board(db, principal, anchor, period, None, None, 0, 1)
         data["submissions"] = {key: submissions[key] for key in ("expected", "submitted", "missing", "departments")}
         return data
-    if kind == "psych_weekly":
-        return wellbeing.desk_week(db, principal, anchor)
     start, end = week_bounds(anchor) if kind == "complaint_weekly" or weekly_customers else (anchor, anchor)
     data = board_service.operations(db, principal, "complaints" if kind == "complaint_weekly" else "customers", start, end)
     data.pop("items", None)

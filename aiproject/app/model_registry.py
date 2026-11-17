@@ -15,6 +15,7 @@ MODEL_MODULES = (
     "app.modules.student_admin.models",
     "app.modules.student.models",
     "app.modules.statistics.wellbeing_models",
+    "app.modules.statistics.analysis_models",
     "app.modules.organization.models",
     "app.modules.onboarding.models",
     "app.modules.score.models",

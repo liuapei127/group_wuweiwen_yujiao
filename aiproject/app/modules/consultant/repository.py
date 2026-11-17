@@ -17,6 +17,8 @@ class ConsultantRepository:
         now = now_naive()
         row = CrmLead(**payload.model_dump(), status="new", create_time=now, update_time=now)
         self.db.add(row)
+        self.db.flush()
+        self.db.add(LeadStatusEvent(lead_id=row.id, status="new", occurred_at=beijing_now()))
         if commit:
             self.db.commit()
             self.db.refresh(row)
@@ -62,9 +64,8 @@ class ConsultantRepository:
         lead.status = status
         lead.lost_reason = lost_reason
         lead.update_time = now_naive()
-        if status in {"signed", "lost"}:
-            self.db.add(LeadStatusEvent(lead_id=lead.id, status=status, occurred_at=beijing_now(),
-                                        reason=lost_reason if status == "lost" else None))
+        self.db.add(LeadStatusEvent(lead_id=lead.id, status=status, occurred_at=beijing_now(),
+                                    reason=lost_reason if status == "lost" else None))
         self.db.commit()
         self.db.refresh(lead)
         return lead
