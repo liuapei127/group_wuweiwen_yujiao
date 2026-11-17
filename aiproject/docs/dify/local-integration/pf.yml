@@ -842,11 +842,14 @@ workflow:
 
           def _german_b1_met(text: str) -> bool:
               level = r"(?:B1|B2|C1|C2|专业级)"
+              negative = r"没有|还没|没考|未考|未取得|不是|目标|计划|拟|希望|备考|未达|未过|未通过|要求"
+              if re.search(r"(?:目前|现在|只有|仅有)(?:德语)?\s*A[12]", text, re.I):
+                  return False
               for part in re.split(r"[，,。；;\n]", text):
                   for match in re.finditer(r"(?:德语|German)\s*(?:水平|等级|成绩|证书)?\s*[:：]?\s*(?:已达(?:到)?|达到|已通过|通过|已取得|取得|已获得|获得)?\s*" + level, part, re.I):
                       before = part[max(0, match.start() - 12) : match.start()]
                       after = part[match.end() : match.end() + 12]
-                      if not re.search(r"目标|计划|拟|希望|备考|未达|未过|未通过|要求", before) and not re.match(r"\s*(?:未通过|备考|学习中|课程|培训)", after):
+                      if not re.search(negative, before) and not re.match(r"\s*(?:[（(]\s*)?(?:未通过|没考|备考|学习中|课程|培训)", after):
                           return True
               return False
 

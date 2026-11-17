@@ -2,6 +2,8 @@
 .customer-return { display: inline-block; margin-bottom: 12px; }
 .customer-detail-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr); align-items: start; gap: 18px; }
 .customer-detail-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+.customer-portrait-title { grid-column: 1 / -1; margin: 12px 0 4px; }
+.customer-portrait-note { margin-bottom: 8px; }
 .customer-screening-muted.ant-btn { color: #657870; background: #ebf0ed; border-color: #e1e9e4; }
 .customer-screening-result p { margin: 7px 0 14px; }
 .customer-document { background: #f4f8f5; border: 1px solid #e2eae4; border-radius: 9px; padding: 12px; overflow-wrap: anywhere; }

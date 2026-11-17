@@ -1,3 +1,4 @@
+import json
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -313,6 +314,8 @@ def test_shared_customer_profile_import_and_screening(isolated_portal, monkeypat
             visitors = client.get(base + "/pending", headers=owner).json()["data"]
             first, second = (visitor["visitor_id"] for visitor in visitors)
             assert client.get(public, headers=one).status_code == 409
+            staged = client.get(public, headers=one, params={"include_pending": "true"}).json()["data"]
+            assert staged["pending_customer"] and staged["screening_input"][0]["id"] == f"U_{first:03d}"
             assert client.post("/api/v1/consultant/leads", headers=owner, json={"customer_name": "违规建档"}).status_code == 403
 
             def claim_and_verify(visitor, name, phone):
@@ -334,9 +337,14 @@ def test_shared_customer_profile_import_and_screening(isolated_portal, monkeypat
             assert client.get(detail, headers=owner).json()["data"]["lead"]["status"] == "contacting"
             starting = current()
             assert client.get(public, headers=one).json()["data"]["version"] == starting["version"]
+            assert starting["screening_input"][0]["id"] == staged["screening_input"][0]["id"]
             assert client.patch(profile_url, headers=owner, json={
                 "expected_version": starting["version"], "intended_project": "de_vocational", "education_level": "senior_secondary",
             }).status_code == 200
+            for endpoint, headers in ((profile_url, owner), (public, one)):
+                notice = client.get(endpoint, headers=headers, params={"watch_version": starting["version"]})
+                assert notice.headers["content-type"].startswith("text/event-stream")
+                assert '"changed": true' in notice.text
             assert client.patch(public, headers=one, json={
                 "expected_version": starting["version"], "age": 31,
             }).status_code == 409
@@ -380,6 +388,8 @@ def test_shared_customer_profile_import_and_screening(isolated_portal, monkeypat
             assert result["screening"]["result"]["status"] == "potential_match"
             assert result["screening"]["ai"]["talk_track"]
             assert len(ai_calls) == 1
+            assert json.loads(ai_calls[0]) == current()["screening_input"] == synced["screening_input"]
+            assert result["screening"]["input_snapshot"] == synced["screening_input"]
 
             visitor_upload = upload(public, one, f"姓名：林晓宁\n本人手机号：{phone_one}\n意向专业：机械")
             draft = visitor_upload.json()["data"]

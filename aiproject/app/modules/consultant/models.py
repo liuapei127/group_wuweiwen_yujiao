@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint, text
+from sqlalchemy import JSON, BigInteger, DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -19,6 +19,7 @@ class CrmLead(Base):
     intended_major: Mapped[str | None] = mapped_column(String(128))
     intended_project: Mapped[str | None] = mapped_column(String(40))
     education_stage: Mapped[str | None] = mapped_column(String(24))
+    portrait: Mapped[dict | None] = mapped_column(JSON)
     profile_version: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     background_info: Mapped[str | None] = mapped_column(Text)
     customer_profile_id: Mapped[int | None] = mapped_column(BigInteger)

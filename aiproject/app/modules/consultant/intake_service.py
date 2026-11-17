@@ -84,6 +84,8 @@ def _ensure_customer(db: Session, account: VisitorAccount, case: VisitorIntake) 
     db.add(lead)
     db.flush()
     case.crm_lead_id = lead.id
+    from .customer_service import attach_pending_portrait
+    attach_pending_portrait(db, account.id, lead, account)
     from .status_events import LeadStatusEvent
     db.add(LeadStatusEvent(lead_id=lead.id, status="contacting", occurred_at=claimed_at))
     for call in repository.call_history(db, account.id):
