@@ -73,7 +73,8 @@ def list_courses(db: Session, keyword: str, after_id: int, limit: int) -> Course
 
 
 def matching_courses(db: Session, terms: list[str], limit: int = 5, *,
-                     kind: Literal["project", "course"] | None = None) -> list[CourseOut]:
+                     kind: Literal["project", "course"] | None = None,
+                     audience_terms: tuple[str, ...] = ()) -> list[CourseOut]:
     stmt = select(*_catalog_fields).where(
         _courses.c.status == 1,
         or_(_courses.c.category.is_(None), _courses.c.category != "本地测试"),
@@ -85,6 +86,10 @@ def matching_courses(db: Session, terms: list[str], limit: int = 5, *,
         stmt = stmt.where(project, ~course)
     elif kind == "course":
         stmt = stmt.where(course)
+    if audience_terms:
+        stmt = stmt.where(or_(*(
+            _courses.c.target_audience.contains(term, autoescape=True) for term in audience_terms
+        )))
     for term in terms:
         stmt = stmt.where(or_(*(
             field.contains(term, autoescape=True)

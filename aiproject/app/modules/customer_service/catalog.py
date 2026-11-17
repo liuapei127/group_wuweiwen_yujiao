@@ -10,7 +10,22 @@ from app.modules.visitor.content_service import list_sections
 _COUNTRIES = ("德国", "新加坡")
 _FIELDS = ("航空", "酒店", "双元制", "护理", "工程", "计算机")
 _LANGUAGES = ("德语", "英语", "语言")
-_LEVELS = ("高中", "中职", "大专", "本科", "硕士", "初中")
+_EDUCATION = {
+    "初中": ("初中",), "高中": ("高中",), "中职": ("中职", "中专", "职高", "中技"),
+    "大专": ("大专", "专科"), "本科": ("本科",), "硕士": ("硕士",),
+}
+_EDUCATION_ALIAS = {alias: level for level, aliases in _EDUCATION.items() for alias in aliases}
+_LEVEL_WORDS = "|".join(_EDUCATION_ALIAS)
+_LEVEL_MENTION = re.compile(_LEVEL_WORDS)
+_CURRENT_LEVEL = re.compile(rf"({_LEVEL_WORDS})(?:在读|毕业|学历|生)")
+# Public cards can list an audience and individual paths, or use a heading followed by bullets.
+_PATH_LINE = re.compile(
+    rf"^(?:[•·-]\s*)?(?:招生对象[：:]\s*)?(?:应往届|应届|往届)?"
+    rf"(?P<level>{_LEVEL_WORDS})(?:毕业生|在读学生|毕业|在读|学生|学历|生)"
+    r"(?:(?:可了解|可参考)(?:以下[^：:]{0,24})?)?(?:\s*[：:]\s*|\s+)(?P<summary>.*)$"
+)
+_NEGATED_AUDIENCE = re.compile(r"不(?:招收|招生|接受|接收|适合|面向|限|含|包括|可|符合)|禁止|排除|除外")
+_LANGUAGE_COURSE = re.compile(r"^(德语|英语|语言)(?:课|课程)$")
 _CATALOG_FOCUS = re.compile(r"(?:问的?是|想了解的?是|要的?是|只(?:问|看|查|要))[^，。！？、,?!]{0,8}?(项目|课程)")
 _CATALOG_FOLLOWUP = re.compile(r"^(?:(?:德国|新加坡)\s*)?(?:那|那么)?(?:留学|教学)?(项目|课程)呢[\s？?。!！]*$")
 _CATALOG_LIST = re.compile(r"(?:什么|哪些|哪几个)[^，。！？、,?!]{0,8}?(项目|课程)")
@@ -43,7 +58,7 @@ def catalog_kind(query: str) -> CatalogKind | None:
         return "project" if listing.group(1) == "项目" else "course"
     if "项目" in query:
         return "project"
-    if "课程" in query:
+    if "课程" in query or is_language_course(query):
         return "course"
     return None
 
@@ -52,38 +67,86 @@ def asks_for_catalog_list(query: str) -> bool:
     return _CATALOG_LIST.search(query) is not None
 
 
+def is_language_course(query: str) -> bool:
+    return _LANGUAGE_COURSE.fullmatch(query.strip().rstrip("？?。！!")) is not None
+
+
+def education_for(query: str) -> str:
+    if match := _CURRENT_LEVEL.search(query):
+        return _EDUCATION_ALIAS[match.group(1)]
+    match = _LEVEL_MENTION.search(query)
+    return _EDUCATION_ALIAS[match.group()] if match else ""
+
+
+def _path_summaries(content: str, education: str, field: str) -> list[str]:
+    selected = False
+    paths = []
+    for raw in content.splitlines():
+        line = raw.strip()
+        if match := _PATH_LINE.fullmatch(line):
+            selected = _EDUCATION_ALIAS[match["level"]] == education
+            summary = match["summary"].strip()
+        elif selected and line.startswith(("•", "·", "- ")):
+            summary = line[1:].strip()
+        else:
+            selected = False
+            continue
+        if selected and summary and (not field or field in summary):
+            paths.append(summary)
+    return paths
+
+
+def _includes_audience(audience: str, aliases: tuple[str, ...]) -> bool:
+    return any(
+        not _NEGATED_AUDIENCE.search(clause) and any(alias in clause for alias in aliases)
+        for clause in re.split(r"[，。；;,.\n]", audience)
+    )
+
+
 def recommendations(db: Session, query: str) -> list[dict]:
     country = country_for(query)
     kind = catalog_kind(query) or "project"
-    preferences = [next((word for word in words if word in query), "")
-                   for words in ((_LANGUAGES,) if kind == "course" else (_FIELDS, _LEVELS))]
-    terms = [term for term in (country, *preferences) if term]
     if kind == "course":
+        language = next((word for word in _LANGUAGES if word in query), "")
+        terms = [term for term in (country, language) if term]
         return _catalog_rows(db, country, terms, kind)
+    field = next((word for word in _FIELDS if word in query), "")
+    education = education_for(query)
+    terms = [term for term in (country, field) if term]
     cards = [card for section in list_sections(db, published_only=True) if section.anchor == "programs"
              for card in section.cards]
-    exact = _catalog_rows(db, country, terms, kind, cards)
-    if exact or not country or len(terms) == 1:
+    exact = _catalog_rows(db, country, terms, kind, cards, education=education, field=field)
+    if exact or not country or not (field or education):
         return exact
-    return [{**row, "matches_preferences": False} for row in _catalog_rows(db, country, [country], kind, cards)]
+    return [
+        {**row, "summary": "", "target_audience": None, "matches_preferences": False}
+        for row in _catalog_rows(db, country, [country], kind, cards)
+    ]
 
 
-def _catalog_rows(db: Session, country: str, terms: list[str], kind: CatalogKind, cards=()) -> list[dict]:
+def _catalog_rows(db: Session, country: str, terms: list[str], kind: CatalogKind, cards=(), *,
+                  education: str = "", field: str = "") -> list[dict]:
+    aliases = _EDUCATION.get(education, ())
     rows = [
         {
             "code": str(row.id), "name": row.project_name, "country": country,
             "summary": (row.description or "")[:600], "target_audience": row.target_audience,
             "category": row.category, "matches_preferences": True,
         }
-        for row in matching_courses(db, terms, kind=kind)
-    ]
+        for row in matching_courses(db, terms, kind=kind, limit=50 if aliases else 5, audience_terms=aliases)
+        if not aliases or _includes_audience(row.target_audience or "", aliases)
+    ][:5]
     names = {row["name"] for row in rows}
     for card in cards:
         if card.title in names or not all(term in f"{card.title} {card.content}" for term in terms):
             continue
+        paths = _path_summaries(card.content, education, field if field not in card.title else "") if education else []
+        if education and not paths:
+            continue
         rows.append({
             "code": f"官网栏目-{card.id}", "name": card.title, "country": country,
-            "summary": card.content[:600], "target_audience": None,
+            "summary": ("\n".join(f"  - {path}" for path in paths) if paths else card.content)[:600],
+            "target_audience": f"{education}相关招生对象" if paths else None,
             "category": "官网留学项目", "matches_preferences": True,
         })
         names.add(card.title)

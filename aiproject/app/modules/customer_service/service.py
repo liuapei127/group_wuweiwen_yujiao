@@ -18,7 +18,7 @@ from .booking import booking_reply
 from .capacity import CsCapacityExceeded, get_cs_capacity
 from .catalog import (
     activity_list, asks_for_catalog_list, catalog_followup_kind, catalog_kind,
-    country_for, names_event, recommendations,
+    country_for, education_for, is_language_course, names_event, recommendations,
 )
 from .repository import chat_session, remember_dify_conversation
 from .schemas import PublicChatReply, PublicChatRequest
@@ -119,7 +119,7 @@ def _catalog_answer(db: Session, query: str) -> PublicChatReply | None:
         not kind or names_event(query)
         or any(word in query for word in (*_POLICY, *_MATERIALS, "退费", "合同"))
         or not ((country and subject in (f"{country}项目", f"{country}课程", f"{country}的项目", f"{country}的课程"))
-                or subject in ("德语课程", "英语课程", "语言课程")
+                or is_language_course(query)
                 or asks_for_catalog_list(query) or catalog_followup_kind(query)
                 or ("推荐" in query and any(word in query for word in _CATALOG_SUBJECTS)))
     ):
@@ -128,6 +128,8 @@ def _catalog_answer(db: Session, query: str) -> PublicChatReply | None:
     if not country and catalog_followup_kind(query) and kind == "project":
         return PublicChatReply(answer="你想了解德国还是新加坡的项目？")
     answer = _catalog_text(db, country, query)
+    if not answer and kind == "project" and (education := education_for(query)):
+        answer = f"目前官网暂无面向{education}学历的{country}公开升学路径。可联系顾问核对最新招生安排。"
     return PublicChatReply(answer=answer or f"官网暂未查到符合条件的{country}{label}。可联系顾问核对最新安排。")
 
 
@@ -142,7 +144,12 @@ def _catalog_text(db: Session, country: str, query: str) -> str | None:
         intro = f"根据官网已发布资料，与你提问相关的{country}项目有："
         ending = "具体申请条件和材料请以项目说明或顾问核对为准。"
     else:
-        intro = f"官网已发布以下{country}项目，可以先了解："
+        education = education_for(query)
+        intro = (
+            f"目前官网暂未查到与你所问条件匹配的{country}公开升学路径。以下是同一目的地的公开项目："
+            if not education else
+            f"目前官网暂未查到面向{education}学历、符合所问条件的{country}公开升学路径。以下是同一目的地的公开项目："
+        )
         ending = "当前资料无法确认你的申请资格。可联系顾问核对学历要求、入学时间和所需材料。"
     lines = [f"· {row['name']}" + (f"：{row['summary']}" if row.get("summary") else "") for row in rows[:3]]
     return "\n".join([intro, *lines, ending])
