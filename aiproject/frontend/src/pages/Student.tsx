@@ -1,35 +1,27 @@
-import {Alert, Button, Card, Form, Input, Space, Table, Tag, Typography} from 'antd'
+import './student-experience.css'
+import {StudentHome} from './StudentHome'
+import {StudentLife} from './StudentLife'
+import {Alert, Button, Card, Descriptions, Form, Input, Modal, Space, Table, Tag, Typography} from 'antd'
 import {BellOutlined, BookOutlined, CalendarOutlined, ClockCircleOutlined, FolderOpenOutlined,
-  GlobalOutlined, HeartOutlined, LineChartOutlined, MessageOutlined, RobotOutlined} from '@ant-design/icons'
+  GlobalOutlined, HeartOutlined, HomeOutlined, LineChartOutlined, MessageOutlined, RobotOutlined} from '@ant-design/icons'
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
-import {useState, type ReactNode} from 'react'
+import {useLayoutEffect, useRef, useState, type ReactNode} from 'react'
 import {AcademicDeadlines, academicDeadlineEndpoint} from './AcademicDeadlines'
 import {PolicyCards, type PolicyData} from './WebsitePolicies'
-import {WebsiteGuide, type GuideTopic} from './WebsiteGuide'
 import {StudentWellbeing} from './Wellbeing'
 import {StudentAssistant} from './StudentAssistant'
 import {ProgressPager, ProgressTable, type Progress} from './ApplicationProgress'
 
 type LeaveRequest = {leave_type: 'sick' | 'personal' | 'emergency'; start_time: string; end_time: string; reason: string; attachment_id?: string}
-type ComplaintRequest = {category: 'learning' | 'company'; title?: string; content: string}
+type ComplaintRequest = {ticket_type?: 'complaint' | 'suggestion'; category: 'learning' | 'company'; title?: string; content: string}
 type Leave = LeaveRequest & {id: number; status: string; approval_comment?: string}
 type Complaint = ComplaintRequest & {id: number; status: string; solution?: string}
 type Request = <T>(path: string, method?: string, body?: unknown, onText?: (text: string) => void) => Promise<T>
 const prefix = '/api/v1/student'
 const pageSize = 20
-const studentTopics: GuideTopic[] = [
-  {key: 'leaves', label: '请假申请', keywords: ['请假', '病假', '事假'], answer: '填写请假时间和原因，老师审批后可在站内通知查看结果。'},
-  {key: 'complaints', label: '投诉反馈', keywords: ['投诉', '反馈'], answer: '学习相关投诉交老师处理，公司相关投诉交主管处理。'},
-  {key: 'deadlines', label: '考务提醒', keywords: ['考试', '考务', '论文', '截止', '考期'], answer: '查看即将截止的考务待办，办完后可标记个人事项。'},
-  {key: 'progress', label: '申请进度', keywords: ['申请', '录取', '进度'], answer: '查看班主任更新的申请阶段、截止时间和下一步。'},
-  {key: 'policies', label: '留学政策', keywords: ['政策', '签证', '准证'], answer: '查找学籍中对应留学地区的官方政策入口。'},
-  {key: 'overseas', label: '海外生活', keywords: ['生活', '交通', '医疗', '求助'], answer: '查询学籍中对应地区的海外生活资料。'},
-  {key: 'notifications', label: '站内通知', keywords: ['通知', '消息', '审批'], answer: '查阅请假审批或投诉处理结果。'},
-]
-
 /* 一级导航图标：只影响展示，不参与任何业务逻辑 */
 const tabIcons: Record<string, ReactNode> = {
-  guide: <RobotOutlined/>, leaves: <CalendarOutlined/>, complaints: <MessageOutlined/>,
+  home: <HomeOutlined/>, guide: <RobotOutlined/>, leaves: <CalendarOutlined/>, complaints: <MessageOutlined/>,
   notifications: <BellOutlined/>, deadlines: <ClockCircleOutlined/>, progress: <LineChartOutlined/>,
   overseas: <GlobalOutlined/>, policies: <BookOutlined/>, wellbeing: <HeartOutlined/>,
   'account-records': <FolderOpenOutlined/>,
@@ -37,7 +29,7 @@ const tabIcons: Record<string, ReactNode> = {
 
 /* 一级导航分组：仅决定菜单的分组与顺序，Tab key 与内容保持原样 */
 const navGroups: {title: string; keys: string[]}[] = [
-  {title: '概览', keys: ['guide']},
+  {title: '概览', keys: ['home', 'guide']},
   {title: '申请与学业', keys: ['progress', 'deadlines', 'policies']},
   {title: '日常事务', keys: ['leaves', 'complaints', 'notifications']},
   {title: '海外支持', keys: ['overseas', 'wellbeing']},
@@ -50,31 +42,39 @@ const statuses: Record<string, string> = {
 }
 
 export function Student({request, accountRecords}: {request: Request; accountRecords: ReactNode}) {
-  const [activeTab, setActiveTab] = useState('guide')
+  const [activeTab, setActiveTab] = useState('home')
+  const main = useRef<HTMLDivElement>(null)
+  const launchCount = useRef(0)
+  const [launch, setLaunch] = useState<{id: number; query: string}>()
+  function chat(query?: string) {
+    setActiveTab('guide')
+    if (query) setLaunch({id: ++launchCount.current, query})
+  }
+  useLayoutEffect(() => {
+    if (main.current) main.current.scrollTop = 0
+  }, [activeTab])
   const profile = useQuery({
     queryKey: ['visitor', 'student', 'profile'],
     queryFn: () => request<{abroad_country: string | null}>(prefix + '/profile'),
   })
+  const country = profile.data?.abroad_country
   const nextDeadline = useQuery({
     queryKey: ['visitor', 'student', 'deadlines', 'next'],
     queryFn: () => request<{items: {title: string; deadline: string}[]}>(academicDeadlineEndpoint + '?limit=1'),
     refetchOnWindowFocus: true,
     refetchInterval: 60000,
   }).data?.items?.[0]
-  const country = profile.data?.abroad_country
   const destination = country === 'Singapore' ? '新加坡' : country === 'Germany' ? '德国' : country
   /* children 与 Tab key 完全沿用原实现，只把「标签的呈现方式」换成左侧分组导航 */
   const tabs: {key: string; label: string; children: ReactNode}[] = [
-    {key: 'guide', label: '学生助手', children: <>
-      <StudentAssistant request={request}/>
-      <WebsiteGuide topics={studentTopics} open={setActiveTab}/>
-    </>},
+    {key: 'home', label: '欢迎首页', children: <StudentHome request={request} open={setActiveTab} chat={chat}/>},
+    {key: 'guide', label: '学生助手', children: <StudentAssistant request={request} launch={launch}/>},
     {key: 'leaves', label: '请假申请', children: <Leaves request={request}/>},
     {key: 'complaints', label: '投诉反馈', children: <Complaints request={request}/>},
     {key: 'notifications', label: '站内通知', children: <StudentNotifications request={request}/>},
     {key: 'deadlines', label: '考务提醒', children: <AcademicDeadlines request={request}/>},
     {key: 'progress', label: '申请进度', children: <MyProgress request={request}/>},
-    {key: 'overseas', label: '海外生活', children: <OverseasLife request={request}/>},
+    {key: 'overseas', label: '海外生活', children: <StudentLife request={request} chat={chat}/>},
     {key: 'policies', label: '留学政策', children: <Policies request={request}/>},
     {key: 'wellbeing', label: '自评与关怀', children: <StudentWellbeing request={request}/>},
     {key: 'account-records', label: '我的材料与活动', children: accountRecords},
@@ -95,9 +95,9 @@ export function Student({request, accountRecords}: {request: Request; accountRec
             </button>
           })}
         </div>)}
-        <div className="student-side-foot">10 项服务按业务域分组，点击左侧即可切换。</div>
+        <div className="student-side-foot">想找答案、安排事情，或聊聊近况，都可以从这里开始。</div>
       </aside>
-      <div className="student-main">
+      <div ref={main} className={'student-main' + (activeTab === 'guide' ? ' student-main--assistant' : activeTab === 'home' ? ' student-main--home' : '')} role="region" aria-label="学生服务内容" tabIndex={0}>
         <header className="student-head">
           <div>
             <span className="student-eyebrow">学生服务中心</span>
@@ -107,11 +107,11 @@ export function Student({request, accountRecords}: {request: Request; accountRec
           <span className="student-head-meta">当前模块 · <b>{current.label}</b></span>
         </header>
         <ResultNotice error={profile.error}/>
-        {nextDeadline && <Alert type="warning" showIcon title={nextDeadline.title}
+        {nextDeadline && activeTab !== 'home' && activeTab !== 'guide' && <Alert type="warning" showIcon title={nextDeadline.title}
           description={'截止时间（北京时间）' + nextDeadline.deadline.slice(0, 16).replace('T', ' ')}
           action={<Button onClick={() => setActiveTab('deadlines')}>查看考务</Button>}/>}
-        <div className="student-panel" style={activeTab === 'guide' ? undefined : {display: 'none'}}>
-          {tabs[0].children}
+        <div className="student-panel student-panel--assistant" style={activeTab === 'guide' ? undefined : {display: 'none'}}>
+          {tabs.find(tab => tab.key === 'guide')?.children}
         </div>
         {activeTab !== 'guide' && <div className="student-panel">{current.children}</div>}
         {activeTab === 'account-records' && <div className="student-helper-grid">
@@ -134,10 +134,15 @@ export function Student({request, accountRecords}: {request: Request; accountRec
   </section>
 }
 
-type StudentNotification = {id: number; title: string; content: string; create_time: string}
+type StudentNotification = {
+  id: number; title: string; content: string; create_time: string
+  related_summary?: string | null
+  related_details?: {title: string; fields: {label: string; value: string}[]} | null
+}
 
 function StudentNotifications({request}: {request: Request}) {
   const [beforeId, setBeforeId] = useState<number>()
+  const [selected, select] = useState<StudentNotification>()
   const notices = useQuery({
     queryKey: ['visitor', 'student', 'notifications', beforeId],
     queryFn: () => request<StudentNotification[]>(prefix + '/notifications?limit=20' + (beforeId ? '&before_id=' + beforeId : '')),
@@ -146,12 +151,23 @@ function StudentNotifications({request}: {request: Request}) {
   })
   return <Card title="站内通知">
     <ResultNotice error={notices.error}/>
-    <Table rowKey="id" dataSource={notices.data || []} loading={notices.isFetching} pagination={false}
+    <Table rowKey="id" dataSource={notices.data || []} loading={notices.isFetching} pagination={false} scroll={{x: 820}}
       locale={{emptyText: '暂无通知'}} columns={[
-        {title: '标题', dataIndex: 'title'}, {title: '内容', dataIndex: 'content'},
-        {title: '时间', render: (_, row) => row.create_time.replace('T', ' ')},
+        {title: '标题', dataIndex: 'title', width: 140}, {title: '内容', dataIndex: 'content', width: 200},
+        {title: '关联事项', width: 300, render: (_, row) => <>
+          <Typography.Paragraph style={{marginBottom: 4}}>{row.related_summary || '关联记录暂不可用'}</Typography.Paragraph>
+          {row.related_details && <Button type="link" style={{padding: 0}} onClick={() => select(row)}>查看详情</Button>}
+        </>},
+        {title: '时间', width: 180, render: (_, row) => row.create_time.replace('T', ' ')},
       ]}/>
     <Pager beforeId={beforeId} rows={notices.data} move={setBeforeId}/>
+    <Modal title={selected?.related_details?.title} open={!!selected} onCancel={() => select(undefined)}
+      footer={<Button onClick={() => select(undefined)}>关闭</Button>}>
+      <Typography.Paragraph>{selected?.content}</Typography.Paragraph>
+      <Descriptions column={1} items={selected?.related_details?.fields.map((field, index) => ({
+        key: String(index), label: field.label, children: <span style={{whiteSpace: 'pre-wrap'}}>{field.value}</span>,
+      }))}/>
+    </Modal>
   </Card>
 }
 
@@ -161,41 +177,12 @@ function MyProgress({request}: {request: Request}) {
     queryKey: ['visitor', 'student', 'application-progress', before],
     queryFn: () => request<Progress[]>(prefix + '/application-progress?limit=20' + (before ? '&before_id=' + before : '')),
   })
-  return <Card title="我的申请进度">
+  return <Card title="我的院校申请进度">
+    <Typography.Paragraph type="secondary">这里查看院校、专业及录取或签证办理阶段。请假审批和投诉处理结果请到对应栏目查看。</Typography.Paragraph>
     <ResultNotice error={records.error}/>
     <ProgressTable rows={records.data} loading={records.isFetching}/>
     <ProgressPager before={before} rows={records.data} move={move}/>
   </Card>
-}
-
-type OverseasResource = {id: number; title: string; category: string; content: string}
-
-function OverseasLife({request}: {request: Request}) {
-  const [keyword, search] = useState('')
-  const [afterId, setAfterId] = useState(0)
-  const result = useQuery({
-    queryKey: ['visitor', 'student', 'overseas', keyword, afterId],
-    queryFn: () => request<{items: OverseasResource[]; next_after_id: number | null}>(
-      prefix + '/overseas-life?' + new URLSearchParams({keyword, after_id: String(afterId)})),
-  })
-  const categories: Record<string, string> = {medical: '医疗', transport: '交通', emergency: '紧急求助', daily_life: '生活', other: '其他'}
-  return <Space orientation="vertical" size="middle" style={{width: '100%'}}>
-    <Input.Search aria-label="查询海外生活资料" placeholder="搜索医疗、交通或生活资料"
-      maxLength={64} allowClear onSearch={value => {search(value.trim()); setAfterId(0)}}/>
-    <ResultNotice error={result.error}/>
-    {!result.isFetching && !result.error && !result.data?.items.length &&
-      <Alert type="info" showIcon title="暂无符合条件的本地区生活资料"/>}
-    <div className="visitor-programs">
-      {(result.data?.items || []).map(item => <Card key={item.id} title={item.title} extra={<Tag>{categories[item.category]}</Tag>}>
-        <Typography.Paragraph style={{whiteSpace: 'pre-wrap'}}>{item.content}</Typography.Paragraph>
-      </Card>)}
-    </div>
-    <Space>
-      <Button disabled={!afterId || result.isFetching} onClick={() => setAfterId(0)}>返回首批</Button>
-      <Button disabled={!result.data?.next_after_id || result.isFetching}
-        onClick={() => setAfterId(result.data?.next_after_id ?? afterId)}>查看更多</Button>
-    </Space>
-  </Space>
 }
 
 function Policies({request}: {request: Request}) {
@@ -279,6 +266,7 @@ function Leaves({request}: {request: Request}) {
       <ResultNotice error={history.error}/>
       <Table rowKey="id" dataSource={history.data || []} loading={history.isFetching} pagination={false}
         scroll={{x: 630}} locale={{emptyText: '暂无请假记录'}} columns={[
+          {title: '请假单', render: (_, row) => <>{'请假单 #' + row.id}<br/>{({sick: '病假', personal: '事假', emergency: '紧急事由'}[row.leave_type])}</>},
           {title: '起止时间', render: (_, row) => row.start_time?.replace('T', ' ') + ' 至 ' + row.end_time?.replace('T', ' ')},
           {title: '原因', dataIndex: 'reason'},
           {title: '状态', render: (_, row) => <Tag>{statuses[row.status] || row.status}</Tag>},
@@ -292,22 +280,24 @@ function Leaves({request}: {request: Request}) {
 function Complaints({request}: {request: Request}) {
   const {beforeId, setBeforeId, form, history, submit} = useStudentRecords<Complaint, ComplaintRequest>(request, 'complaints')
   return <Space orientation="vertical" size="large" style={{width: '100%'}}>
-    <Card title="提交投诉">
+    <Card title="提交投诉或建议">
       <Form form={form} layout="vertical" onFinish={value => submit.mutate(value)} style={{maxWidth: 520}}>
-        <Form.Item label="投诉类别" name="category" rules={[{required: true}]}>
+        <Form.Item label="反馈方式" name="ticket_type" initialValue="complaint"><select className="ant-input"><option value="complaint">正式投诉</option><option value="suggestion">提出建议</option></select></Form.Item>
+        <Form.Item label="反馈类别" name="category" rules={[{required: true}]}>
           <select className="ant-input"><option value="">请选择</option>
             <option value="learning">学习相关（交老师处理）</option><option value="company">公司相关（交主管处理）</option></select>
         </Form.Item>
         <Form.Item label="标题" name="title"><Input maxLength={255}/></Form.Item>
-        <Form.Item label="投诉内容" name="content" rules={[{required: true, whitespace: true}]}><Input.TextArea maxLength={10000}/></Form.Item>
-        <Button type="primary" htmlType="submit" loading={submit.isPending}>提交投诉</Button>
+        <Form.Item label="反馈内容" name="content" rules={[{required: true, whitespace: true}]}><Input.TextArea maxLength={10000}/></Form.Item>
+        <Button type="primary" htmlType="submit" loading={submit.isPending}>提交反馈</Button>
       </Form>
       <ResultNotice error={submit.error} sent={submit.isSuccess}/>
     </Card>
-    <Card title="我的投诉">
+    <Card title="我的反馈">
       <ResultNotice error={history.error}/>
       <Table rowKey="id" dataSource={history.data || []} loading={history.isFetching} pagination={false}
-        scroll={{x: 580}} locale={{emptyText: '暂无投诉记录'}} columns={[
+        scroll={{x: 650}} locale={{emptyText: '暂无反馈记录'}} columns={[
+          {title: '方式', render: (_, row) => (row.ticket_type ? ({complaint: '投诉', suggestion: '建议'}[row.ticket_type] || '反馈') : '反馈')},
           {title: '类别', render: (_, row) => ({learning: '学习相关', company: '公司相关'}[row.category] || '—')},
           {title: '内容', render: (_, row) => row.title ? <><strong>{row.title}</strong><br/>{row.content}</> : row.content},
           {title: '状态', render: (_, row) => <Tag>{statuses[row.status] || row.status}</Tag>},

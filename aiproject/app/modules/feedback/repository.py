@@ -20,7 +20,7 @@ class FeedbackRepository:
         return self.db.execute(insert(tickets).values(**values)).inserted_primary_key[0]
 
     def list_student_complaints(self, student_id, before_id, limit):
-        stmt = select(tickets).where(tickets.c.student_id == student_id, tickets.c.ticket_type == "complaint")
+        stmt = select(tickets).where(tickets.c.student_id == student_id, tickets.c.ticket_type.in_(("complaint", "suggestion")))
         if before_id is not None:
             stmt = stmt.where(tickets.c.id < before_id)
         return self.db.execute(stmt.order_by(tickets.c.id.desc()).limit(limit)).mappings().all()
@@ -29,7 +29,7 @@ class FeedbackRepository:
         stmt = select(tickets).where(
             tickets.c.id == ticket_id,
             tickets.c.student_id == student_id,
-            tickets.c.ticket_type == "complaint",
+            tickets.c.ticket_type.in_(("complaint", "suggestion")),
         )
         return self.db.execute(stmt).mappings().one_or_none()
 

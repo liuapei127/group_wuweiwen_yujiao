@@ -214,6 +214,18 @@ def handle_chat(
     place = _place_label(db, student_id, mock_country)
     if high_risk_hits(message):
         return _pack(_psych(db, student_id, message, turns, place))
+    if re.fullmatch(r"(?:你知道|你能看到|你能知道)?我(?:现在|目前|此刻)?在(?:哪里|哪儿|哪)(?:吗|呢)?[？?。！!\s]*", message.strip()):
+        destination = f"学籍登记的留学去向是{place}，这不代表你现在就在当地。" if place != "还没登记" else "学籍中还没有登记留学地区。"
+        return _pack({"reply": "我无法获取你此刻的实际位置。" + destination + "如果想查交通或办事地点，请告诉我所在城市和具体需求。",
+                      "intent": "location", "form": None, "data": None})
+    academic_field = _academic_question(message)
+    if academic_field:
+        profile = student_service.academic_profile(db, student_id)
+        label = {"school": "就读院校", "major": "专业", "student_no": "学号", "class_teacher": "班主任"}[academic_field]
+        value = profile.get(academic_field)
+        reply = (f"学籍登记的{label}是{value}。如有误，请联系学校核对更正。" if value
+                 else f"学籍中还没有登记你的{label}，我暂时无法确定。你可以到「我的学籍」核对，并请学校补充登记。")
+        return _pack({"reply": reply, "intent": "profile", "form": None, "data": None})
     memories = _merge_memories(memory_notes, turns)
     name = _heard_name(message)
     if name:
@@ -294,6 +306,15 @@ def handle_chat(
             "data": {"place": place, "memories": memories},
         }
     )
+
+
+def _academic_question(message: str) -> str | None:
+    text = message.strip()
+    tail = r"(?:吗|呢)?[？?。！!\s]*"
+    if re.fullmatch(r"(?:你知道|你记得)?我(?:现在|目前)?(?:在|就读|读)(?:哪个|什么|哪所)学校" + tail, text):
+        return "school"
+    match = re.fullmatch(r"(?:你知道|你记得)?我的(学校|专业|学号|班主任)(?:是(?:什么|谁|哪所|哪个))?" + tail, text)
+    return {"学校": "school", "专业": "major", "学号": "student_no", "班主任": "class_teacher"}.get(match.group(1)) if match else None
 
 
 def _pack(payload: dict) -> dict:
@@ -1359,7 +1380,8 @@ def _ask(
         else:
             reply = "\n".join(f"「{title}」：{body[:300]}" for title, body in facts[:2])
     else:
-        reply = "这类问题我暂时没找到相关资料。你可以补充想了解的地区和具体事项，或向班主任、顾问核实。"
+        reply = ("你是想了解挂号、保险材料，还是需要请假？请告诉我你所在的城市和想办的事，我先帮你理清要查的事项。"
+                 if "医院" in message else "这类问题我暂时没找到相关资料。你可以补充想了解的地区和具体事项，或向班主任、顾问核实。")
     return {
         "reply": reply,
         "intent": "ask",

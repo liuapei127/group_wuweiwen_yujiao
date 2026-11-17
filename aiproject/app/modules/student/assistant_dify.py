@@ -97,3 +97,29 @@ def _visible_answer(text, on_text):
         visible = visible_sentences(text)
         if visible:
             on_text(visible)
+
+
+async def understand(*, query, history, context, task, memories, user_key, country=""):
+    """Read-only model boundary: no bearer token or business callback is exposed to Dify."""
+    from .schemas import AssistantUnderstanding
+    from pydantic import ValidationError
+    settings = get_settings()
+    key = settings.stu_dify_api_key.get_secret_value().strip()
+    if not key:
+        raise BusinessError(503, "学生助手 Dify 暂未配置")
+    payload = {"inputs": {"context_json": json.dumps(context, ensure_ascii=False, default=str),
+        "history_json": json.dumps(history, ensure_ascii=False),
+        "task_json": json.dumps(task, ensure_ascii=False, default=str),
+        "memories_json": json.dumps(memories, ensure_ascii=False), "country": country},
+        "query": query, "user": user_key, "response_mode": "blocking"}
+    try:
+        async with httpx.AsyncClient(trust_env=False, timeout=httpx.Timeout(settings.dify_timeout_seconds, connect=5)) as client:
+            response = await client.post(settings.dify_api_url.rstrip("/") + "/chat-messages",
+                headers={"Authorization": "Bearer " + key}, json=payload)
+            response.raise_for_status()
+            answer = response.json().get("answer", "").strip()
+            if answer.startswith("```"):
+                answer = answer.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+            return AssistantUnderstanding.model_validate_json(answer)
+    except (httpx.HTTPError, ValueError, AttributeError, ValidationError) as exc:
+        raise BusinessError(502, "学生助手理解服务暂不可用") from exc

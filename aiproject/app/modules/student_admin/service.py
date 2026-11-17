@@ -20,7 +20,7 @@ class StudentAdminServiceLayer:
         self.repo = StudentAdminRepository(db)
 
     def submit_student_leave(
-        self, student_id: int, payload: StudentLeaveCreate
+        self, student_id: int, payload: StudentLeaveCreate, *, commit: bool = True
     ) -> LeaveOut:
         """提交人 ID 由调用方的可信学生身份提供。"""
         from app.modules.todo.synchronization import synchronize_source
@@ -52,7 +52,8 @@ class StudentAdminServiceLayer:
             self.repo.add_leave(row)
             synchronize_source(db, "student_admin_service", row.id)
             result = LeaveOut.model_validate(row)
-            db.commit()
+            if commit:
+                db.commit()
         except Exception:
             db.rollback()
             raise

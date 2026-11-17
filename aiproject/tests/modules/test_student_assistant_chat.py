@@ -220,6 +220,48 @@ def test_form_reply_asks_for_type_first():
     assert "病假" in reply
 
 
+def test_location_question_does_not_treat_generated_history_as_verified_identity(monkeypatch):
+    from app.modules.student import assistant_chat as chat
+    monkeypatch.setattr(chat, "_place_label", lambda *_: "德国方向")
+    result = chat.handle_chat(object(), student_id=7, message="我现在在哪",
+                             history=[{"role": "assistant", "content": "你是虚构学校的学生，现在在某城市。"}])
+    assert result["intent"] == "location"
+    assert "无法获取" in result["reply"] and "实际位置" in result["reply"]
+    assert "虚构学校" not in result["reply"] and "某城市" not in result["reply"]
+
+
+def test_hospital_request_is_not_turned_into_leave(monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from app.modules.student import assistant_chat as chat
+    monkeypatch.setattr(chat, "_place_label", lambda *_: "德国方向")
+    monkeypatch.setattr(chat.student_service, "student_policies", lambda *_: SimpleNamespace(resources=[], country="Germany"))
+    monkeypatch.setattr(chat.student_service, "overseas_resources", lambda *_: {"items": []})
+    leave = Mock()
+    monkeypatch.setattr(chat, "StudentAdminServiceLayer", leave)
+    result = chat.handle_chat(object(), student_id=7, message="我想去医院")
+    assert result["intent"] == "ask" and "所在的城市" in result["reply"]
+    leave.assert_not_called()
+
+
+def test_school_question_reads_owned_profile_even_after_emotional_support(monkeypatch):
+    from unittest.mock import Mock
+    from app.modules.student import assistant_chat as chat
+    monkeypatch.setattr(chat, "_place_label", lambda *_: "德国方向")
+    profile = Mock(return_value={"school": None})
+    psych = Mock()
+    monkeypatch.setattr(chat.student_service, "academic_profile", profile)
+    monkeypatch.setattr(chat, "_psych", psych)
+    history = [{"role": "assistant", "content": "想家、心里不踏实都正常。"}]
+    result = chat.handle_chat(object(), student_id=7, message="你知道我在哪个学校吗？", history=history)
+    assert result["intent"] == "profile" and "还没有登记" in result["reply"]
+    assert profile.call_args.args[1] == 7
+    psych.assert_not_called()
+    profile.return_value = {"school": "本人已登记院校"}
+    result = chat.handle_chat(object(), student_id=7, message="我的学校是什么？", history=history)
+    assert "本人已登记院校" in result["reply"]
+
+
 def test_life_answer_looks_up_topic_and_passes_document_body(monkeypatch):
     from types import SimpleNamespace
     from unittest.mock import Mock

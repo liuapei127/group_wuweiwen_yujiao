@@ -1,0 +1,871 @@
+[
+  {
+    "country": "Germany",
+    "category": "arrival",
+    "title": "德国到达与入学准备",
+    "content": "Make it in Germany官方指南说明，找到住处后应在搬入后的两周内办理住址登记。具体预约及材料清单请到所在城市登记机关核对。",
+    "source_title": "Make it in Germany · Study planning",
+    "source_url": "https://www.make-it-in-germany.com/en/study-vocational-training/studying-in-germany/planning",
+    "city": null,
+    "verified_at": "2026-11-16",
+    "details": {
+      "version": 2,
+      "scope": "德国；具体城市或学校要求另行核对",
+      "summary": "Make it in Germany官方指南说明，找到住处后应在搬入后的两周内办理住址登记。具体预约及材料清单请到所在城市登记机关核对。",
+      "steps": [
+        "核对本校入学注册清单与到校时间。",
+        "落实住宿及保险，保存相关确认材料。",
+        "找到住处后，向所在城市登记机关核对住址登记预约和要求。"
+      ],
+      "faqs": [
+        {
+          "question": "到德国后住址登记什么时候办？",
+          "answer": "Make it in Germany官方指南说明，找到住处后应在搬入后的两周内办理住址登记。具体预约及材料清单请到所在城市登记机关核对。",
+          "keywords": [
+            "住址登记",
+            "登记住址",
+            "两周",
+            "安顿"
+          ],
+          "source_title": "Make it in Germany · 住房与登记",
+          "source_url": "https://www.make-it-in-germany.com/en/arriving-living/getting-started/housing-registration"
+        },
+        {
+          "question": "德国入学前先准备什么？",
+          "answer": "先核对录取院校的入学注册要求，安排住宿和医疗保险，并确认到校及迎新时间。各院校清单不同，按本校通知准备。",
+          "keywords": [
+            "入学准备",
+            "到达",
+            "报到",
+            "注册"
+          ],
+          "source_title": "Make it in Germany · Study planning",
+          "source_url": "https://www.make-it-in-germany.com/en/study-vocational-training/studying-in-germany/planning"
+        },
+        {
+          "question": "德国登记地点和材料怎么查？",
+          "answer": "查找所在城市的居民登记机关（Bürgeramt或Meldebehörde）官方入口，确认预约方式及本人适用的材料。平台尚无你的城市信息时不能指定最近办事点。",
+          "keywords": [
+            "登记地点",
+            "登记材料",
+            "Bürgeramt",
+            "Meldebehörde"
+          ],
+          "source_title": "Make it in Germany · 住房与登记",
+          "source_url": "https://www.make-it-in-germany.com/en/arriving-living/getting-started/housing-registration"
+        }
+      ],
+      "contacts": [],
+      "image_kind": "illustrative",
+      "sources": [
+        {
+          "title": "Make it in Germany · 住房与登记",
+          "url": "https://www.make-it-in-germany.com/en/arriving-living/getting-started/housing-registration"
+        },
+        {
+          "title": "Make it in Germany · Study planning",
+          "url": "https://www.make-it-in-germany.com/en/study-vocational-training/studying-in-germany/planning"
+        }
+      ]
+    }
+  },
+  {
+    "country": "Germany",
+    "category": "medical",
+    "title": "德国医疗保险与就医准备",
+    "content": "先确认自己保险的有效状态、保障范围和联系渠道，保存保险信息。就诊及费用能否报销要向保险机构和医疗机构核对。",
+    "source_title": "DAAD · Health insurance",
+    "source_url": "https://www.daad.de/en/studying-in-germany/living-in-germany/health-insurance/",
+    "city": null,
+    "verified_at": "2026-11-16",
+    "details": {
+      "version": 2,
+      "scope": "德国；具体城市或学校要求另行核对",
+      "summary": "先确认自己保险的有效状态、保障范围和联系渠道，保存保险信息。就诊及费用能否报销要向保险机构和医疗机构核对。",
+      "steps": [
+        "核对保险信息及本人保障范围。",
+        "向当地医疗服务机构了解预约、就诊材料与结算要求。",
+        "保存就诊及费用材料，向保险机构核对后续手续。"
+      ],
+      "faqs": [
+        {
+          "question": "在德国看病前要准备什么？",
+          "answer": "先确认自己保险的有效状态、保障范围和联系渠道，保存保险信息。就诊及费用能否报销要向保险机构和医疗机构核对。",
+          "keywords": [
+            "看病",
+            "医院",
+            "就医",
+            "保险"
+          ],
+          "source_title": "DAAD · Health insurance",
+          "source_url": "https://www.daad.de/en/studying-in-germany/living-in-germany/health-insurance/"
+        },
+        {
+          "question": "德国看病保险一定能报销吗？",
+          "answer": "不能保证。不同保险和个人情况的保障不同，预约前向保险机构核对适用医疗服务、结算和报销要求。",
+          "keywords": [
+            "报销",
+            "费用",
+            "保障"
+          ],
+          "source_title": "DAAD · Health insurance",
+          "source_url": "https://www.daad.de/en/studying-in-germany/living-in-germany/health-insurance/"
+        },
+        {
+          "question": "德国晚上需要医疗帮助联系哪里？",
+          "answer": "德国非紧急医疗值班服务可拨116117；危及生命的紧急情况使用112。平台不诊断病情，也不能保证某家医院的接诊时间。",
+          "keywords": [
+            "晚上",
+            "夜间",
+            "值班",
+            "急救"
+          ],
+          "source_title": "Make it in Germany · 日常与紧急求助",
+          "source_url": "https://www.make-it-in-germany.com/en/arriving-living/getting-started/everyday-knowledge"
+        }
+      ],
+      "contacts": [
+        {
+          "label": "非紧急医疗值班",
+          "number": "116117"
+        },
+        {
+          "label": "紧急救援",
+          "number": "112"
+        }
+      ],
+      "image_kind": "illustrative",
+      "sources": [
+        {
+          "title": "DAAD · Health insurance",
+          "url": "https://www.daad.de/en/studying-in-germany/living-in-germany/health-insurance/"
+        },
+        {
+          "title": "Make it in Germany · 日常与紧急求助",
+          "url": "https://www.make-it-in-germany.com/en/arriving-living/getting-started/everyday-knowledge"
+        }
+      ]
+    }
+  },
+  {
+    "country": "Germany",
+    "category": "transport",
+    "title": "德国公共交通出行",
+    "content": "先明确出发地、目的地和出行时间，再到当地交通运营商或德国铁路官方渠道查路线、换乘与时刻。临时停运以运营方公告为准。",
+    "source_title": "Make it in Germany · Mobility",
+    "source_url": "https://www.make-it-in-germany.com/en/living-in-germany/housing-mobility/mobility-germany/print",
+    "city": null,
+    "verified_at": "2026-11-16",
+    "details": {
+      "version": 2,
+      "scope": "德国；具体城市或学校要求另行核对",
+      "summary": "先明确出发地、目的地和出行时间，再到当地交通运营商或德国铁路官方渠道查路线、换乘与时刻。临时停运以运营方公告为准。",
+      "steps": [
+        "确定起点、终点和出行时间。",
+        "到当地运营商或官方铁路渠道查路线及实时变更。",
+        "核对票种范围、时效及激活要求后再购买。"
+      ],
+      "faqs": [
+        {
+          "question": "德国公交地铁和铁路路线怎么查？",
+          "answer": "先明确出发地、目的地和出行时间，再到当地交通运营商或德国铁路官方渠道查路线、换乘与时刻。临时停运以运营方公告为准。",
+          "keywords": [
+            "公交",
+            "地铁",
+            "路线",
+            "交通",
+            "铁路",
+            "怎么坐"
+          ],
+          "source_title": "Make it in Germany · Mobility",
+          "source_url": "https://www.make-it-in-germany.com/en/living-in-germany/housing-mobility/mobility-germany/print"
+        },
+        {
+          "question": "在德国买票前要核对哪些信息？",
+          "answer": "核对票的适用区域、交通方式、有效时段，以及是否需要激活或验票。不同城市、票种规则不同，不要把一种车票当成全国所有列车通用。",
+          "keywords": [
+            "车票",
+            "买票",
+            "购票",
+            "票种"
+          ],
+          "source_title": "Make it in Germany · Mobility",
+          "source_url": "https://www.make-it-in-germany.com/en/living-in-germany/housing-mobility/mobility-germany/print"
+        },
+        {
+          "question": "德国学生能不能用优惠票？",
+          "answer": "先查看本校学期票说明及当地运营商条件，确认本人是否符合要求、有效范围和使用方式。平台不能保证所有学生都享有相同优惠。",
+          "keywords": [
+            "学生票",
+            "学期票",
+            "优惠"
+          ],
+          "source_title": "Make it in Germany · Mobility",
+          "source_url": "https://www.make-it-in-germany.com/en/living-in-germany/housing-mobility/mobility-germany/print"
+        }
+      ],
+      "contacts": [],
+      "image_kind": "illustrative",
+      "sources": [
+        {
+          "title": "Make it in Germany · Mobility",
+          "url": "https://www.make-it-in-germany.com/en/living-in-germany/housing-mobility/mobility-germany/print"
+        }
+      ]
+    }
+  },
+  {
+    "country": "Germany",
+    "category": "housing",
+    "title": "德国学生住宿选择",
+    "content": "常见选择包括学生宿舍和合租住房（WG）。先查看本校及当地学生服务机构的住宿入口，了解申请方式和房源，不保证有空位。",
+    "source_title": "DAAD · Renting accommodation",
+    "source_url": "https://www.daad.de/en/studying-in-germany/living-in-germany/renting/",
+    "city": null,
+    "verified_at": "2026-11-16",
+    "details": {
+      "version": 2,
+      "scope": "德国；具体城市或学校要求另行核对",
+      "summary": "常见选择包括学生宿舍和合租住房（WG）。先查看本校及当地学生服务机构的住宿入口，了解申请方式和房源，不保证有空位。",
+      "steps": [
+        "先查看本校和当地学生服务机构的房源。",
+        "核对申请要求或房东提供的房屋及合同信息。",
+        "确认费用、付款方式及入住安排后，再决定是否签约。"
+      ],
+      "faqs": [
+        {
+          "question": "德国学生找住宿有哪些选择？",
+          "answer": "常见选择包括学生宿舍和合租住房（WG）。先查看本校及当地学生服务机构的住宿入口，了解申请方式和房源，不保证有空位。",
+          "keywords": [
+            "住宿",
+            "宿舍",
+            "租房",
+            "WG"
+          ],
+          "source_title": "DAAD · Renting accommodation",
+          "source_url": "https://www.daad.de/en/studying-in-germany/living-in-germany/renting/"
+        },
+        {
+          "question": "申请德国学生宿舍要做什么？",
+          "answer": "查找本校对应学生服务机构的宿舍申请页面，核对申请条件、材料与时间，再按要求提交。不同城市和学校的流程不同。",
+          "keywords": [
+            "申请宿舍",
+            "申请住宿",
+            "材料"
+          ],
+          "source_title": "DAAD · Renting accommodation",
+          "source_url": "https://www.daad.de/en/studying-in-germany/living-in-germany/renting/"
+        },
+        {
+          "question": "德国租房签约前应该核对什么？",
+          "answer": "建议核对房源、合同条款、费用构成和付款要求；不清楚时先向学校或当地学生服务机构询问，不急于承诺付款。",
+          "keywords": [
+            "合同",
+            "押金",
+            "付款",
+            "租金"
+          ],
+          "source_title": "DAAD · Renting accommodation",
+          "source_url": "https://www.daad.de/en/studying-in-germany/living-in-germany/renting/"
+        }
+      ],
+      "contacts": [],
+      "image_kind": "illustrative",
+      "sources": [
+        {
+          "title": "DAAD · Renting accommodation",
+          "url": "https://www.daad.de/en/studying-in-germany/living-in-germany/renting/"
+        }
+      ]
+    }
+  },
+  {
+    "country": "Germany",
+    "category": "study",
+    "title": "德国院校报到与学习支持入口",
+    "content": "按录取院校的官方通知核对注册手续及迎新安排；学校之间的要求和时间不同。建议把需要确认的问题整理后联系本校相关部门。",
+    "source_title": "DAAD · Arriving in Germany",
+    "source_url": "https://www.daad.de/ziel-deutschland/pages/en/ankommen.html",
+    "city": null,
+    "verified_at": "2026-11-16",
+    "details": {
+      "version": 2,
+      "scope": "德国；具体城市或学校要求另行核对",
+      "summary": "按录取院校的官方通知核对注册手续及迎新安排；学校之间的要求和时间不同。建议把需要确认的问题整理后联系本校相关部门。",
+      "steps": [
+        "查看本校注册、课程与迎新通知。",
+        "把不确定的问题整理成清单，并查本校官方联系入口。",
+        "根据老师反馈和学校实际提供的资源安排学习。"
+      ],
+      "faqs": [
+        {
+          "question": "初到德国，入学注册和迎新怎么安排？",
+          "answer": "按录取院校的官方通知核对注册手续及迎新安排；学校之间的要求和时间不同。建议把需要确认的问题整理后联系本校相关部门。",
+          "keywords": [
+            "报到",
+            "迎新",
+            "注册",
+            "入学"
+          ],
+          "source_title": "DAAD · Arriving in Germany",
+          "source_url": "https://www.daad.de/ziel-deutschland/pages/en/ankommen.html"
+        },
+        {
+          "question": "德国学习生活遇到不熟悉的手续怎么办？",
+          "answer": "先向本校国际事务或学生服务相关部门核对可用帮助，把问题、已准备材料和希望确认的事项说明清楚。具体服务以本校公布信息为准。",
+          "keywords": [
+            "国际办公室",
+            "学习支持",
+            "适应",
+            "手续"
+          ],
+          "source_title": "DAAD · Arriving in Germany",
+          "source_url": "https://www.daad.de/ziel-deutschland/pages/en/ankommen.html"
+        },
+        {
+          "question": "语言或课程跟不上时可以先做什么？",
+          "answer": "可以先整理具体难点和课程要求，向任课老师询问反馈，并查本校公布的学习或语言支持资源。这是一般建议，不保证本校一定提供某项服务。",
+          "keywords": [
+            "语言",
+            "课程",
+            "跟不上",
+            "学习"
+          ],
+          "source_title": "DAAD · Arriving in Germany",
+          "source_url": "https://www.daad.de/ziel-deutschland/pages/en/ankommen.html"
+        }
+      ],
+      "contacts": [],
+      "image_kind": "illustrative",
+      "sources": [
+        {
+          "title": "DAAD · Arriving in Germany",
+          "url": "https://www.daad.de/ziel-deutschland/pages/en/ankommen.html"
+        }
+      ]
+    }
+  },
+  {
+    "country": "Germany",
+    "category": "emergency",
+    "title": "德国紧急求助渠道",
+    "content": "在德国，需要警方紧急帮助时拨打110；火警或急救拨打112。说明你所在的地点和发生的情况。",
+    "source_title": "Make it in Germany · Emergency numbers",
+    "source_url": "https://www.make-it-in-germany.com/en/arriving-living/getting-started/everyday-knowledge",
+    "city": null,
+    "verified_at": "2026-11-16",
+    "details": {
+      "version": 2,
+      "scope": "德国；具体城市或学校要求另行核对",
+      "summary": "在德国，需要警方紧急帮助时拨打110；火警或急救拨打112。说明你所在的地点和发生的情况。",
+      "steps": [
+        "先确认你正在德国，并明确需要警方、消防还是医疗帮助。",
+        "联系对应公开求助渠道，说明所在位置和发生的事情。",
+        "通话时按接线人员的指引提供信息。"
+      ],
+      "faqs": [
+        {
+          "question": "德国报警电话是多少？",
+          "answer": "在德国，需要警方紧急帮助时拨打110；火警或急救拨打112。说明你所在的地点和发生的情况。",
+          "keywords": [
+            "报警",
+            "警察",
+            "警方",
+            "被偷",
+            "110"
+          ],
+          "source_title": "Make it in Germany · 日常与紧急求助",
+          "source_url": "https://www.make-it-in-germany.com/en/arriving-living/getting-started/everyday-knowledge"
+        },
+        {
+          "question": "德国火警或急救拨什么号码？",
+          "answer": "德国消防和紧急救援电话是112。请说明地点、事件及需要帮助的情况。",
+          "keywords": [
+            "急救",
+            "救护车",
+            "火警",
+            "消防",
+            "112"
+          ],
+          "source_title": "Make it in Germany · 日常与紧急求助",
+          "source_url": "https://www.make-it-in-germany.com/en/arriving-living/getting-started/everyday-knowledge"
+        },
+        {
+          "question": "非危及生命的医疗值班服务怎么联系？",
+          "answer": "德国非紧急医疗值班服务电话为116117。危及生命的紧急情况使用112；具体就医安排请向医疗服务人员确认。",
+          "keywords": [
+            "116117",
+            "医疗值班",
+            "非紧急",
+            "夜间看病"
+          ],
+          "source_title": "Make it in Germany · 日常与紧急求助",
+          "source_url": "https://www.make-it-in-germany.com/en/arriving-living/getting-started/everyday-knowledge"
+        }
+      ],
+      "contacts": [
+        {
+          "label": "警方紧急帮助",
+          "number": "110"
+        },
+        {
+          "label": "消防与急救",
+          "number": "112"
+        },
+        {
+          "label": "非紧急医疗值班",
+          "number": "116117"
+        }
+      ],
+      "image_kind": "illustrative",
+      "sources": [
+        {
+          "title": "Make it in Germany · 日常与紧急求助",
+          "url": "https://www.make-it-in-germany.com/en/arriving-living/getting-started/everyday-knowledge"
+        }
+      ]
+    }
+  },
+  {
+    "country": "Singapore",
+    "category": "arrival",
+    "title": "新加坡入境与学生准证入口",
+    "content": "ICA规定，适用旅客应在抵达新加坡前的三天内提交SG Arrival Card，包含抵达当天；过境不入境者及符合条件的陆路入境居民等有例外。请按本人入境方式核对。",
+    "source_title": "ICA · Entry requirements",
+    "source_url": "https://www.ica.gov.sg/information-and-e-services/entry-and-departure/entering-singapore/entry-requirements",
+    "city": null,
+    "verified_at": "2026-11-16",
+    "details": {
+      "version": 2,
+      "scope": "新加坡；院校专属服务仅适用于对应学校",
+      "summary": "ICA规定，适用旅客应在抵达新加坡前的三天内提交SG Arrival Card，包含抵达当天；过境不入境者及符合条件的陆路入境居民等有例外。请按本人入境方式核对。",
+      "steps": [
+        "先向学校确认学生准证及到校安排。",
+        "按本人入境方式核对SG Arrival Card适用条件与提交时间。",
+        "保存ICA确认信息和学校要求的文件，核对住宿及接机安排。"
+      ],
+      "faqs": [
+        {
+          "question": "SG Arrival Card什么时候提交？",
+          "answer": "ICA规定，适用旅客应在抵达新加坡前的三天内提交SG Arrival Card，包含抵达当天；过境不入境者及符合条件的陆路入境居民等有例外。请按本人入境方式核对。",
+          "keywords": [
+            "入境卡",
+            "SGAC",
+            "Arrival Card",
+            "三天",
+            "到达"
+          ],
+          "source_title": "ICA · SG Arrival Card",
+          "source_url": "https://www.ica.gov.sg/enter-transit-depart/entering-singapore/sg-arrival-card"
+        },
+        {
+          "question": "SG Arrival Card收费吗，是签证吗？",
+          "answer": "通过ICA官方SG Arrival Card服务提交是免费的；SG Arrival Card不是签证，也不代替学生准证。",
+          "keywords": [
+            "收费",
+            "免费",
+            "签证",
+            "入境卡"
+          ],
+          "source_title": "ICA · SG Arrival Card",
+          "source_url": "https://www.ica.gov.sg/enter-transit-depart/entering-singapore/sg-arrival-card"
+        },
+        {
+          "question": "新加坡学生准证从哪里核对？",
+          "answer": "到ICA学生准证官方入口，按就读学校类型查看适用流程，再与学校核对本人需要的材料和安排。不能套用其他学校的申请条件。",
+          "keywords": [
+            "学生准证",
+            "Student Pass",
+            "报到"
+          ],
+          "source_title": "ICA · 学生准证",
+          "source_url": "https://www.ica.gov.sg/information-and-e-services/long-term-visit-and-study/student-s-pass"
+        }
+      ],
+      "contacts": [],
+      "image_kind": "illustrative",
+      "sources": [
+        {
+          "title": "ICA · SG Arrival Card",
+          "url": "https://www.ica.gov.sg/enter-transit-depart/entering-singapore/sg-arrival-card"
+        },
+        {
+          "title": "ICA · 学生准证",
+          "url": "https://www.ica.gov.sg/information-and-e-services/long-term-visit-and-study/student-s-pass"
+        }
+      ]
+    }
+  },
+  {
+    "country": "Singapore",
+    "category": "medical",
+    "title": "新加坡就医信息入口",
+    "content": "可以从新加坡卫生部的医疗帮助入口了解全科诊所、综合诊疗所等医疗服务。选择前核对预约、营业时间及本人适用条件。",
+    "source_title": "MOH · Getting medical help",
+    "source_url": "https://www.moh.gov.sg/seeking-healthcare/getting-medical-help/",
+    "city": null,
+    "verified_at": "2026-11-16",
+    "details": {
+      "version": 2,
+      "scope": "新加坡；院校专属服务仅适用于对应学校",
+      "summary": "可以从新加坡卫生部的医疗帮助入口了解全科诊所、综合诊疗所等医疗服务。选择前核对预约、营业时间及本人适用条件。",
+      "steps": [
+        "先核对学校或本人持有的保险资料。",
+        "通过官方入口了解医疗服务，确认预约和营业时间。",
+        "准备相关证件及保险信息，向机构核对费用与理赔材料。"
+      ],
+      "faqs": [
+        {
+          "question": "在新加坡一般就医从哪里开始？",
+          "answer": "可以从新加坡卫生部的医疗帮助入口了解全科诊所、综合诊疗所等医疗服务。选择前核对预约、营业时间及本人适用条件。",
+          "keywords": [
+            "看病",
+            "医院",
+            "诊所",
+            "就医",
+            "挂号"
+          ],
+          "source_title": "MOH · Getting medical help",
+          "source_url": "https://www.moh.gov.sg/seeking-healthcare/getting-medical-help/"
+        },
+        {
+          "question": "新加坡就医费用和学生保险怎么核对？",
+          "answer": "向学校或自己的保险机构核对保单保障和理赔要求；再向医疗机构确认费用及结算方式。平台不能承诺免费就医或一定报销。",
+          "keywords": [
+            "保险",
+            "费用",
+            "报销",
+            "理赔"
+          ],
+          "source_title": "MOH · Getting medical help",
+          "source_url": "https://www.moh.gov.sg/seeking-healthcare/getting-medical-help/"
+        },
+        {
+          "question": "新加坡紧急医疗求助怎么联系？",
+          "answer": "新加坡紧急救护电话是995。该服务用于紧急医疗情况，平台不替代专业评估，也不能代为呼叫救护车。",
+          "keywords": [
+            "急救",
+            "救护车",
+            "紧急医疗"
+          ],
+          "source_title": "新加坡民防部队 · 紧急医疗服务",
+          "source_url": "https://www.scdf.gov.sg/home/about-scdf/emergency-medical-services"
+        }
+      ],
+      "contacts": [
+        {
+          "label": "紧急救护",
+          "number": "995"
+        }
+      ],
+      "image_kind": "illustrative",
+      "sources": [
+        {
+          "title": "MOH · Getting medical help",
+          "url": "https://www.moh.gov.sg/seeking-healthcare/getting-medical-help/"
+        },
+        {
+          "title": "新加坡民防部队 · 紧急医疗服务",
+          "url": "https://www.scdf.gov.sg/home/about-scdf/emergency-medical-services"
+        }
+      ]
+    }
+  },
+  {
+    "country": "Singapore",
+    "category": "transport",
+    "title": "新加坡公共交通路线查询",
+    "content": "SimplyGo接受符合条件的非接触银行卡，包含境外发行的American Express、Mastercard和Visa。先确认卡片支持情况、费用及可用余额。",
+    "source_title": "LTA · Plan your journey",
+    "source_url": "https://www.lta.gov.sg/content/ltagov/en/getting_around/public_transport/plan_your_journey.html",
+    "city": null,
+    "verified_at": "2026-11-16",
+    "details": {
+      "version": 2,
+      "scope": "新加坡；院校专属服务仅适用于对应学校",
+      "summary": "SimplyGo接受符合条件的非接触银行卡，包含境外发行的American Express、Mastercard和Visa。先确认卡片支持情况、费用及可用余额。",
+      "steps": [
+        "通过LTA入口查路线和换乘。",
+        "核对使用的交通卡或非接触银行卡是否适用。",
+        "乘车进出保持同一张卡及同一支付方式，保留行程记录以便核对。"
+      ],
+      "faqs": [
+        {
+          "question": "新加坡公交地铁可以刷银行卡吗？",
+          "answer": "SimplyGo接受符合条件的非接触银行卡，包含境外发行的American Express、Mastercard和Visa。先确认卡片支持情况、费用及可用余额。",
+          "keywords": [
+            "银行卡",
+            "刷卡",
+            "公交",
+            "地铁",
+            "付款"
+          ],
+          "source_title": "SimplyGo · 非接触银行卡常见问题",
+          "source_url": "https://www.simplygo.com.sg/faqs/cards-and-charms/simplygo/contactless-bank-cards"
+        },
+        {
+          "question": "新加坡进出站要用同一张卡吗？",
+          "answer": "乘车进出时要使用相同卡片及相同支付方式。例如实体卡进站，出站也用该实体卡，不要改用绑定同一卡片的手机钱包。",
+          "keywords": [
+            "进站",
+            "出站",
+            "同一张",
+            "手机钱包",
+            "上下车"
+          ],
+          "source_title": "SimplyGo · 非接触银行卡常见问题",
+          "source_url": "https://www.simplygo.com.sg/faqs/cards-and-charms/simplygo/contactless-bank-cards"
+        },
+        {
+          "question": "新加坡公共交通路线怎么查？",
+          "answer": "使用LTA的出行规划入口查找公共交通路线，先填出发点、目的地与时间，并留意运营方的实时服务公告。",
+          "keywords": [
+            "路线",
+            "交通",
+            "怎么坐",
+            "换乘"
+          ],
+          "source_title": "LTA · Plan your journey",
+          "source_url": "https://www.lta.gov.sg/content/ltagov/en/getting_around/public_transport/plan_your_journey.html"
+        }
+      ],
+      "contacts": [],
+      "image_kind": "illustrative",
+      "sources": [
+        {
+          "title": "SimplyGo · 非接触银行卡常见问题",
+          "url": "https://www.simplygo.com.sg/faqs/cards-and-charms/simplygo/contactless-bank-cards"
+        },
+        {
+          "title": "LTA · Plan your journey",
+          "url": "https://www.lta.gov.sg/content/ltagov/en/getting_around/public_transport/plan_your_journey.html"
+        }
+      ]
+    }
+  },
+  {
+    "country": "Singapore",
+    "category": "housing",
+    "title": "新加坡住宿申请与租房核对",
+    "content": "先查看自己学校的住宿部门官方入口，核对本人是否符合申请条件、申请时间及空位。NUS住宿入口仅供该校符合条件的学生参阅，不代表所有学校。",
+    "source_title": "NUS Office of Student Affairs · Hostel options",
+    "source_url": "https://osa.nus.edu.sg/accommodation/hostel-options/",
+    "city": null,
+    "verified_at": "2026-11-16",
+    "previous_title": "NUS住宿信息（仅供NUS学生参阅）",
+    "details": {
+      "version": 2,
+      "scope": "新加坡；院校专属服务仅适用于对应学校",
+      "summary": "先查看自己学校的住宿部门官方入口，核对本人是否符合申请条件、申请时间及空位。NUS住宿入口仅供该校符合条件的学生参阅，不代表所有学校。",
+      "steps": [
+        "到本人学校官方住宿入口核对申请条件。",
+        "校外租房先核实房源与中介身份并安排看房。",
+        "核对合同、费用及付款对象后再决定，警惕看房前催款。"
+      ],
+      "faqs": [
+        {
+          "question": "新加坡学生先从哪里找住宿？",
+          "answer": "先查看自己学校的住宿部门官方入口，核对本人是否符合申请条件、申请时间及空位。NUS住宿入口仅供该校符合条件的学生参阅，不代表所有学校。",
+          "keywords": [
+            "住宿",
+            "宿舍",
+            "校内",
+            "申请住宿"
+          ],
+          "source_title": "NUS Office of Student Affairs · Hostel options",
+          "source_url": "https://osa.nus.edu.sg/accommodation/hostel-options/"
+        },
+        {
+          "question": "在新加坡租房，没看房能先交押金吗？",
+          "answer": "新加坡警方提醒，冒充中介并催促看房前付订金是常见租房诈骗方式。付款前核实对方身份与房源，安排看房，不因催促仓促转账。",
+          "keywords": [
+            "押金",
+            "订金",
+            "交钱",
+            "付款",
+            "诈骗",
+            "看房"
+          ],
+          "source_title": "新加坡警察部队 · 租房诈骗提醒",
+          "source_url": "https://www.police.gov.sg/media-hub/news/2023/20230321_police_adv_on_resurgence_of_rental_scams_invlv_scammers_impersonating_prop_agents"
+        },
+        {
+          "question": "NUS住宿资料是否适用于所有留学生？",
+          "answer": "不适用。NUS住宿资料只面向其规定的申请对象；其他学校学生应查询本校官方住宿渠道。",
+          "keywords": [
+            "NUS",
+            "国立大学",
+            "所有学生",
+            "其他学校"
+          ],
+          "source_title": "NUS Office of Student Affairs · Hostel options",
+          "source_url": "https://osa.nus.edu.sg/accommodation/hostel-options/"
+        }
+      ],
+      "contacts": [],
+      "image_kind": "illustrative",
+      "sources": [
+        {
+          "title": "NUS Office of Student Affairs · Hostel options",
+          "url": "https://osa.nus.edu.sg/accommodation/hostel-options/"
+        },
+        {
+          "title": "新加坡警察部队 · 租房诈骗提醒",
+          "url": "https://www.police.gov.sg/media-hub/news/2023/20230321_police_adv_on_resurgence_of_rental_scams_invlv_scammers_impersonating_prop_agents"
+        }
+      ]
+    }
+  },
+  {
+    "country": "Singapore",
+    "category": "study",
+    "title": "新加坡图书馆与学习空间",
+    "content": "通过国家图书馆管理局NLB的图书馆位置页面选择地点，查看对应分馆开放时间和设施，再安排到访。",
+    "source_title": "NLB · Libraries and locations",
+    "source_url": "https://www.nlb.gov.sg/main/visit-us/our-libraries-and-locations",
+    "city": null,
+    "verified_at": "2026-11-16",
+    "details": {
+      "version": 2,
+      "scope": "新加坡；院校专属服务仅适用于对应学校",
+      "summary": "通过国家图书馆管理局NLB的图书馆位置页面选择地点，查看对应分馆开放时间和设施，再安排到访。",
+      "steps": [
+        "在NLB官方页面选择合适的图书馆位置。",
+        "核对开放时间、设施及需要使用的服务条件。",
+        "课程问题同时整理清单，向老师或学校公布的渠道询问。"
+      ],
+      "faqs": [
+        {
+          "question": "新加坡哪里可以查询图书馆和学习空间？",
+          "answer": "通过国家图书馆管理局NLB的图书馆位置页面选择地点，查看对应分馆开放时间和设施，再安排到访。",
+          "keywords": [
+            "图书馆",
+            "学习空间",
+            "自习",
+            "NLB"
+          ],
+          "source_title": "NLB · Libraries and locations",
+          "source_url": "https://www.nlb.gov.sg/main/visit-us/our-libraries-and-locations"
+        },
+        {
+          "question": "新加坡图书馆能免费借书吗？",
+          "answer": "借阅、会员和费用条件取决于服务及个人身份。请从NLB官方入口核对适用规则，不把进入学习空间与免费借阅混为一谈。",
+          "keywords": [
+            "借书",
+            "会员",
+            "免费",
+            "借阅"
+          ],
+          "source_title": "NLB · Libraries and locations",
+          "source_url": "https://www.nlb.gov.sg/main/visit-us/our-libraries-and-locations"
+        },
+        {
+          "question": "在新加坡学习遇到困难，可以先怎么做？",
+          "answer": "可以把课程难点、作业要求和自己的尝试整理出来，再向任课老师或本校公布的学习支持渠道询问。具体资源以本人学校通知为准。",
+          "keywords": [
+            "学习",
+            "课程",
+            "跟不上",
+            "作业"
+          ],
+          "source_title": "NLB · Libraries and locations",
+          "source_url": "https://www.nlb.gov.sg/main/visit-us/our-libraries-and-locations"
+        }
+      ],
+      "contacts": [],
+      "image_kind": "illustrative",
+      "sources": [
+        {
+          "title": "NLB · Libraries and locations",
+          "url": "https://www.nlb.gov.sg/main/visit-us/our-libraries-and-locations"
+        }
+      ]
+    }
+  },
+  {
+    "country": "Singapore",
+    "category": "emergency",
+    "title": "新加坡紧急求助渠道",
+    "content": "在新加坡，需要警方立即协助时拨打999；无法安全通话时，可使用警方紧急短信70999。",
+    "source_title": "SCDF · Emergency Medical Services",
+    "source_url": "https://www.scdf.gov.sg/home/about-scdf/emergency-medical-services",
+    "city": null,
+    "verified_at": "2026-11-16",
+    "details": {
+      "version": 2,
+      "scope": "新加坡；院校专属服务仅适用于对应学校",
+      "summary": "在新加坡，需要警方立即协助时拨打999；无法安全通话时，可使用警方紧急短信70999。",
+      "steps": [
+        "先确认你正在新加坡，区分警方帮助与紧急医疗求助。",
+        "联系对应官方渠道，清楚说明所在位置和发生的事情。",
+        "按专业接线人员指引行动，保留必要的事件信息。"
+      ],
+      "faqs": [
+        {
+          "question": "新加坡报警电话是多少？",
+          "answer": "在新加坡，需要警方立即协助时拨打999；无法安全通话时，可使用警方紧急短信70999。",
+          "keywords": [
+            "报警",
+            "警察",
+            "警方",
+            "被偷",
+            "999"
+          ],
+          "source_title": "新加坡警察部队 · 联系方式",
+          "source_url": "https://www.police.gov.sg/Contact-Us"
+        },
+        {
+          "question": "新加坡急救电话是多少？",
+          "answer": "新加坡紧急救护电话是995，用于紧急医疗情况。具体是否需要紧急救援由专业人员判断，平台不能替你呼叫。",
+          "keywords": [
+            "急救",
+            "救护车",
+            "消防",
+            "火警",
+            "995"
+          ],
+          "source_title": "新加坡民防部队 · 紧急医疗服务",
+          "source_url": "https://www.scdf.gov.sg/home/about-scdf/emergency-medical-services"
+        },
+        {
+          "question": "向新加坡警方提供犯罪相关线索用什么电话？",
+          "answer": "向新加坡警方提供犯罪相关信息，可联系警方热线1800 255 0000；需要立即警方帮助时拨999。",
+          "keywords": [
+            "警方热线",
+            "线索",
+            "举报",
+            "1800"
+          ],
+          "source_title": "新加坡警察部队 · 联系方式",
+          "source_url": "https://www.police.gov.sg/Contact-Us"
+        }
+      ],
+      "contacts": [
+        {
+          "label": "警方紧急帮助",
+          "number": "999"
+        },
+        {
+          "label": "消防与急救",
+          "number": "995"
+        },
+        {
+          "label": "提供犯罪相关信息",
+          "number": "18002550000"
+        }
+      ],
+      "image_kind": "illustrative",
+      "sources": [
+        {
+          "title": "新加坡警察部队 · 联系方式",
+          "url": "https://www.police.gov.sg/Contact-Us"
+        },
+        {
+          "title": "新加坡民防部队 · 紧急医疗服务",
+          "url": "https://www.scdf.gov.sg/home/about-scdf/emergency-medical-services"
+        }
+      ]
+    },
+    "previous_title": "新加坡紧急医疗求助入口"
+  }
+]

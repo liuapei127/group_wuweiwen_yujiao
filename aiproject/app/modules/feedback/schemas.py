@@ -29,6 +29,7 @@ class StudentComplaintCreate(Input):
 
 class StudentComplaintOut(BaseModel):
     id: int
+    ticket_type: str | None = None
     category: str | None
     title: str | None
     content: str

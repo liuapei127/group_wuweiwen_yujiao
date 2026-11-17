@@ -78,7 +78,7 @@ def test_website_account_keeps_credentials_and_routes_by_authorized_student_acce
                 SysUser(id=23, real_name="其他同学", user_type="student", status="normal"),
                 SysUser(id=30, real_name="班主任", user_type="employee", status="normal"),
             ])
-            db.execute(text("CREATE TABLE student_info (user_id INTEGER, class_teacher_id INTEGER, abroad_country VARCHAR(64))"))
+            db.execute(text("CREATE TABLE student_info (user_id INTEGER, class_teacher_id INTEGER, abroad_country VARCHAR(64), student_no TEXT, school TEXT, major TEXT)"))
             db.execute(text("INSERT INTO student_info (user_id, class_teacher_id) VALUES (21, 30), (23, 30)"))
             db.commit()
 
@@ -112,6 +112,7 @@ def test_website_account_keeps_credentials_and_routes_by_authorized_student_acce
             material_id = material.json()["data"]["source_id"]
             assert client.get(student_api + "/leaves", headers=old_session).status_code == 403
             assert client.get(student_api + "/policies", headers=old_session).status_code == 403
+            assert client.get(student_api + "/academic-profile", headers=old_session).status_code == 403
             assert client.get(management, headers=old_session).status_code == 401
             assert client.get(management, headers={"Authorization": "Bearer employee"}).status_code == 403
             with Session(engine) as db:
@@ -243,6 +244,10 @@ def test_website_account_keeps_credentials_and_routes_by_authorized_student_acce
                 "country": None, "resources": [],
             }
 
+            academic = client.get(student_api + "/academic-profile", headers=active)
+            assert academic.status_code == 200
+            assert academic.json()["data"]["student_name"] == "李同学"
+            assert academic.json()["data"]["class_teacher"] == "班主任"
             leave_url = student_api + "/leaves"
             leave = {"leave_type": "personal", "start_time": "2099-12-10T09:00",
                      "end_time": "2099-12-10T11:00", "reason": "事假"}
@@ -274,6 +279,7 @@ def test_website_account_keeps_credentials_and_routes_by_authorized_student_acce
             assert client.put(second_access, json=change, headers=operator).status_code == 409
             assert client.put(second_access, json={"student_id": 23, "enabled": True}, headers=operator).status_code == 200
             second_login = client.post(website + "/login", json={**credentials, "username": "13900002002"})
+            assert client.get(student_api + "/academic-profile", headers=bearer(second_login)).json()["data"]["student_name"] == "其他同学"
             assert client.get(leave_url, headers=bearer(second_login)).json()["data"] == []
             assert client.get(complaint_url, headers=bearer(second_login)).json()["data"] == []
             assert client.get(inbox, headers=bearer(second_login)).json()["data"] == []

@@ -7,7 +7,7 @@
 | 模块 | 应用 | FastAPI 入口 / 使用方式 |
 | --- | --- | --- |
 | CS | 粤教CRM-客服 · 本机集成 | 官网客服，POST /api/cs/chat |
-| STU | 留学学生助手 · 统一API | stu.yml 新薄壳：官网登录或传入 Bearer → POST /api/v1/student/assistant/run。业务请假/投诉/进度/心理在 FastAPI。旧 8001/api/stu 版见 stu-legacy-api-stu.yml。 |
+| STU | 留学学生助手 | 本机使用 stu-workspace.yml 的18节点草稿确认版，入口 POST /api/v1/student/assistant；详见下方 workspace 配置。stu.yml 保留作 legacy 模式配套。 |
 | PF | 客户研判 · 本机集成 | 员工工作台 → 客户管理 → 客户详情 → 研判。改动见 pf-改动说明.md |
 | RPT | 员工正式报告 AI 总结 · 本机集成 | 员工工作台 → 业务报表 → 日报提交 → 生成 AI 总结 |
 | ENT | 企业智能助手-ENT | 员工工作台 → AI 助手。32 节点版已发布，服务端配置 DIFY_ENT_CHATFLOW_API_KEY。 |
@@ -25,13 +25,21 @@ CS 绑定本机四个知识库，分别是公司简介、常见问题、留学�
 3. 官网客服在同一会话内承接 FAQ 和政策续问。游客可查询活动，登录后才能选场并确认报名。预约结果可在「我的预约」查看。
 4. 官网公开资料和政策官方入口用于回答；交付包的测试问答、SQLite 库和服务密钥不导入生产。
 
-### STU 导入要点
+### STU workspace 配置（本机当前启用）
+
+1. 在现有026迁移基础上依次应用027、028；导入生活指南。操作和回退见 [学生模块说明](../../student-workspace/README.md)。
+2. 创建德国、新加坡两份外部知识库，使用同一公开知识接口，本机地址 http://host.docker.internal:8003/api/v1/student/knowledge，knowledge_id 分别为 Germany、Singapore；密钥取服务端 STU_KNOWLEDGE_TOKEN。
+3. 在 Dify 导入 stu-workspace.yml，替换知识库ID，确认通义 qwen-plus 可用后发布；设置 STU_ASSISTANT_MODE=workspace 和对应 STU_DIFY_API_KEY。旧画布历史和其他模块配置保留。
+4. 模型只做理解及公开知识检索。草稿、归属、版本、确认、写入和结果回执由后端处理，模型不携带学生登录令牌，也没有写业务接口的节点。Dify故障时保留本地分步办理与已导入知识查询。
+5. 本机当前前端5193、后端8003、Dify18088；上文5173/8090为旧联调环境示例。云端按实际环境配置。
+
+### STU legacy 导入要点（回退时使用）
 
 1. 在 Dify 导入 `stu.yml` 并发布 Chatflow；WebApp 建议关闭，密钥交给 FastAPI `STU_DIFY_API_KEY`。
 2. 环境变量：`stu_api_base`（默认 `http://host.docker.internal:8000`）、可选 `stu_website_username` / `stu_website_password`（仅工作室控制台直连调试）。空令牌时会用这组账号登录，生产必须留空，否则官网漏传令牌会被当成该账号办理请假。
 3. 开始节点输入：`student_access_token`、`history_json`。官网已配置 `STU_DIFY_API_KEY` 时，FastAPI `/api/v1/student/assistant` 会带上当前学生 Bearer 与历史调用本 Chatflow；Chatflow 再打 `/assistant/run`，避免套娃。
 4. 未配置 `STU_DIFY_API_KEY` 时，官网助手直接走本地口语脑，不依赖 Dify。
-5. 两个 HTTP 节点都不配 `retry_config`：`/assistant/run` 会真的提交请假和投诉，Dify 自动重试会重复写业务单据；失败由 FastAPI 回退本地口语脑，不靠流程重试。
+5. 两个 HTTP 节点显式设置 `retry_config.retry_enabled: false`，避免目标工作区的默认值重新启用重试：`/assistant/run` 会真的提交请假和投诉，Dify 自动重试会重复写业务单据；失败由 FastAPI 回退本地口语脑，不靠流程重试。
 6. 旧版 `stu-legacy-api-stu.yml`（8001 `/api/stu`）仅作归档，不要再当联调入口。
 7. 画布最后一个分支是模型兜底：`取出口语回复` 之后先过 `是否需要模型兜底`，只有回复里出现「我在听」这类没接住内容的话才进 `模型兜底回答`（通义千问 qwen-plus）；有办理结果的回复原样走 `助手回复`，不会被改写。模型回复节点直接输出生成的文本。官网 FastAPI 会清洗推理标记和内部编号，并按完整句子增量展示。因此 Dify 工作区必须配置可用的通义供应商，否则该分支会报错。
 8. 规则仍然负责动作：请假、投诉、进度、考务、高危预警都由 FastAPI 判定和落库；模型只负责把没说清的话接住。高危检测、预警写入与责任分派由 FastAPI 处理。模型兜底可参考本站会话历史，办理结果由业务接口提供。

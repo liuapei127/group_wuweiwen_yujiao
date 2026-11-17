@@ -36,7 +36,7 @@ def route(query: str) -> dict:
         intent = "deadline"
     elif any(k in text for k in PSYCH_CARE_TERMS):
         intent = "psych"
-    elif any(k in text for k in ["怎么办", "怎么", "挂号", "签证", "交通", "公交", "地铁", "租房", "住宿", "宿舍", "保险", "看病"]):
+    elif any(k in text for k in ["怎么办", "怎么", "挂号", "医院", "签证", "交通", "公交", "地铁", "租房", "住宿", "宿舍", "保险", "看病"]):
         intent = "ask"
     else:
         intent = "other"

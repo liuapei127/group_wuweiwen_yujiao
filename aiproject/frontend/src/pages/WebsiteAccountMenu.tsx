@@ -93,7 +93,10 @@ export function WebsiteAccountMenu({token, request, signingOut, onViewCustomer, 
           htmlType="submit" form="website-profile">保存</Button>
       </Space> : <Space key="viewing" wrap>
         <Button type="primary" disabled={!account || busy} onClick={() => {setEditVersion(account?.version); setEditing(true)}}>编辑资料</Button>
-        {account?.version != null && <Button disabled={busy} onClick={() => {closeProfile(); onViewCustomer()}}>我的资料</Button>}
+        {(account?.account_type === 'student' || account?.version != null) &&
+          <Button disabled={busy} onClick={() => {closeProfile(); onViewCustomer()}}>
+            {account?.account_type === 'student' ? '我的学籍' : '我的资料'}
+          </Button>}
         <Button disabled={busy} onClick={() => {closeProfile(); onChangePassword()}}>修改密码</Button>
         <Button danger disabled={upload.isPending} loading={signingOut} onClick={onSignOut}>退出登录</Button>
       </Space>}>

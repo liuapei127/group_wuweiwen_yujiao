@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from sqlalchemy.orm import Session
@@ -28,13 +29,15 @@ def conversation_detail(db: Session, student_id: int, conversation_id: str) -> d
     if row is None:
         raise BusinessError(404, "对话不存在")
     messages = assistant_store.list_messages(db, conversation_id)
-    return {
-        **row,
-        "messages": [
-            {"id": m["id"], "role": m["role"], "content": m["content"], "create_time": m["create_time"]}
-            for m in messages
-        ],
-    }
+    payload = {**row, "messages": [
+        {"id": m["id"], "role": m["role"], "content": m["content"], "create_time": m["create_time"], "presentation": m.get("presentation")}
+        for m in messages
+    ]}
+    from app.core.config import get_settings
+    if get_settings().stu_assistant_mode == "workspace":
+        from . import assistant_tasks, assistant_workspace_repository
+        payload["task"] = assistant_tasks.view(assistant_workspace_repository.latest_task(db, student_id, conversation_id))
+    return payload
 
 
 async def run_turn(
@@ -48,6 +51,17 @@ async def run_turn(
     mock_country=None,
     on_text=None,
 ) -> dict:
+    from app.core.config import get_settings
+    if get_settings().stu_assistant_mode == "workspace":
+        from . import assistant_workspace
+        result = await run_in_threadpool(
+            asyncio.run,
+            assistant_workspace.run_turn(db, student_id=student_id, query=query,
+                                         conversation_id=conversation_id, use_dify=use_dify),
+        )
+        if on_text:
+            on_text(result.get("answer") or result.get("reply") or "")
+        return result
     text = (query or "").strip()
     if not text:
         raise BusinessError(422, "请先输入要办的事")

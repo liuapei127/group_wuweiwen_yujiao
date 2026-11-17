@@ -24,7 +24,10 @@ from app.modules.visitor.service import website_student
 from . import alerts, assistant_chat, assistant_session, notifications, service
 from .capacity import get_stu_capacity
 from .idempotency import replay_cache
-from .schemas import DeadlineBatch, DeadlineWrite, ProgressWrite, StudentAssistantConversationCreate, StudentAssistantRequest
+from .schemas import (
+    AssistantTaskDecision, DeadlineBatch, DeadlineWrite, KnowledgeRetrievalRequest,
+    ProgressWrite, StudentAssistantConversationCreate, StudentAssistantRequest,
+)
 from .service import student_policies
 
 _BEARER = HTTPBearer(auto_error=False)
@@ -90,6 +93,8 @@ async def student_assistant_run(body: StudentAssistantRequest, request: Request,
         return student_id
 
     student_id = await run_in_threadpool(resolve)
+    if get_settings().stu_assistant_mode == "workspace":
+        raise BusinessError(409, "当前助手使用草稿确认流程，不接受旧画布的自动办理回调")
     # Dify 回调的源地址是容器 IP，按 IP 限流会变成全体学生共用一个桶；按学生计。
     bucket = f"student:{student_id}"
     cache = replay_cache()
@@ -147,9 +152,32 @@ async def student_assistant(
     return success(await run())
 
 
+@router.get("/assistant/overview")
+def assistant_overview(db: Database, principal: Principal):
+    from .assistant_context import snapshot
+    return success(snapshot(db, _student_id(db, principal)))
+
+
+@router.post("/assistant/tasks/{task_id}/confirm")
+def assistant_confirm(task_id: str, body: "AssistantTaskDecision", db: Database, principal: Principal):
+    from .assistant_tasks import decide
+    return success(decide(db, _student_id(db, principal), task_id, body.expected_version))
+
+
+@router.post("/assistant/tasks/{task_id}/cancel")
+def assistant_cancel(task_id: str, body: "AssistantTaskDecision", db: Database, principal: Principal):
+    from .assistant_tasks import decide
+    return success(decide(db, _student_id(db, principal), task_id, body.expected_version, cancel=True))
+
+
 @router.get("/profile")
 def profile(db: Database, principal: Principal):
     return success({"abroad_country": student_destination(db, _student_id(db, principal))})
+
+
+@router.get("/academic-profile")
+def academic_profile(db: Database, principal: Principal):
+    return success(service.academic_profile(db, _student_id(db, principal)))
 
 
 @router.get("/notifications")
@@ -160,9 +188,18 @@ def notifications_inbox(db: Database, principal: Principal, before_id: BeforeId 
 @router.get("/overseas-life")
 def overseas_life(
     db: Database, principal: Principal, keyword: Annotated[str, Query(max_length=64)] = "",
+    category: Annotated[str, Query(max_length=24)] = "",
+    country: Annotated[str, Query(max_length=16)] = "",
     after_id: Annotated[int, Query(ge=0)] = 0, limit: Annotated[int, Query(ge=1, le=50)] = 12,
 ):
-    return success(service.overseas_resources(db, _student_id(db, principal), keyword.strip(), after_id, limit))
+    return success(service.overseas_resources(db, _student_id(db, principal), keyword.strip(), after_id, limit, category=category, country=country))
+
+
+@router.post("/knowledge/retrieval")
+def retrieve_student_public_knowledge(body: KnowledgeRetrievalRequest, db: Database,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_BEARER)] = None):
+    from .assistant_knowledge import external_retrieval
+    return external_retrieval(db, body, credentials.credentials if credentials else "")
 
 
 @router.get("/policies")

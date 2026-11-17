@@ -50,7 +50,7 @@ export function AcademicDeadlines({request}: {request: Request}) {
           {title: '事项', render: (_, row) => <>{row.title}{row.shared && <> <Tag>通用</Tag></>}</>},
           {title: '类型', render: (_, row) => types[row.deadline_type] || row.deadline_type},
           {title: '教学阶段', render: (_, row) => studyStages[row.study_stage]},
-          {title: '说明', dataIndex: 'description'},
+          {title: '说明', render: (_, row) => row.description || '老师尚未补充具体说明，请联系确认'},
           {title: '截止时间（北京时间）', render: (_, row) => row.deadline.slice(0, 16).replace('T', ' ')},
           {title: '状态', render: (_, row) => <Tag color={row.due_soon ? 'orange' : undefined}>
             {row.due_soon ? '即将截止' : statuses[row.status] || row.status}

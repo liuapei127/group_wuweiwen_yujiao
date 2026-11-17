@@ -30,7 +30,7 @@ def test_stu_dsl_has_no_retry_on_write_nodes():
     doc = yaml.safe_load(STU_YML.read_text(encoding="utf-8"))
     nodes = {node["id"]: node for node in doc["workflow"]["graph"]["nodes"]}
     for node_id in ("http_login", "http_chat"):
-        assert not nodes[node_id]["data"].get("retry_config"), node_id
+        assert nodes[node_id]["data"]["retry_config"]["retry_enabled"] is False, node_id
 
 
 def test_stu_dsl_has_llm_fallback_for_generic_replies():

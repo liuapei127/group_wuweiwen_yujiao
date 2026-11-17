@@ -17,6 +17,13 @@ from . import notifications, repository
 from .models import AcademicClassBatch, AcademicDeadline, ApplicationProgress
 from .schemas import DeadlineOut, DeadlinePage, DeadlineWrite, ProgressOut, ProgressWrite
 
+
+def academic_profile(db: Session, student_id: int) -> dict:
+    row = repository.academic_profile(db, student_id)
+    if row is None:
+        raise BusinessError(404, "学生学籍不可用，请联系老师核对")
+    return dict(row)
+
 def student_policies(db: Session, student_id: int) -> StudentPolicies:
     return study_policies(student_destination(db, student_id))
 
@@ -161,12 +168,27 @@ def save_deadline(
     return result
 
 
-def overseas_resources(db: Session, student_id: int, keyword: str, after_id: int, limit: int):
-    country = student_policies(db, student_id).country
+def overseas_resources(db: Session, student_id: int, keyword: str, after_id: int, limit: int, *, category: str = "", country: str = ""):
+    from app.core.config import get_settings
+    if category and category not in {"arrival", "medical", "transport", "housing", "study", "emergency", "daily_life", "other"}:
+        raise BusinessError(422, "未知生活资料类别")
+    if country and country not in {"Germany", "Singapore"}:
+        raise BusinessError(422, "未知资料地区")
+    country = country or student_policies(db, student_id).country
     if country is None:
         return {"items": [], "next_after_id": None}
     labels = destination_labels(country)
-    found = repository.life_knowledge(db, labels, keyword, after_id, limit)
+    extended = get_settings().stu_assistant_mode == "workspace"
+    if keyword and extended:
+        from .assistant_knowledge import article_matches
+        found = []
+        for row in repository.iter_life_knowledge(db, labels, after_id, category=category):
+            if article_matches(row, keyword):
+                found.append(row)
+                if len(found) > limit:
+                    break
+    else:
+        found = repository.life_knowledge(db, labels, keyword, after_id, limit, category=category, extended=extended)
     return {"items": [dict(row) for row in found[:limit]],
             "next_after_id": found[limit - 1]["id"] if len(found) > limit else None}
 

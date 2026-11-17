@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import BigInteger, Date, DateTime, Enum, Integer, String, Text
+from sqlalchemy import BigInteger, Date, DateTime, Enum, Integer, String, Text, JSON
 from sqlalchemy.dialects.mysql import BIGINT
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -84,6 +84,7 @@ class StudentAssistantMessage(Base):
     conversation_id: Mapped[str] = mapped_column(String(36), index=True)
     role: Mapped[str] = mapped_column(String(16))
     content: Mapped[str] = mapped_column(Text)
+    presentation_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     create_time: Mapped[datetime] = mapped_column(DateTime)
 
 
@@ -100,5 +101,22 @@ class StuMem0Memory(Base):
     user_id: Mapped[str] = mapped_column(String(64), index=True)
     memory: Mapped[str] = mapped_column(Text)
     metadata_json: Mapped[str | None] = mapped_column(Text)
+    create_time: Mapped[datetime] = mapped_column(DateTime)
+    update_time: Mapped[datetime] = mapped_column(DateTime)
+
+
+class StudentAssistantTask(Base):
+    __tablename__ = "stu_assistant_task"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    student_id: Mapped[int] = mapped_column(BigInteger().with_variant(Integer, "sqlite"), index=True)
+    conversation_id: Mapped[str] = mapped_column(String(36), index=True)
+    kind: Mapped[str] = mapped_column(String(24))
+    ordinal: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[str] = mapped_column(String(32))
+    payload: Mapped[dict] = mapped_column(JSON)
+    result: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
     create_time: Mapped[datetime] = mapped_column(DateTime)
     update_time: Mapped[datetime] = mapped_column(DateTime)

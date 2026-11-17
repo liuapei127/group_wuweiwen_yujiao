@@ -7,6 +7,7 @@ import {WebsiteGuide, type GuideTopic} from './WebsiteGuide'
 import {WebsiteAssistant} from './WebsiteAssistant'
 import {WebsiteAccountMenu, type WebsiteProfile} from './WebsiteAccountMenu'
 import {WebsiteCustomerProfile} from './CustomerWorkspace'
+import {StudentProfile} from './StudentProfile'
 import {publicWebsiteContentPath, websiteContentQueryKey, type WebsiteSection} from '../lib/websiteContent'
 import {Alert, App, Button, Card, Form, Input, List, Modal, Space, Tabs, Tag, Typography} from 'antd'
 import {ArrowLeftOutlined, ArrowRightOutlined, MessageOutlined} from '@ant-design/icons'
@@ -301,6 +302,9 @@ export function Visitor() {
     onChangePassword={() => setChangingPassword(true)}
     onSignOut={() => void signOut()}/>
 
+  if (token && isProfilePage && !accountType) {
+    return <main className="visitor-site"><Typography.Paragraph>正在确认账号身份…</Typography.Paragraph></main>
+  }
   if (token && isProfilePage) {
     const back = () => void navigate(accountType === 'student' ? '/website/student' : visitorHome)
     return <main className="visitor-site visitor-site--services">
@@ -308,12 +312,17 @@ export function Visitor() {
         <div className="visitor-header-left"><Link className="visitor-logo" to={visitorHome}>粤教教育服务</Link></div>
         <div className="visitor-header-actions">{accountActions}</div>
       </header>
-      <WebsiteCustomerProfile token={token} back={back}
+      {accountType === 'student' ? <StudentProfile token={token} back={back}
         request={<T,>(path: string, method?: string, body?: unknown) => visitorApi<T>(path, token, method, body)
           .catch((error: unknown) => {
             if (error instanceof VisitorApiError && error.status === 401) expire()
             throw error
-          })}/>
+          })}/> : <WebsiteCustomerProfile token={token} back={back}
+        request={<T,>(path: string, method?: string, body?: unknown) => visitorApi<T>(path, token, method, body)
+          .catch((error: unknown) => {
+            if (error instanceof VisitorApiError && error.status === 401) expire()
+            throw error
+          })}/>}
       {changePassword}
     </main>
   }
@@ -325,13 +334,15 @@ export function Visitor() {
         if (error instanceof VisitorApiError && (error.status === 401 || error.status === 403)) void identity.refetch()
         throw error
       })
-    return <main className="visitor-site">
+    return <main className="visitor-site visitor-site--student">
       <header className="visitor-header visitor-header--student">
         <div className="visitor-header-left">
           <Link to="/website" className="visitor-logo">粤教教育服务</Link>
           <span className="visitor-header-tag">学生服务中心</span>
         </div>
-        <div className="visitor-header-actions">{accountActions}</div>
+        <div className="visitor-header-actions">
+          <Button onClick={() => void navigate(customerProfilePath)}>我的学籍</Button>{accountActions}
+        </div>
       </header>
       <Student request={request} accountRecords={<VisitorServices token={token} expire={expire} showAssistant/>}/>
       {changePassword}

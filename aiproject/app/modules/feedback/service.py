@@ -49,7 +49,7 @@ def _company_assignee(db: Session) -> int | None:
 
 
 def submit_student_complaint(
-    db: Session, student_id: int, payload: StudentComplaintCreate
+    db: Session, student_id: int, payload: StudentComplaintCreate, *, commit: bool = True
 ) -> StudentComplaintOut:
     """提交人 ID 来自调用方的可信学生身份。"""
     student_repo = StudentAdminRepository(db)
@@ -80,7 +80,8 @@ def submit_student_complaint(
         if raw is None or raw.get("student_id") != student_id:
             raise BusinessError(500, "投诉工单写入失败")
         result = StudentComplaintOut.model_validate(raw)
-        db.commit()
+        if commit:
+            db.commit()
     except Exception:
         db.rollback()
         raise

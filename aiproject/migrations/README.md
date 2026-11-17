@@ -72,3 +72,9 @@
 ## 班主任完整业务线
 
 025后、启动新版前应用一次`pending/026_teacher_business.sql`。新增教学课程、班级开课、转班历史、整班考务发布去重及请假附件表；为既有成绩和考务增加教学阶段，默认unspecified，不推测历史阶段。课程没有金额字段。补齐班主任学务权限、管理员教学配置权限、管理员与主管投诉纠错权限；顾问申请进度改为只读。MySQL DDL会隐式提交，执行前按环境备份，部分执行时核对已有列再续跑，不重复执行ALTER。记录本次本机应用结果于logs/teacher-business-migration.json，云端尚未执行。完整职责及验收见docs/班主任业务线实施与验收-2026-11-16.md。
+
+## 学生首页、草稿确认与生活知识
+
+026 后依次应用一次 `pending/027_student_assistant_workspace.sql` 和 `pending/028_student_guidance_knowledge.sql`。027 新增助手办理草稿及公开生活资料的来源字段；028 新增指南详情和对话展示字段。既有会话、班级、教学课程、成绩、考务、请假附件和客户记录均保留。MySQL DDL 隐式提交，部分执行后先核对实际列，不能直接重复 ALTER。
+
+迁移后，使用同一数据库配置执行 `python -m scripts.import_student_life_catalog --database 实际库名`，再按 `docs/student-workspace/README.md` 配对工作流和服务端配置。启动应用不会自动建表或迁移。回退仅恢复配套代码、Dify 画布及环境配置，新增表列可保留；不要删除历史业务数据。本轮已应用到本机环回的 education_service，其他环境需单独部署。

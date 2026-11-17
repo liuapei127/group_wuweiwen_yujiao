@@ -81,3 +81,30 @@ class StudentAssistantConversationCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     title: Annotated[str, StringConstraints(min_length=1, max_length=128)] | None = None
+
+
+class AssistantUnderstanding(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    intent: Literal["leave_create", "leave_query", "feedback", "progress", "deadline", "ask", "profile", "location", "chat", "support", "psych", "cancel", "confirm"]
+    fields: dict[str, str] = Field(default_factory=dict, max_length=12)
+    reply: str = Field(default="", max_length=3000)
+    search_query: str = Field(default="", max_length=500)
+    evidence_ids: list[str] = Field(default_factory=list, max_length=8)
+
+
+class AssistantTaskDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_version: int = Field(ge=1)
+
+
+class KnowledgeRetrievalSettings(BaseModel):
+    top_k: int = Field(default=3, ge=1, le=10)
+    score_threshold: float = Field(default=0.2, ge=0, le=1)
+
+
+class KnowledgeRetrievalRequest(BaseModel):
+    knowledge_id: Literal["", "Germany", "Singapore"]
+    query: str = Field(default="", max_length=2000)
+    retrieval_setting: KnowledgeRetrievalSettings = Field(default_factory=KnowledgeRetrievalSettings)
+    metadata_condition: dict | None = None

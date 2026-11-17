@@ -33,6 +33,7 @@ def _message_dict(row: StudentAssistantMessage) -> dict[str, Any]:
         "id": row.id,
         "role": row.role,
         "content": row.content,
+        "presentation": row.presentation_json,
         "create_time": row.create_time,
     }
 
@@ -106,6 +107,7 @@ def append_turn(
     user_text: str,
     assistant_text: str,
     title_hint: str | None = None,
+    presentation: dict | None = None,
 ) -> None:
     owned = db.scalar(
         select(StudentAssistantConversation).where(
@@ -128,6 +130,7 @@ def append_turn(
                 conversation_id=conversation_id,
                 role="assistant",
                 content=(assistant_text or "")[:MAX_TURN_CHARS],
+                presentation_json=presentation,
                 create_time=now,
             ),
         ]

@@ -1,3 +1,4 @@
+from typing import Literal
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -37,6 +38,8 @@ class Settings(BaseSettings):
     # 使用仅面向公开知识的客服应用，独立于员工工作流。
     cs_public_dify_api_key: SecretStr = SecretStr('')
     stu_dify_api_key: SecretStr = SecretStr('')
+    stu_knowledge_token: SecretStr = SecretStr('')
+    stu_assistant_mode: Literal['legacy', 'workspace'] = 'legacy'
     pf_dify_api_key: SecretStr = SecretStr('')
     # Mem0 Platform API key. Empty → local per-account memory table (stu_mem0_memory).
     mem0_api_key: SecretStr = SecretStr('')
