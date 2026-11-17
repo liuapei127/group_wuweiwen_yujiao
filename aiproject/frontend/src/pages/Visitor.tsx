@@ -4,7 +4,7 @@ import {Student} from './Student'
 import {WebsiteCourses} from './WebsiteCourses'
 import {WebsitePolicies} from './WebsitePolicies'
 import {WebsiteGuide, type GuideTopic} from './WebsiteGuide'
-import {WebsiteAssistant} from './WebsiteAssistant'
+import {WebsiteAssistant, type AssistantTurn} from './WebsiteAssistant'
 import {WebsiteAccountMenu, type WebsiteProfile} from './WebsiteAccountMenu'
 import {WebsiteCustomerProfile} from './CustomerWorkspace'
 import {StudentProfile} from './StudentProfile'
@@ -19,8 +19,9 @@ import {PasswordChangeDialog} from '../components/PasswordChangeDialog'
 
 type CustomerChatReply = {answer: string; session_id?: string; reservation_changed?: boolean}
 
-function customerChatBody(query: string, sessionId?: string) {
-  return sessionId ? {query, session_id: sessionId} : {query, start_session: true}
+function customerChatBody(query: string, sessionId?: string, history?: AssistantTurn[]) {
+  const start = sessionId ? {query, session_id: sessionId} : {query, start_session: true}
+  return history ? {...start, history: history.slice(-8).map(({role, content}) => ({role, content: content.slice(0, 500)}))} : start
 }
 
 type Activity = {
@@ -327,7 +328,7 @@ export function Visitor() {
             if (error instanceof VisitorApiError && error.status === 401) expire()
             throw error
           })}/> : <WebsiteCustomerProfile token={token} back={back}
-        request={<T,>(path: string, method?: string, body?: unknown) => visitorApi<T>(path, token, method, body)
+        request={<T,>(path: string, method?: string, body?: unknown, onText?: (text: string) => void) => visitorApi<T>(path, token, method, body, onText)
           .catch((error: unknown) => {
             if (error instanceof VisitorApiError && error.status === 401) expire()
             throw error
@@ -452,9 +453,10 @@ export function Visitor() {
       intro={'你好，我是粤教升学助手。选国家和院校，一般可以按三步走：先看预算与学制，再看专业方向和院校匹配，最后确认签证与就业政策。\n\n如果有比较心仪的院校，或者更看重预算、学制还是专业排名？告诉我一个侧重点，我就能帮你把范围收窄。'}
       open={assistantOpen}
       onOpenChange={setAssistantOpen}
-      ask={async (query, _history, sessionId, onText) => {
+      rememberGuestChat={!token}
+      ask={async (query, history, sessionId, onText) => {
         const path = token ? '/api/cs/visitor/chat' : '/api/cs/chat'
-        const send = (id?: string) => visitorApi<CustomerChatReply>(path, token, 'POST', customerChatBody(query, id), onText)
+        const send = (id?: string) => visitorApi<CustomerChatReply>(path, token, 'POST', customerChatBody(query, id, token ? undefined : history), onText)
         try {
           const reply = await send(sessionId).catch(error => {
             if (error instanceof VisitorApiError && error.status === 404 && sessionId) return send()
@@ -464,6 +466,7 @@ export function Visitor() {
             void cache.invalidateQueries({queryKey: ['visitor', 'activities']})
             void cache.invalidateQueries({queryKey: ['visitor', 'bookings']})
           }
+          if (token) void cache.invalidateQueries({queryKey: ['visitor', 'crm-profile', token]})
           return reply
         } catch (error) {
           if (error instanceof VisitorApiError && error.status === 401 && token) {
@@ -679,6 +682,7 @@ function VisitorServices({token, expire, showAssistant = false, vertical = false
           void cache.invalidateQueries({queryKey: ['visitor', 'activities']})
           void cache.invalidateQueries({queryKey: ['visitor', 'bookings']})
         }
+        void cache.invalidateQueries({queryKey: ['visitor', 'crm-profile', token]})
         return reply
       }}/>}
   </>

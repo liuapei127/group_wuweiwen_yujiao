@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import PurePosixPath
 
 from sqlalchemy.orm import Session
@@ -149,12 +150,40 @@ def submit_visitor_material(
         db.add(source)
         db.flush()
         db.add(VisitorMaterial(source_id=source.id, visitor_id=visitor_id, file_content=content))
+        _apply_verified_submission(db, visitor_id, text, file_name, content)
         result = _visitor_progress(source, None)
         db.commit()
     except Exception:
         db.rollback()
         raise
     return result
+
+
+def _apply_verified_submission(db, visitor_id, text, file_name, content):
+    from app.modules.consultant.customer_service import record_visitor_portrait
+    from app.modules.visitor.repository import lock_website_account
+
+    from .customer_import import normalized_name, normalized_phone, read_import
+    from .portrait import person_updates, stated_name
+
+    document = content if content is not None else text.encode("utf-8")
+    try:
+        _, name, mobile, fields = read_import(file_name or "资料.txt", document)
+    except BusinessError:
+        name = mobile = ""
+        fields = {}
+    account = lock_website_account(db, visitor_id)
+    if account is None:
+        return
+    if account.has_name and normalized_name(account.name) == name and normalized_phone(account.username) == mobile:
+        record_visitor_portrait(db, visitor_id, "", source="visitor_material", extracted=fields)
+        return
+    # A signed-in visitor can also submit a first-person note. A file or a note
+    # with explicit identity fields stays in the original material review flow.
+    if content is None and not re.search(r"姓名\s*[:：]|手机号|(?<!\d)1[3-9]\d{9}(?!\d)|[{}\[\]]", text):
+        note_name = stated_name(text)
+        if not note_name or (account.has_name and normalized_name(account.name) == normalized_name(note_name)):
+            record_visitor_portrait(db, visitor_id, "", source="visitor_material", extracted=person_updates(text))
 
 
 def visitor_materials(

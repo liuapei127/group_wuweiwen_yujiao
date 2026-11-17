@@ -16,6 +16,8 @@ from app.modules.profile import service as profile
 
 from .booking import booking_reply
 from .capacity import CsCapacityExceeded, get_cs_capacity
+from .memory import compose_query, portrait_context, recall_identity, remember_profile
+from . import mem0
 from .catalog import (
     activity_list, asks_for_catalog_list, catalog_followup_kind, catalog_kind,
     country_for, education_for, is_language_course, names_event, recommendations,
@@ -53,13 +55,31 @@ async def _chat(body: PublicChatRequest, db: Session, visitor_id: int | None, on
     session_id = None
     conversation_id = None
     expanded = query
+    browser_history = body.history if visitor_id is None else None
     if body.start_session or body.session_id:
-        session_id, conversation_id, expanded, local = await run_in_threadpool(
-            _session_turn, db, body.session_id, visitor_id, query
-        )
+        previous = next((turn.content for turn in reversed(browser_history or []) if turn.role == "user"), "")
+        session_args = (db, body.session_id, visitor_id, query)
+        if browser_history is not None:
+            session_args += (_PHONE.sub("（手机号已隐藏）", previous),)
+        session_id, conversation_id, expanded, local = await run_in_threadpool(_session_turn, *session_args)
+        portrait = ""
+        related = ""
+        if visitor_id is not None:
+            await run_in_threadpool(remember_profile, db, visitor_id, query)
+            portrait = await run_in_threadpool(portrait_context, db, visitor_id)
+            if mem0.configured():
+                facts = await run_in_threadpool(portrait_context, db, visitor_id, include_name=False)
+                related = await mem0.current_memory(visitor_id, facts, query)
         if local is not None:
             return local
+        recalled = await run_in_threadpool(recall_identity, db, visitor_id, query, browser_history or [])
+        if recalled:
+            return PublicChatReply(answer=recalled, session_id=session_id)
+        business_query = expanded
+        expanded = compose_query(expanded, browser_history or [], portrait, related)
     else:
+        if visitor_id is not None:
+            await run_in_threadpool(remember_profile, db, visitor_id, query)
         if local := _catalog_fee_answer(query):
             return local
         if local := await run_in_threadpool(_catalog_answer, db, query):
@@ -84,10 +104,10 @@ async def _chat(body: PublicChatRequest, db: Session, visitor_id: int | None, on
         if session_id is None:
             raise
         logger.warning("客服 Dify 请求失败，已启用官网资料：%s", type(exc.__cause__).__name__ if exc.__cause__ else exc.status_code)
-        reply = await run_in_threadpool(_unavailable_reply, db, expanded)
+        reply = await run_in_threadpool(_unavailable_reply, db, business_query)
         return PublicChatReply(answer=reply, session_id=session_id)
 
-    if session_id and next_conversation and next_conversation != conversation_id:
+    if browser_history is None and session_id and next_conversation and next_conversation != conversation_id:
         try:
             await run_in_threadpool(
                 remember_dify_conversation, db, session_id, visitor_id,
@@ -155,9 +175,9 @@ def _catalog_text(db: Session, country: str, query: str) -> str | None:
     return "\n".join([intro, *lines, ending])
 
 
-def _session_turn(db: Session, session_id: str | None, visitor_id: int | None, query: str):
+def _session_turn(db: Session, session_id: str | None, visitor_id: int | None, query: str, browser_previous: str | None = None):
     state = chat_session(db, session_id, visitor_id, utc_now())
-    previous = state.previous_query or ""
+    previous = browser_previous if browser_previous is not None else (state.previous_query or "")
     expanded = query
     country = country_for(query)
     if not country and catalog_followup_kind(query) and not names_event(previous):
@@ -180,7 +200,9 @@ def _session_turn(db: Session, session_id: str | None, visitor_id: int | None, q
         local = booking_reply(db, state, query)
     if local is None:
         local = _catalog_answer(db, expanded)
-    state.previous_query = expanded[:1200]
+    state.previous_query = expanded[:1200] if browser_previous is None else None
+    if browser_previous is not None:
+        state.dify_conversation_id = None
     current_id, conversation_id = state.id, state.dify_conversation_id
     if local is not None:
         local.session_id = current_id

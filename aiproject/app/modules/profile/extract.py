@@ -6,6 +6,8 @@ from io import BytesIO, StringIO
 
 from app.core.exceptions import BusinessError
 
+from .portrait import IMPORT_TRAIT_KEYS
+
 _HEADER_KEYS = {
     "id": "id",
     "name": "name",
@@ -164,7 +166,7 @@ def _header_key(cell: str) -> str | None:
     if text in _HEADER_KEYS:
         return _HEADER_KEYS[text]
     lowered = text.lower()
-    return _HEADER_KEYS.get(lowered)
+    return _HEADER_KEYS.get(lowered) or IMPORT_TRAIT_KEYS.get(text) or IMPORT_TRAIT_KEYS.get(lowered)
 
 
 def _coerce(key: str, value: str) -> object:

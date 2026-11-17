@@ -4,7 +4,7 @@ import {Alert, App, Button, Card, Input, Select, Space, Table, Tag, Typography} 
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {useAuth} from '../auth'
 import {ActionModal, ErrorNotice, PageTitle, Status, Value, options, type ActionSpec} from '../components/shared'
-import {CustomerProfilePanel, customerValue, useCustomerEditor, type CustomerProfile, type Request} from '../components/CustomerProfilePanel'
+import {CustomerPortraitInput, CustomerProfilePanel, customerValue, useCustomerEditor, usePortraitUpdates, type CustomerProfile, type Request} from '../components/CustomerProfilePanel'
 import {api, query} from '../lib/api'
 import {CustomerVisitorMaterials, screeningStatuses} from './VisitorIntake'
 import './customer-workspace.css'
@@ -13,7 +13,8 @@ const leads = '/api/v1/consultant/leads'
 const leadStates = ['new', 'contacting', 'qualified', 'signed', 'lost']
 const missingLabels: Record<string, string> = {project: '意向项目', age: '年龄', education: '学历类别', education_stage: '在读或毕业状态'}
 const followTypes: Record<string, string> = {phone: '电话', wechat: '微信', meeting: '面谈', email: '邮件', other: '其他'}
-const request: Request = <T,>(path: string, method?: string, body?: unknown) => api<T>(path, {method, body, timeout: 65000})
+const request: Request = <T,>(path: string, method?: string, body?: unknown, onText?: (text: string) => void) =>
+  api<T>(path, {method, body, onText, timeout: 65000})
 
 type Lead = {id: number; customer_name: string; status: string}
 const customerPath = (row: Lead) => '/customers/' + row.id
@@ -22,7 +23,8 @@ type FollowUp = {id: number; follow_type: string | null; content: string; next_p
 type Detail = {lead: Lead; follow_ups: FollowUp[]}
 type Missing = {ready: boolean; missing_fields: string[]}
 type Screening = {
-  id: number; stale: boolean; result?: {status: string; findings: string[]}
+  id: number; version?: number; stale: boolean; result?: {status: string; findings: string[]}
+  input_snapshot?: Record<string, unknown>[]
   ai?: {state: string; message?: string; recommendation?: string; talk_track?: string}
 }
 type StaffProfile = CustomerProfile & {visitor_id?: number | null; readiness: Missing; screening: Screening | null}
@@ -81,8 +83,9 @@ function CustomerDetail({id, userId}: {id: string; userId?: number}) {
   const detail = useQuery({queryKey: detailKey, queryFn: () => api<Detail>(base), refetchOnWindowFocus: true})
   const profile = useQuery({
     queryKey: profileKey, queryFn: () => api<StaffProfile>(profileUrl),
-    staleTime: 0, refetchOnWindowFocus: true, refetchInterval: 15000,
+    staleTime: 0, refetchOnWindowFocus: true, refetchOnReconnect: true, refetchInterval: 15000,
   })
+  usePortraitUpdates(request, profileUrl, profile.data?.version, profile.refetch)
   function refresh() {
     void cache.invalidateQueries({queryKey: detailKey})
     void cache.invalidateQueries({queryKey: profileKey})
@@ -192,11 +195,13 @@ function CustomerDetail({id, userId}: {id: string; userId?: number}) {
         </Space>
       </Card>
     </div>}
+    {profile.data && <CustomerPortraitInput profile={profile.data} snapshot={screened?.input_snapshot} snapshotVersion={screened?.version}/>}
     <ActionModal action={action} onClose={() => setAction(null)} onSuccess={refresh}/>
   </>
 }
 
 const publicProfileUrl = '/api/v1/visitors/customer-profile'
+const publicProfileRead = publicProfileUrl + '?include_pending=true'
 type WebsiteProfile = CustomerProfile & {imports?: {id: number; file_name: string; create_time: string}[]}
 
 export function WebsiteCustomerProfile({request, token, back}: {request: Request; token: string; back: () => void}) {
@@ -206,15 +211,17 @@ export function WebsiteCustomerProfile({request, token, back}: {request: Request
     queryKey: key,
     queryFn: async () => {
       try {
-        return await request<WebsiteProfile>(publicProfileUrl)
+        return await request<WebsiteProfile>(publicProfileRead)
       } catch (error) {
         // The profile endpoint reports an account without a linked customer as 409.
         if (error instanceof Error && 'status' in error && error.status === 409) return null
         throw error
       }
     },
-    refetchOnWindowFocus: true, refetchInterval: 15000, staleTime: 0,
+    refetchOnWindowFocus: true, refetchOnReconnect: true,
+    refetchInterval: state => state.state.data === null ? 2000 : 15000, staleTime: 0,
   })
+  usePortraitUpdates(request, publicProfileRead, profile.data?.version, profile.refetch)
   const refresh = () => {
     void cache.invalidateQueries({queryKey: key})
     void cache.invalidateQueries({queryKey: ['visitor', 'profile', token]})
@@ -224,10 +231,10 @@ export function WebsiteCustomerProfile({request, token, back}: {request: Request
     <PageTitle title="我的资料" description="查看和维护与本人账号关联的资料。"
       extra={<Button onClick={back}>返回服务</Button>}/>
     <ErrorNotice error={profile.error}/>
-    {profile.data === null && <Alert type="info" showIcon title="顾问尚未建立你的客户资料"
-      description="你仍可通过右上角的个人信息维护姓名和联系方式。顾问建立客户资料后，可在这里查看和补充。"/>}
+    {(profile.data === null || profile.data?.pending_customer) && <Alert type="info" showIcon title="顾问尚未建立你的客户资料"
+      description="你可以向客服补充留学情况或提交材料。顾问建立客户资料后，可在这里编辑。"/>}
     {profile.data && <Space orientation="vertical" size="middle" style={{width: '100%'}}>
-      <CustomerProfilePanel profile={profile.data} request={request} endpoint={publicProfileUrl} editor={editor} canWrite onSaved={refresh}/>
+      <CustomerProfilePanel profile={profile.data} request={request} endpoint={publicProfileUrl} editor={editor} canWrite={!profile.data.pending_customer} onSaved={refresh}/>
       {!!profile.data.imports?.length && <Card title="已导入资料">
         <Table rowKey="id" size="small" pagination={false} dataSource={profile.data.imports} columns={[
           {title: '文件', dataIndex: 'file_name'},
@@ -235,6 +242,7 @@ export function WebsiteCustomerProfile({request, token, back}: {request: Request
           {title: '状态', render: () => <Tag color="success">资料已更新</Tag>},
         ]}/>
       </Card>}
+      <CustomerPortraitInput profile={profile.data}/>
     </Space>}
   </section>
 }

@@ -6,6 +6,29 @@ import {CloseOutlined, CustomerServiceOutlined, MessageOutlined, ReloadOutlined,
 
 export type AssistantTurn = {role: 'user' | 'assistant'; content: string; at?: string}
 type Ask = (query: string, history: AssistantTurn[], sessionId: string | undefined, onText: (text: string) => void) => Promise<{answer: string; session_id?: string}>
+const guestStorage = 'website-customer-chat'
+type SavedChat = {history: AssistantTurn[]; sessionId?: string}
+
+function readGuestChat(): SavedChat {
+  try {
+    const saved: SavedChat = JSON.parse(sessionStorage.getItem(guestStorage) || '{}')
+    const history = Array.isArray(saved.history) ? saved.history.filter(turn => turn &&
+      (turn.role === 'user' || turn.role === 'assistant') && typeof turn.content === 'string').slice(-22) : []
+    const sessionId = typeof saved.sessionId === 'string' && /^[0-9a-f]{64}$/.test(saved.sessionId) ? saved.sessionId : undefined
+    return {history, sessionId}
+  } catch {
+    return {history: []}
+  }
+}
+
+function saveGuestChat(chat: SavedChat) {
+  try {
+    if (chat.history.length) sessionStorage.setItem(guestStorage, JSON.stringify(chat))
+    else sessionStorage.removeItem(guestStorage)
+  } catch {
+    // Best effort when browser storage is unavailable.
+  }
+}
 
 function clock() {
   return new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit', hour12: false})
@@ -39,6 +62,7 @@ export function WebsiteAssistant({
   intro = '你好，我是粤教升学助手。关于留学项目、活动预约和材料提交，都可以问我。',
   open,
   onOpenChange,
+  rememberGuestChat = false,
 }: {
   title: string
   ask: Ask
@@ -46,14 +70,16 @@ export function WebsiteAssistant({
   intro?: string
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  rememberGuestChat?: boolean
 }) {
   const [innerOpen, setInnerOpen] = useState(false)
   const [question, setQuestion] = useState('')
   const [partial, setPartial] = useState('')
-  const [history, setHistory] = useState<AssistantTurn[]>([])
+  const [saved] = useState<SavedChat>(() => rememberGuestChat ? readGuestChat() : {history: []})
+  const [history, setHistory] = useState<AssistantTurn[]>(saved.history)
   const [sessionStart, setSessionStart] = useState(clock)
   const [hintsOn, setHintsOn] = useState(true)
-  const session = useRef<string | undefined>(undefined)
+  const session = useRef(saved.sessionId)
   const generation = useRef(0)
   const thread = useRef<HTMLDivElement>(null)
   const input = useRef<TextAreaRef>(null)
@@ -73,11 +99,13 @@ export function WebsiteAssistant({
       if (generation.current !== sentAt) return
       if (data.session_id) session.current = data.session_id
       const at = clock()
-      setHistory(prev => [
-        ...prev.slice(-20),
+      const updated: AssistantTurn[] = [
+        ...history.slice(-20),
         {role: 'user', content: query, at},
         {role: 'assistant', content: data.answer, at},
-      ])
+      ]
+      setHistory(updated)
+      if (rememberGuestChat) saveGuestChat({history: updated, sessionId: session.current})
       setQuestion('')
     },
   })
@@ -97,6 +125,7 @@ export function WebsiteAssistant({
   function reset() {
     generation.current += 1
     session.current = undefined
+    if (rememberGuestChat) saveGuestChat({history: []})
     setPartial('')
     setHistory([])
     setQuestion('')

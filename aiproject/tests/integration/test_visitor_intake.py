@@ -1,3 +1,4 @@
+import json
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -272,11 +273,15 @@ def test_uploaded_material_can_update_customer_profile_and_screening(isolated_po
 
 def test_shared_customer_profile_import_and_screening(isolated_portal, monkeypatch):
     app, engine = isolated_portal("trusted_jwt")
+    from app.core.config import Settings
     from app.modules.consultant import customer_service
+    from app.modules.customer_service import service as chat_service
     from app.modules.profile.dify_workflow import ReviewPreview
     from app.modules.visitor import router as visitor_router
 
     monkeypatch.setattr(visitor_router, "_AUTH_CAPACITY", visitor_router.CsChatCapacity(4, 2, 10))
+    monkeypatch.setattr(chat_service, "get_settings", lambda: Settings(_env_file=None))
+    monkeypatch.setattr(chat_service.mem0, "configured", lambda: False)
 
     permissions = frozenset({"visitor-intake:read", "visitor-intake:write", "crm:read", "crm:write"})
     actor = EmployeePrincipal(10, permissions)
@@ -313,6 +318,13 @@ def test_shared_customer_profile_import_and_screening(isolated_portal, monkeypat
             visitors = client.get(base + "/pending", headers=owner).json()["data"]
             first, second = (visitor["visitor_id"] for visitor in visitors)
             assert client.get(public, headers=one).status_code == 409
+            chat = client.post("/api/cs/visitor/chat", headers=one, json={
+                "start_session": True, "query": "我目前德语 A2",
+            })
+            assert chat.status_code == 200, chat.text
+            staged = client.get(public, headers=one, params={"include_pending": "true"}).json()["data"]
+            assert staged["pending_customer"] and staged["screening_input"][0]["id"] == f"U_{first:03d}"
+            assert staged["language_ability"] == "我目前德语 A2"
             assert client.post("/api/v1/consultant/leads", headers=owner, json={"customer_name": "违规建档"}).status_code == 403
 
             def claim_and_verify(visitor, name, phone):
@@ -334,9 +346,14 @@ def test_shared_customer_profile_import_and_screening(isolated_portal, monkeypat
             assert client.get(detail, headers=owner).json()["data"]["lead"]["status"] == "contacting"
             starting = current()
             assert client.get(public, headers=one).json()["data"]["version"] == starting["version"]
+            assert starting["screening_input"][0]["id"] == staged["screening_input"][0]["id"]
             assert client.patch(profile_url, headers=owner, json={
                 "expected_version": starting["version"], "intended_project": "de_vocational", "education_level": "senior_secondary",
             }).status_code == 200
+            for endpoint, headers in ((profile_url, owner), (public, one)):
+                notice = client.get(endpoint, headers=headers, params={"watch_version": starting["version"]})
+                assert notice.headers["content-type"].startswith("text/event-stream")
+                assert '"changed": true' in notice.text
             assert client.patch(public, headers=one, json={
                 "expected_version": starting["version"], "age": 31,
             }).status_code == 409
@@ -373,13 +390,23 @@ def test_shared_customer_profile_import_and_screening(isolated_portal, monkeypat
             assert client.post(detail + "/imports/confirm", headers=owner, json={**payload, "fields": ["customer_name"]}).status_code == 422
             assert client.post(detail + "/imports/confirm", headers=owner, json=payload).status_code == 200
 
+            material = client.post("/api/v1/visitor/materials", headers=one, files={
+                "file": ("家庭资料.txt", f"姓名：林晓宁\n本人手机号：{phone_one}\n家庭年收入：30-50万".encode()),
+            })
+            assert material.status_code == 201, material.text
             synced = client.get(public, headers=one).json()["data"]
             assert synced["age"] == 22 and synced["education_stage"] == "graduated"
+            assert synced["language_ability"] == staged["language_ability"]
+            assert synced["family_finance"] == "30-50万"
             assert "screening" not in synced and "status" not in synced
+            unrelated = client.get(public, headers=two).json()["data"]
+            assert unrelated["age"] is unrelated["language_ability"] is unrelated["family_finance"] is None
             result = client.post(detail + "/screening", headers=owner, json={"expected_version": current()["version"]}).json()["data"]
             assert result["screening"]["result"]["status"] == "potential_match"
             assert result["screening"]["ai"]["talk_track"]
             assert len(ai_calls) == 1
+            assert json.loads(ai_calls[0]) == current()["screening_input"] == synced["screening_input"]
+            assert result["screening"]["input_snapshot"] == synced["screening_input"]
 
             visitor_upload = upload(public, one, f"姓名：林晓宁\n本人手机号：{phone_one}\n意向专业：机械")
             draft = visitor_upload.json()["data"]

@@ -9,6 +9,7 @@ from app.modules.consultant.customer_schemas import SharedFields
 from app.modules.profile.schemas import Education, EducationStage, Project
 
 from .extract import extract_text
+from .portrait import IMPORT_TRAIT_KEYS, extract_portrait
 
 
 PROJECT_LABELS = {
@@ -33,6 +34,12 @@ _ALIASES = {
     "学历": "education", "学历类别": "education", "在读或毕业状态": "education_stage",
     "毕业状态": "education_stage", "意向项目": "target_project", "目标项目": "target_project",
     "意向专业": "intended_major",
+    **IMPORT_TRAIT_KEYS,
+    "核心需求": "core_demand",
+    "需求": "core_demand",
+    "核心诉求": "core_demand",
+    "德语水平": "german",
+    "标签权重": "tag_weight",
 }
 _LABEL_PATTERN = re.compile(
     r"(?:^|[\n;；,，\t ]+)\s*(" + "|".join(sorted(map(re.escape, _ALIASES), key=len, reverse=True))
@@ -81,6 +88,31 @@ def _unique_fields(pairs):
     return result
 
 
+def _sample_education(value: str) -> tuple[Education | None, EducationStage | None]:
+    value = value.strip()
+    if re.search(r"不是|没有|想读|计划|假设|如果", value):
+        return None, None
+    education = normalized_choice(value, EDUCATION_LABELS)
+    if education is None:
+        levels = (
+            (r"研究生|硕士|博士", Education.POSTGRADUATE),
+            (r"本科", Education.BACHELOR),
+            (r"大专|专科", Education.COLLEGE),
+            (r"中职|中专|职高|技校|中技", Education.VOCATIONAL),
+            (r"高中|高二|高三", Education.SENIOR),
+            (r"初中|初三", Education.JUNIOR),
+        )
+        education = next((level for pattern, level in levels if re.search(pattern, value)), None)
+    stage = None
+    if "毕业" in value and "未毕业" not in value:
+        stage = EducationStage.GRADUATED
+    elif "高二" in value:
+        stage = EducationStage.SENIOR_YEAR_TWO
+    elif "在读" in value or re.search(r"大[一二三四]", value):
+        stage = EducationStage.ENROLLED
+    return education, stage
+
+
 def read_import(file_name: str, content: bytes) -> tuple[str, str, str, dict]:
     text = extract_text(file_name, content, preserve_pdf_pages=True).strip()
     if not text or len(text.encode("utf-8")) > 60000:
@@ -117,9 +149,46 @@ def read_import(file_name: str, content: bytes) -> tuple[str, str, str, dict]:
         value = normalized_choice(raw, labels) if isinstance(raw, str) else None
         if value is not None:
             fields[field] = value
+    raw_education = record.get("education")
+    if isinstance(raw_education, str):
+        education, stage = _sample_education(raw_education)
+        if education:
+            fields.setdefault("education_level", education)
+        if stage:
+            fields.setdefault("education_stage", stage)
+    target = record.get("target_project")
+    if "intended_project" not in fields and isinstance(target, str):
+        patterns = (
+            ("中德|德国|双元制", Project.DE_VOCATIONAL),
+            ("酒店运营|酒店就业", Project.SG_HOSPITALITY),
+            ("航空运营|航空就业", Project.SG_AVIATION),
+            ("专升本", Project.SG_TOP_UP),
+            ("本升硕", Project.SG_MASTERS),
+            (r"0\.5|高中升学", Project.SG_SENIOR),
+            (r"2\s*\+\s*2|初中升学", Project.SG_JUNIOR),
+        )
+        project = next((item for pattern, item in patterns if re.search(pattern, target)), None)
+        if project:
+            fields["intended_project"] = project
+    tags = record.get("tag_weight")
+    if isinstance(tags, dict):
+        fields["tag_weight"] = tags
     age = re.fullmatch(r"([0-9]{1,3})\s*岁?", str(record.get("age", "")).strip())
     if age and int(age[1]) <= 120:
         fields["age"] = int(age[1])
+    # Only use extracted values for structured documents. Raw JSON can contain
+    # identity data and should never be copied into an individual attribute.
+    demand = record.get("core_demand")
+    if isinstance(demand, str):
+        for key, words in (
+            ("further_study", ("升学", "学历提升", "深造")),
+            ("employment", ("就业", "求职", "找工作")),
+            ("immigration", ("移民", "永居")),
+        ):
+            if any(word in demand for word in words):
+                record.setdefault(key, demand)
+    summary = record.get("profile_summary")
+    fields.update(extract_portrait(record, summary if isinstance(summary, str) else ""))
     try:
         return text, name, mobile, SharedFields.model_validate(fields).model_dump(exclude_unset=True, mode="json")
     except ValidationError:

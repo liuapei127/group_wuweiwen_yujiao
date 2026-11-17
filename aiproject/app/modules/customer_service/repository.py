@@ -2,11 +2,12 @@ from datetime import datetime, timedelta
 from secrets import token_hex
 
 from sqlalchemy import delete, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import BusinessError
 
-from .models import CustomerChatSession
+from .models import CsShortTurn, CustomerChatSession
 
 SESSION_TTL = timedelta(hours=2)
 
@@ -30,6 +31,11 @@ def chat_session(
 
 
 def purge_expired_chat_sessions(db: Session, now: datetime) -> int:
+    expired = select(CustomerChatSession.id).where(CustomerChatSession.expires_at <= now)
+    try:
+        db.execute(delete(CsShortTurn).where(CsShortTurn.session_id.in_(expired)))
+    except SQLAlchemyError:
+        db.rollback()
     result = db.execute(delete(CustomerChatSession).where(CustomerChatSession.expires_at <= now))
     db.commit()
     return result.rowcount

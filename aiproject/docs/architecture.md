@@ -6,6 +6,8 @@
 
 ## 基本布局
 
+官网客服的匿名对话由当前浏览器标签页保存，后端客服会话仍管理活动预约状态。登录后，客服、游客材料与顾问编辑共用已关联的客户画像，建档前的资料按游客账号暂存。客服 Mem0 使用独立的 `CS_MEM0_API_KEY`，仅检索与当前画像一致的事实。客户画像接口通过短时 SSE 通知版本变化，前端重新读取已保存画像。客户详情展示的结构化 JSON 与研判工作流输入一致，每次研判留存输入快照与规则版本。
+
 - **frontend/**：ENT 企业智能工作台（Vite + React + Ant Design），本地联调见 `docs/ENT-企业工作台-开发联调说明.md`。
 - app/main.py：应用装配；router_registry.py：路由注册；model_registry.py：已实现表模型注册。
 - app/core/：config、database、security、middleware、exceptions、responses、logging、storage。
