@@ -40,10 +40,7 @@ def upload(db, student_id, filename, content):
 
 
 def teacher_download(db, principal, leave_id):
-    require_permission(principal, "leaves:read")
-    leave = db.get(StudentAdminService, leave_id)
-    if leave is None or leave.student_id not in principal.student_ids:
-        raise BusinessError(404, "请假单不存在")
+    leave = teacher_leave(db, principal, leave_id)
     attachment = db.get(LeaveAttachment, leave.attachment_url) if leave.attachment_url else None
     if attachment is None or attachment.student_id != leave.student_id:
         raise BusinessError(404, "附件不存在")
@@ -56,6 +53,6 @@ def teacher_download(db, principal, leave_id):
 def teacher_leave(db, principal, leave_id):
     require_permission(principal, "leaves:read")
     leave = db.get(StudentAdminService, leave_id)
-    if leave is None or leave.student_id not in principal.student_ids:
+    if leave is None or leave.service_type != "leave" or leave.approver_id != principal.employee_id:
         raise BusinessError(404, "请假单不存在")
     return leave

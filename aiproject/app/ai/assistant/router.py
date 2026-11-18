@@ -9,6 +9,7 @@ from app.core.responses.streaming import chat_response
 from app.modules.employee_report.transcription import MAX_AUDIO_BYTES, transcribe_audio
 from .schemas import ConversationCreate,MessageInput
 from .service import AssistantService
+from .replies import saved_reply
 router=APIRouter(prefix='/api/v1/ai/assistant',tags=['AI业务助手'])
 
 @router.post('/transcribe', summary='录音转写为企业助手消息草稿')
@@ -37,5 +38,5 @@ async def message(conversation_id:UUID,body:MessageInput,request:Request,db:Sess
         return await run_in_threadpool(AssistantService(db).send, str(conversation_id), body, p, token, on_text)
 
     if "text/event-stream" in request.headers.get("accept", ""):
-        return chat_response(run)
+        return chat_response(run, final_text=saved_reply)
     return success(await run())

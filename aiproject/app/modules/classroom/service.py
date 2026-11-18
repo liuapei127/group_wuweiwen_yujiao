@@ -50,7 +50,7 @@ def student_records(db: Session, employee: EmployeePrincipal, student_id: int, k
     require_student_scope(employee, student_id, "students:read")
     permission = "leaves:read" if kind == "leaves" else "tickets:read"
     require_permission(employee, permission)
-    return repository.student_records(db, student_id, kind, before_id)
+    return repository.student_records(db, student_id, kind, before_id, employee.employee_id)
 
 
 def ensure_handover_complete(db: Session, teacher_id: int):

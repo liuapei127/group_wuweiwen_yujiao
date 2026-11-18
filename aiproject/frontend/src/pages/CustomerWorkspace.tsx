@@ -8,6 +8,8 @@ import {CustomerPortraitInput, CustomerProfilePanel, customerValue, useCustomerE
 import {CustomerImportedMaterials, type ImportedMaterial} from '../components/CustomerImportedMaterials'
 import {api, query} from '../lib/api'
 import {CustomerVisitorMaterials, screeningStatuses} from './VisitorIntake'
+import {VisitorReservations} from '../components/VisitorReservations'
+import {ScreeningFinding} from '../components/ScreeningFinding'
 import './customer-workspace.css'
 
 const leads = '/api/v1/consultant/leads'
@@ -157,6 +159,8 @@ function CustomerDetail({id, userId}: {id: string; userId?: number}) {
         <CustomerProfilePanel profile={profile.data} request={request} endpoint={profileUrl} importEndpoint={base} editor={editor} canWrite={write} onSaved={refresh}/>
         <CustomerImportedMaterials imports={profile.data.imports} request={request} endpoint={base} scope={userId}/>
         {profile.data.visitor_id != null && can('visitor-intake:read') &&
+          <VisitorReservations key={'reservations-'+profile.data.visitor_id} visitorId={profile.data.visitor_id}/>}
+        {profile.data.visitor_id != null && can('visitor-intake:read') &&
           <CustomerVisitorMaterials key={profile.data.visitor_id} visitorId={profile.data.visitor_id} userId={userId}
             importEndpoint={base} onImported={refresh}/>}
         <Card title="跟进记录" extra={write && <Button type="link" onClick={follow}>新增跟进</Button>}>
@@ -181,12 +185,12 @@ function CustomerDetail({id, userId}: {id: string; userId?: number}) {
             <Tag color={screened.result.status === 'potential_match' ? 'success' : 'warning'}>
               {screeningStatuses[screened.result.status] || screened.result.status}
             </Tag>
-            {screened.result.findings.map(text => <Typography.Paragraph key={text}>{text}</Typography.Paragraph>)}
+            {screened.result.findings.map((text, index) => <ScreeningFinding key={index} text={text}/>)}
             {screened.ai?.state === 'ready' && <>
               <Typography.Text strong>跟进建议</Typography.Text>
-              <Typography.Paragraph>{screened.ai.recommendation}</Typography.Paragraph>
+              <Typography.Paragraph className="screening-note">{screened.ai.recommendation}</Typography.Paragraph>
               {!!screened.ai.talk_track && <><Typography.Text strong>沟通话术</Typography.Text>
-                <Typography.Paragraph>{screened.ai.talk_track}</Typography.Paragraph></>}
+                <Typography.Paragraph className="screening-note">{screened.ai.talk_track}</Typography.Paragraph></>}
             </>}
             {screened.ai?.state === 'unavailable' && <Alert type="warning" title={screened.ai.message || 'AI 建议暂不可用'}/>}
             {screened.ai?.state === 'pending' && <Typography.Text type="secondary">AI 建议生成中</Typography.Text>}

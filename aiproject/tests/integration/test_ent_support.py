@@ -31,11 +31,11 @@ def env(monkeypatch):
         db.add(SysUser(id=1,real_name="老师",user_type="employee",status="normal"))
         for rid in (1,2):
             db.execute(insert(org).values(id=rid,org_name="教学部",org_level=2,sort_order=0,status=1 if rid==1 else 0,create_time=now,update_time=now))
-            db.execute(insert(tickets).values(id=rid,student_id=101,ticket_type="complaint",content="投诉",status="pending",priority="medium",assignee_id=rid,is_notified=0,create_time=now,update_time=now))
+            db.execute(insert(tickets).values(id=rid,student_id=101,ticket_type="complaint",category="learning",content="投诉",status="pending",priority="medium",assignee_id=rid,is_notified=0,create_time=now,update_time=now))
         db.commit()
         app=FastAPI();register_routers(app)
         app.dependency_overrides[get_db]=lambda:db
-        app.dependency_overrides[require_employee]=lambda:EmployeePrincipal(1)
+        app.dependency_overrides[require_employee]=lambda:EmployeePrincipal(1, frozenset({"tickets:read", "tickets:write", "leaves:read", "leaves:approve"}), role_code="team_leader")
         with TestClient(app) as c:yield c,db,app
     engine.dispose()
 
@@ -220,9 +220,9 @@ def test_source_todo_reassignment_completion_reopening_and_unassignment(env):
     db.execute(update(tickets).where(tickets.c.id==1).values(assignee_id=1));db.commit()
     scan_reminders(db)
     assert db.execute(select(todos.c.assignment_version).where(todos.c.id==tid)).scalar_one() == 5
-    assert c.patch(f"/api/v1/enterprise/todos/{tid}",json={"expected_status":"pending","status":"done"}).status_code == 200
+    assert c.patch(f"/api/v1/enterprise/todos/{tid}",json={"expected_status":"pending","status":"done"}).status_code == 409
     scan_reminders(db)
-    assert db.execute(select(todos.c.status).where(todos.c.id==tid)).scalar_one() == "done"
+    assert db.execute(select(todos.c.status).where(todos.c.id==tid)).scalar_one() == "pending"
     keys = db.execute(select(notices.c.dedup_key).where(notices.c.related_id==tid,notices.c.related_type=="todo_item")).scalars().all()
     assert len(keys) == len(set(keys)) == 5
 

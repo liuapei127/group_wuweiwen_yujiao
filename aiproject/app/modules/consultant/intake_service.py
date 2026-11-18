@@ -17,7 +17,7 @@ from app.shared.utils.time_util import now_naive
 
 from . import intake_repository as repository
 from .models import CrmFollowUp, CrmLead, VisitorCall, VisitorIntake
-from .schemas import ClaimedVisitor, LeadOut, VisitorCallCreate, VisitorCallOut, VisitorLeadCreate, VisitorQueueEntry
+from .schemas import ClaimedVisitor, LeadOut, VisitorCallCreate, VisitorCallOut, VisitorLeadCreate, VisitorQueueEntry, VisitorReservationOut
 
 
 def list_pending(db: Session, principal: EmployeePrincipal, after_id: int, limit: int):
@@ -133,6 +133,13 @@ def list_calls(db: Session, visitor_id: int, principal: EmployeePrincipal, befor
     require_permission(principal, "visitor-intake:read")
     _owned_case(db, visitor_id, principal.employee_id)
     return [VisitorCallOut.model_validate(row) for row in repository.calls(db, visitor_id, before_id, limit)]
+
+
+def list_reservations(db: Session, visitor_id: int, principal: EmployeePrincipal, before_id: int | None, limit: int):
+    require_permission(principal, "visitor-intake:read")
+    _owned_case(db, visitor_id, principal.employee_id)
+    return [VisitorReservationOut.model_validate(row) for row in
+            repository.reservations(db, visitor_id, principal.employee_id, before_id, limit)]
 
 
 def list_materials(db: Session, visitor_id: int, principal: EmployeePrincipal, before_id: int | None, limit: int):

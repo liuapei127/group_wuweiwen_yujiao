@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import BusinessError
+from app.modules.auth.repository import AuthRepository
 from app.modules.student.notifications import save_student_result
 from app.modules.student_admin.models import StudentAdminService
 from app.modules.student_admin.models import LeaveAttachment
@@ -69,22 +70,35 @@ class StudentAdminServiceLayer:
         return LeaveOut.model_validate(row)
 
     def pending_leaves(self, approver_id: int | None):
-        return self.repo.list_pending_leaves(approver_id)
+        rows = self.repo.list_pending_leaves(approver_id)
+        names = self.repo.student_names(row.student_id for row in rows)
+        return [LeaveOut.model_validate(row).model_copy(update={'student_name': names.get(row.student_id)}) for row in rows]
+
+    def leave_output(self, row) -> LeaveOut:
+        name = self.repo.student_names([row.student_id]).get(row.student_id)
+        return LeaveOut.model_validate(row).model_copy(update={'student_name': name})
+
+    def assigned_leaves(self, approver_id, status, before_id, limit):
+        rows = self.repo.assigned_leaves(approver_id, status, before_id, limit)
+        names = self.repo.student_names(row.student_id for row in rows)
+        return [LeaveOut.model_validate(row).model_copy(update={"student_name": names.get(row.student_id)}) for row in rows]
 
     def pending_leave_candidates(self, approver_id: int, student_name: str):
         return self.repo.pending_leave_candidates(approver_id, student_name)
 
     def approve_leave(self, leave_id: int, payload: LeaveApprove):
-        row = self.repo.get_leave(leave_id)
+        row = self.repo.get_leave(leave_id, lock=True)
         if not row:
             raise ValueError("请假单不存在")
-        if row.approver_id != payload.approver_id:
+        if payload.approver_id is None or row.approver_id != payload.approver_id:
             raise PermissionError("仅指定审批人可审批；未分配单据暂不可处理")
         if row.status != "pending":
             raise ConflictError("仅待审批状态可处理")
         return self._approve_and_sync(row, payload)
 
     def approve_leave_by_student_name(self, student_name: str, payload: LeaveApprove):
+        if payload.approver_id is None:
+            raise PermissionError("必须提供可信审批人")
         student_id = self.repo.find_student_id_by_name(student_name)
         if not student_id:
             raise ValueError(f"未找到学生：{student_name}")
@@ -102,6 +116,9 @@ class StudentAdminServiceLayer:
             decision_text = "已通过" if row.status == "approved" else "已拒绝"
             save_student_result(db, row.student_id, "student_admin_service", row.id, row.status,
                                 "请假审批结果", "你的请假申请" + decision_text + "。")
+            AuthRepository(db).audit(payload.approver_id, "leave_approved", row.id, {
+                "previous_status": "pending", "status": row.status, "approval_comment": row.approval_comment,
+            })
             db.commit()
             db.refresh(row)
             return row

@@ -21,7 +21,7 @@ from app.modules.profile.dify_workflow import review_text
 from app.modules.profile.models import CustomerProfile, CustomerSource, ParseStatus, SourceType, VisitorMaterial
 from app.modules.profile.portrait import (
     PORTRAIT_KEYS, PORTRAIT_LABELS, RULE_VERSION, combined_language_ability, merge_observations,
-    person_updates, portrait_findings, screening_document, stated_name,
+    person_updates, portrait_findings, screening_document, stated_name, with_portrait_gaps,
 )
 from app.modules.profile.schemas import ScreeningInput, ScreeningStatus
 from app.modules.profile.screening import screen_profile
@@ -713,11 +713,15 @@ def _generate_advice(document):
 
 def _screening_response(row, current_version):
     data = row.background_info or {}
+    snapshot = data.get("input_snapshot")
+    result = data.get("screening")
+    if result and snapshot:
+        result = {**result, "findings": with_portrait_gaps(tuple(result.get("findings", ())), snapshot)}
     return {
         "id": row.id, "version": row.profile_version,
         "stale": row.profile_version != current_version or data.get("rule_version") != RULE_VERSION,
-        "input_snapshot": data.get("input_snapshot"), "rule_version": data.get("rule_version"),
-        "result": data.get("screening"), "ai": data.get("ai"),
+        "input_snapshot": snapshot, "rule_version": data.get("rule_version"),
+        "result": result, "ai": data.get("ai"),
     }
 
 
@@ -727,14 +731,14 @@ def run_screening(db, lead_id, staff, expected_version):
     fields = _profile(lead, account)
     checked = _screening_input(fields)
     official = screen_profile(checked)
-    notes = portrait_findings(checked.project.value if checked.project else None, _portrait_text(fields))
-    if notes:
-        official = official.model_copy(update={"findings": (*official.findings, *notes)})
     if official.status == ScreeningStatus.NEEDS_INFORMATION:
         return {"ready": False, "missing_fields": official.missing_fields}
+    snapshot = _screening_document(lead, fields, account)
+    notes = portrait_findings(checked.project.value if checked.project else None, _portrait_text(fields))
+    official = official.model_copy(update={"findings": with_portrait_gaps((*official.findings, *notes), snapshot)})
     data = {
         "input": checked.model_dump(mode="json"),
-        "input_snapshot": _screening_document(lead, fields, account),
+        "input_snapshot": snapshot,
         "rule_version": RULE_VERSION,
         "screening": official.model_dump(mode="json"),
         "ai": {"state": "pending"},

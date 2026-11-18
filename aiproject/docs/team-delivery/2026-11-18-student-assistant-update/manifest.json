@@ -1,0 +1,37 @@
+{
+  "base_commit": "1400755f36aa65a2fd6e7249b4dd1f24467e9635",
+  "branch": "codex/student-assistant-update-20261118",
+  "source": "Published student Dify workflow, exported with include_secret=false",
+  "dify_version": "1.19.0",
+  "application": {
+    "id": "54465f40-3179-4c20-ad9d-be40abb43496",
+    "name": "学生助手 · 草稿确认版 20261116",
+    "published_id": "a27eb432-ecc2-4cd8-92ab-63371d4660c8",
+    "nodes": 22,
+    "edges": 22,
+    "file": "dify/stu-workspace.yml",
+    "sha256": "cf36cf93680bb88bfc0ccb5fa4dd82e0d7c1aa1e2515d77e14e156a5993d30cf"
+  },
+  "validation": {
+    "python_tests_passed": 910,
+    "live_interface_cases": 8,
+    "countries": [
+      "Germany",
+      "Singapore"
+    ],
+    "browser_cases": [
+      "我喜欢吃什么 我是谁",
+      "德国的交通怎么样"
+    ]
+  },
+  "requires": {
+    "assistant_mode": "workspace",
+    "external_knowledge_ids": [
+      "Germany",
+      "Singapore"
+    ],
+    "cross_workspace_dataset_rebinding": true,
+    "api_keys": "Configure separately in the target environment; not included"
+  },
+  "database_changes": false
+}

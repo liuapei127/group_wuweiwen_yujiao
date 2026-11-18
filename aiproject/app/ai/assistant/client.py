@@ -16,6 +16,7 @@ _JSON_TEXT = re.compile(r'(?:[^"\\\x00-\x1f]|\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4}))*
 
 def chat_preview(text):
     """Extract only a chat reply from the classifier's partial JSON."""
+    text = re.sub(r'^\s*<think>.*?</think>\s*', '', text, flags=re.S)
     start = _CHAT_REPLY.match(text)
     if not start:
         return ""
@@ -48,8 +49,9 @@ class DifyIntentClient:
             with httpx.Client(trust_env=False, timeout=httpx.Timeout(settings.dify_timeout_seconds, connect=5)) as client:
                 url = settings.dify_api_url.rstrip('/') + endpoint
                 headers = {'Authorization': 'Bearer ' + (chat_key or workflow_key)}
-                if on_text and chat_key:
-                    result = self._stream(client, url, headers, payload, on_text)
+                if on_text:
+                    reader = self._stream if chat_key else self._workflow_stream
+                    result = reader(client, url, headers, payload, on_text)
                 else:
                     response = client.post(url, headers=headers, json=payload)
                     response.raise_for_status()
@@ -87,6 +89,38 @@ class DifyIntentClient:
                 if answer.finished and not answer.waiting_for_workflow:
                     break
         return answer.response()
+
+
+    @staticmethod
+    def _workflow_stream(client, url, headers, payload, on_text):
+        text, last = '', ''
+        with client.stream('POST', url, headers=headers, json={**payload, 'response_mode': 'streaming'}) as response:
+            response.raise_for_status()
+            for line in response.iter_lines():
+                if not line.startswith('data:'):
+                    continue
+                event = json.loads(line[5:].strip())
+                if not isinstance(event, dict):
+                    raise ValueError('Invalid workflow stream')
+                data = event.get('data') or {}
+                if event.get('event') == 'error':
+                    raise ValueError('Workflow failed')
+                if event.get('event') == 'workflow_finished':
+                    if not isinstance(data, dict) or data.get('status') != 'succeeded':
+                        raise ValueError('Workflow did not succeed')
+                    return {'data': data}
+                if event.get('event') == 'text_chunk' and isinstance(data, dict):
+                    chunk = data.get('text')
+                    if not isinstance(chunk, str):
+                        continue
+                    text += chunk
+                    if len(text) > 100_000:
+                        raise ValueError('Workflow answer exceeded the limit')
+                    visible = chat_preview(text)
+                    if visible != last:
+                        last = visible
+                        on_text(visible)
+        raise ValueError('Workflow stream ended prematurely')
 
 
 def call_business(method,planned_url,body,employee_token):

@@ -145,7 +145,7 @@ def test_chat_checks_crisis_before_identity_and_open_business_slots(monkeypatch)
 
 
 def test_unassigned_crisis_remains_pending_and_can_be_claimed_only_in_scope(monkeypatch):
-    from sqlalchemy import Column, Integer, MetaData, Table, create_engine, select
+    from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine, select
     from sqlalchemy.orm import Session
 
     from app.core.security import EmployeePrincipal
@@ -156,6 +156,8 @@ def test_unassigned_crisis_remains_pending_and_can_be_claimed_only_in_scope(monk
     for projection in (chat._psych_record, alerts._alert):
         Table(projection.name, metadata, Column("id", Integer, primary_key=True),
               *(Column(col.name, col.type) for col in projection.c if col.name != "id"))
+    students = Table('sys_user', metadata, Column('id', Integer, primary_key=True),
+                     Column('real_name', String(64)), Column('user_type', String(16)))
     metadata.create_all(engine)
     monkeypatch.setattr(chat.StudentAdminRepository, "class_teacher", lambda *_: None)
     monkeypatch.setattr(chat, "_place_label", lambda *_: "德国")
@@ -165,14 +167,18 @@ def test_unassigned_crisis_remains_pending_and_can_be_claimed_only_in_scope(monk
     coworker = EmployeePrincipal(11, permissions, student_ids=frozenset({1}))
     unrelated = EmployeePrincipal(12, permissions, student_ids=frozenset({2}))
     with Session(engine) as db:
+        db.execute(students.insert().values(id=1, real_name='测试同学', user_type='student'))
+        db.commit()
         result = chat.handle_chat(db, student_id=1, message="我叫测试同学，我不想活了")
         assert result["intent"] == "psych" and result["data"] is None
         assert db.scalar(select(chat._psych_record.c.id)) == 1
         [record] = alerts.list_alerts(db, teacher, None, 30)
         assert record.status == "pending" and record.teacher_id is None
+        assert record.student_name == '测试同学'
         assert not alerts.list_alerts(db, unrelated, None, 30)
         claim = alerts.follow_alert(db, teacher, record.id, alerts.AlertUpdate(status="following", follow_record="已联系"))
         assert claim.teacher_id == 10
+        assert claim.student_name == '测试同学'
         assert not alerts.list_alerts(db, coworker, None, 30)
     engine.dispose()
 

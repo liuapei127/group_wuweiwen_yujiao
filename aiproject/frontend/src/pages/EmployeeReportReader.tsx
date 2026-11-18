@@ -1,6 +1,7 @@
 import {Empty, Skeleton, Typography} from 'antd'
 import dayjs from 'dayjs'
 import {ErrorNotice} from '../components/shared'
+import {readableNotes} from '../lib/reportNotes'
 
 type Report = {
   content: string
@@ -14,16 +15,6 @@ export type StaffDetail = {
   real_name: string
   weekly_report?: WeeklyReport | null
   reports: (Report & {id: number; report_date: string})[]
-}
-
-function readableNotes(value: unknown): string[] {
-  if (typeof value === 'string') return value.trim() ? [value] : []
-  if (Array.isArray(value)) return value.flatMap(readableNotes)
-  if (value && typeof value === 'object') {
-    const record = value as Record<string, unknown>
-    return readableNotes(record.items ?? record.text ?? record.content ?? record.description)
-  }
-  return []
 }
 
 export function EmployeeReportReader({period, detail, loading, error}: {

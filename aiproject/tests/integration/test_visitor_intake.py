@@ -410,6 +410,9 @@ def test_shared_customer_profile_import_and_screening(isolated_portal, monkeypat
             assert len(ai_calls) == 1
             assert json.loads(ai_calls[0]) == current()["screening_input"] == synced["screening_input"]
             assert result["screening"]["input_snapshot"] == synced["screening_input"]
+            missing = next(note for note in result["screening"]["result"]["findings"] if note.startswith("画像还没有这些属性："))
+            assert all(label in missing for label in ("入学能力", "家庭支持", "经济理性", "学习态度", "意向专业"))
+            assert all(label not in missing for label in ("年龄", "学历", "家庭经济状况", "语言能力"))
 
             visitor_upload = upload(public, one, f"姓名：林晓宁\n本人手机号：{phone_one}\n意向专业：机械")
             draft = visitor_upload.json()["data"]
@@ -418,6 +421,7 @@ def test_shared_customer_profile_import_and_screening(isolated_portal, monkeypat
             }).status_code == 200
             latest = current()
             assert latest["intended_major"] == "机械" and latest["screening"]["stale"]
+            assert missing in latest["screening"]["result"]["findings"]
             assert client.patch(public, headers=one, json={"expected_version": latest["version"], "status": "signed"}).status_code == 422
 
             with Session(engine) as db:

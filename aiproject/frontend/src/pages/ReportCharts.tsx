@@ -1,6 +1,7 @@
-import {Card, Collapse, Table, Typography} from 'antd'
+import {Card, Empty, Typography} from 'antd'
 import type {ReactNode} from 'react'
 import {statuses} from './ReportMetrics'
+import {featureLabels} from '../lib/reportLabels'
 
 type Counts = Record<string,number>
 const palette = ['#187D71','#4F86A5','#D59A3E','#8B78AF','#C96D66','#78A58B','#9AA7B0']
@@ -8,14 +9,17 @@ export type FeatureGroup = {label:string;count:number;signed:number;signed_perce
 export type FeatureMetric = 'country'|'education'|'project'|'channel'
 export type Department = {department:string|null;new:number;signed:number;lost:number}
 
-export function DistributionChart({title,counts,labels=statuses,variant='horizontal',drill,summary,children,order}: {
+export function DistributionChart({title,counts,labels=statuses,variant='horizontal',drill,summary,order}: {
   title:string;counts:Counts;labels?:Record<string,string>;variant?:'horizontal'|'donut'|'columns';
-  drill?:(bucket:string)=>void;summary?:ReactNode;children?:ReactNode;order?:string[]
+  drill?:(bucket:string)=>void;summary?:ReactNode;order?:string[]
 }) {
   const entries = (order ? order.filter(key=>key in counts).map(key=>[key,counts[key]] as const) : Object.entries(counts))
     .filter(([,value])=>Number.isFinite(value)&&value>=0)
   const total=entries.reduce((sum,[,value])=>sum+value,0)
-  if(!total)return null
+  if(!total)return <Card title={title} role="region" aria-label={title} className="report-center-panel report-distribution" data-chart={variant}>
+    {summary&&<Typography.Paragraph type="secondary">{summary}</Typography.Paragraph>}
+    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前授权范围和所选期间暂无数据"/>
+  </Card>
   const max=Math.max(...entries.map(([,value])=>value),1)
   let offset=0
   const stops=entries.map(([,value],index)=>{const start=offset;offset+=value/total*100;return palette[index%palette.length]+' '+start+'% '+offset+'%'}).join(',')
@@ -45,7 +49,6 @@ export function DistributionChart({title,counts,labels=statuses,variant='horizon
       return drill&&value>0?<button type="button" className="report-center-bar report-center-bar-button" key={key} aria-label={describe(key,value)} onClick={()=>drill(key)}>{row}</button>
         :<div className="report-center-bar" key={key}>{row}</div>
     })}
-    {children}
   </Card>
 }
 
@@ -58,22 +61,16 @@ const features = [
 export function CustomerFeatureCharts({groups,onDrill}:{groups:Record<string,FeatureGroup[]>;onDrill:(metric:FeatureMetric,bucket:string)=>void}) {
   return <div className="report-center-two">{features.map(feature=>{
     const rows=groups[feature.key]||[]
-    const total=rows.reduce((sum,row)=>sum+row.count,0)
-    return <DistributionChart key={feature.key} title={feature.title} variant={feature.variant} labels={{}}
+    return <DistributionChart key={feature.key} title={feature.title} variant={feature.variant} labels={featureLabels[feature.key]||{}}
       counts={Object.fromEntries(rows.map(row=>[row.label,row.count]))} drill={bucket=>onDrill(feature.metric,bucket)}
-      summary="按所选期间新增客户统计；签约占比按这批客户当前状态计算。">
-      <Collapse ghost className="report-chart-detail" items={[{key:'data',label:'查看分组明细',children:
-        <Table<FeatureGroup> rowKey="label" size="small" dataSource={rows} pagination={{pageSize:5,hideOnSinglePage:true,showSizeChanger:false}} scroll={{x:430}}
-          columns={[{title:'分组',dataIndex:'label'},{title:'客户数',dataIndex:'count'},
-            {title:'占比',render:(_,row)=>(total?row.count/total*100:0).toFixed(1)+'%'},
-            {title:'已签约',dataIndex:'signed'},{title:'签约占比',render:(_,row)=>row.signed_percent+'%'},
-            {title:'操作',render:(_,row)=><button className="report-inline-link" type="button" onClick={()=>onDrill(feature.metric,row.label)}>查看明细</button>}]} />}]}/>
-    </DistributionChart>
+      summary="按所选期间新增客户统计。"/>
   })}</div>
 }
 
 export function DepartmentChart({rows,onDrill}:{rows:Department[];onDrill:(department:string|null,metric:'new'|'signed'|'lost')=>void}) {
-  if(!rows.length)return null
+  if(!rows.length)return <Card title="部门经营对比" role="region" aria-label="部门经营对比">
+    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前授权范围和所选期间暂无部门经营数据"/>
+  </Card>
   const series=[{key:'new',label:'新增线索'},{key:'signed',label:'签约记录'},{key:'lost',label:'流失记录'}] as const
   const max=Math.max(1,...rows.flatMap(row=>series.map(item=>row[item.key])))
   return <Card title="部门经营对比" role="region" aria-label="部门经营对比" data-chart="grouped" className="report-center-panel">

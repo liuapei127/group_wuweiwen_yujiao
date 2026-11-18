@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.modules.auth.repository import student_info
 from app.modules.auth.models import accounts
 from app.modules.feedback.models import student_feedback_ticket
+from app.modules.feedback.access import teacher_channel_filter
 from app.modules.student_admin.models import StudentAdminService, SysUser
 from app.modules.visitor.catalog import _courses
 from app.modules.statistics.wellbeing_models import WellbeingCase
@@ -193,13 +194,13 @@ def student_directory(db: Session, student_ids, keyword: str, class_id: int | No
     return {"items": [dict(row) for row in rows[:limit]], "has_more": len(rows) > limit}
 
 
-def student_records(db: Session, student_id: int, kind: str, before_id: int | None):
+def student_records(db: Session, student_id: int, kind: str, before_id: int | None, employee_id: int):
     if kind == "leaves":
         columns = StudentAdminService.__table__.c
         filters = [columns.student_id == student_id, columns.service_type == "leave"]
     else:
         columns = student_feedback_ticket.c
-        filters = [columns.student_id == student_id, columns.category == "learning"]
+        filters = [columns.student_id == student_id, teacher_channel_filter(columns), columns.assignee_id == employee_id]
     stmt = select(*columns).where(*filters)
     if before_id is not None:
         stmt = stmt.where(columns.id < before_id)

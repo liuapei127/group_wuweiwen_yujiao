@@ -3,6 +3,7 @@ import json
 import re
 
 from app.ai.workflows.ent_contracts import format_result
+from .query_results import query_result
 
 _GREETING_MESSAGES = {"你好", "您好", "早上好", "中午好", "下午好", "晚上好", "嗨", "hi", "hello", "hey"}
 _TEST_MESSAGES = {"test", "测试", "测试一下", "ping", "在吗"}
@@ -29,6 +30,12 @@ _WRITE_FEATURES = {
 }
 _LEGACY_PREFIX = "后端查询结果（仅来自实际响应）：\n"
 _DISPLAY_LIMIT = 30
+_CONFIRMATION_NAMES = {
+    'todo_create':'新增待办','todo_update':'更新待办','lead_create':'录入客户','lead_update':'修改客户',
+    'lead_status':'更新客户状态','lead_follow_up':'追加客户跟进','daily_submit':'提交日报',
+    'formal_report':'生成并归档正式报告','guide_create':'新增指南','score_create':'录入成绩',
+    'score_correct':'更正成绩','leave_approve':'审批请假','ticket_update':'处理工单',
+}
 _LEAD_STATUS_LABELS = {
     "new": "新线索",
     "contacting": "联系中",
@@ -158,23 +165,39 @@ _QUERY_FORMATTERS = {"organizations": _organizations, "lead_list": _customer_lis
 
 
 def business_reply(status, body, intent):
-    if status == 200 and intent in _QUERY_FORMATTERS:
+    if status == 200:
         try:
             payload = json.loads(body)
         except (TypeError, ValueError):
             payload = None
         if isinstance(payload, dict) and payload.get("code") == 0:
-            return _QUERY_FORMATTERS[intent](payload.get("data"))
+            if intent in _QUERY_FORMATTERS:
+                return _QUERY_FORMATTERS[intent](payload.get("data"))
+            rendered = query_result(intent, payload.get("data"))
+            if rendered is not None:
+                return rendered
     return format_result(status, body, intent)["reply"]
 
 
 def display_stored_reply(message):
     content = message["content"]
     intent = message["metadata"].get("action")
-    if message["role"] != "assistant" or intent not in _QUERY_FORMATTERS or not content.startswith(_LEGACY_PREFIX):
+    if (message['role']=='assistant' and content.startswith('请核对以下操作')
+            and intent in _CONFIRMATION_NAMES and not message['metadata'].get('executed')):
+        return '已整理“'+_CONFIRMATION_NAMES[intent]+'”的信息，请核对下方内容。确认后才会提交，也可以取消。'
+    if message["role"] != "assistant" or not content.startswith(_LEGACY_PREFIX):
         return content
     try:
         result = json.loads(content.removeprefix(_LEGACY_PREFIX))
     except ValueError:
         return "这条历史查询结果过长，请重新查询以查看明细。"
-    return _QUERY_FORMATTERS[intent](result)
+    if intent in _QUERY_FORMATTERS:
+        return _QUERY_FORMATTERS[intent](result)
+    return query_result(intent, result) or content
+
+
+def saved_reply(conversation):
+    messages = conversation.get('messages', [])
+    if messages and messages[-1].get('role') == 'assistant':
+        return messages[-1].get('content', '')
+    return ''

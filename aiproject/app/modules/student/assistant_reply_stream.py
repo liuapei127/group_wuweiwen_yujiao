@@ -32,6 +32,10 @@ _UNSUPPORTED_TOOL_PROMISE = re.compile(
     r"(?:我|我们|这边)(?:现在|正在|马上|立刻|稍后|接下来|待会儿|会|可以|能|就|先|再|来|将){0,6}"
     r"(?:帮(?:助)?你|为你|替你)?找.{0,20}(?:资源|电话|热线|机构|支持|帮助|信息|医院)", re.I,
 )
+_GROUNDED_ACTION = re.compile(
+    r"(?:我|我们|系统)?(?:已经|已|正在|将|会)(?:为你|帮你|替你|给你)?"
+    r"(?:提交|批准|办理|联系|通知|转交|预约|上报|登记)"
+)
 _REASK_ALONE = re.compile(
     r"(?:你(?:的)?身边|你附近|现场).{0,8}有人.{0,12}(?:陪|一起).{0,4}(?:吗|么|[？?])|"
     r"你(?:现在|目前)?(?:是)?(?:独自|一个人).{0,3}(?:吗|么|[？?])|"
@@ -168,7 +172,7 @@ class ReplyGate:
     medical advice and all reviewed knowledge still use their stricter guards.
     """
     def __init__(self, *, kind, reviewed_reply, query, history, on_text,
-                 safety_context=None, initial_prefix=""):
+                 safety_context=None, initial_prefix="", reply_evidence=None):
         self.kind = kind
         self.reviewed_reply = reviewed_reply
         self.query = query
@@ -181,6 +185,7 @@ class ReplyGate:
         self.visible = initial_prefix
         self.generated_visible = ""
         self._echoing_prefix = False
+        self.reply_evidence = reply_evidence
 
     def _check(self, text):
         if not text:
@@ -191,7 +196,15 @@ class ReplyGate:
         for match in _LOCATION.finditer(_compact(text)):
             if not _supported_stage(match.group(), self.query, self.history, safety):
                 raise BusinessError(502, "回复包含未经确认的学生阶段")
-        if self.kind == "ask":
+        if self.kind in ("student_fact", "grounded_knowledge"):
+            from .assistant_grounding import check_grounded_reply
+            compact = _compact(text)
+            if (_SIDE_EFFECT.search(compact) or _CONTACT.search(compact) or _URL.search(compact)
+                    or _MEDICAL_ADVICE.search(compact) or _UNSUPPORTED_TOOL_PROMISE.search(compact)
+                    or _GROUNDED_ACTION.search(compact)):
+                raise BusinessError(502, "资料回复包含未经授权的内容")
+            check_grounded_reply(text, self.kind, self.reply_evidence)
+        elif self.kind == "ask":
             reviewed = _compact(self.reviewed_reply)
             if not reviewed.startswith(_compact(text)):
                 raise BusinessError(502, "回复包含未经核实的知识内容")
@@ -237,6 +250,11 @@ class ReplyGate:
                 continue
             checked = clean[:match.end()]
             self._check(checked)
+            # Withhold an opening heading until a checked step follows. If the
+            # first actual step is rejected, the caller can use the complete
+            # reviewed fallback instead of leaving only "steps below:" visible.
+            if self.kind == "grounded_knowledge" and not self.generated_visible and checked.rstrip().endswith(("：", ":")):
+                continue
             self.generated_visible = checked
             self.visible = self.initial_prefix + checked
             self.on_text(self.visible)
@@ -249,6 +267,11 @@ class ReplyGate:
             raise BusinessError(502, "学生助手未返回有效答复")
         self._require_extension(text)
         self._check(text)
+        if self.kind == "grounded_knowledge" and not self.generated_visible and text.rstrip().endswith(("：", ":")):
+            raise BusinessError(502, "知识回复尚未提供实际内容")
+        if self.kind == "student_fact":
+            from .assistant_grounding import check_required_fields
+            check_required_fields(text, self.reply_evidence)
         if self.kind == "ask" and _compact(text) != _compact(self.reviewed_reply):
             raise BusinessError(502, "知识回复未完整保留已核实步骤")
         if text != self.generated_visible:
@@ -256,3 +279,36 @@ class ReplyGate:
             self.visible = self.initial_prefix + text
             self.on_text(self.visible)
         return self.visible
+
+
+def complete_reviewed_reply(partial, reviewed, evidence=None):
+    """Extend checked text with missing server-owned facts after rejection.
+
+    A timeout or transport failure keeps its genuine interruption signal.
+    Already visible characters are never changed or repeated intentionally.
+    """
+    if not partial:
+        return reviewed
+    if reviewed.startswith(partial):
+        return reviewed
+    evidence=evidence or {}
+    fields=evidence.get('fields',{}) if evidence.get('kind')=='student_record' else {}
+    visible=_compact(partial).replace('喜欢吃','喜欢')
+    def covered(part):
+        compact=_compact(part).replace('喜欢吃','喜欢')
+        if compact in visible:
+            return True
+        values=[_compact(str(v)) for v in fields.values() if v and _compact(str(v)) in compact]
+        if values and all(value in visible for value in values):
+            return True
+        for report in evidence.get('self_reports',[]):
+            body=report.removeprefix('学生自述：').removeprefix('我')
+            predicate=_compact(body).replace('喜欢吃','喜欢')
+            if predicate and predicate in compact and predicate in visible:
+                return True
+        return False
+    # Keep the reviewed layout, including numbered steps and real newlines.
+    parts=re.findall(r'[^。！？\n]+[。！？]?|\n+',reviewed)
+    missing=[part for part in parts if not part.strip() or not covered(part)]
+    tail=''.join(missing).strip()
+    return partial+('\n\n'+tail if tail else '')

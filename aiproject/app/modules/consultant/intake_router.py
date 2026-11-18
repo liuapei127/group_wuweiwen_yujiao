@@ -58,6 +58,13 @@ def list_materials(
     return success(service.list_materials(db, visitor_id, advisor, before_id, limit))
 
 
+@router.get("/{visitor_id}/reservations")
+def reservations(
+    visitor_id: VisitorId, db: Database, advisor: Advisor, before_id: BeforeId = None, limit: Limit = 20,
+):
+    return success(service.list_reservations(db, visitor_id, advisor, before_id, limit))
+
+
 @router.get("/{visitor_id}/materials/{source_id}")
 def material_details(visitor_id: VisitorId, source_id: SourceId, db: Database, advisor: Advisor):
     return success(service.material_details(db, visitor_id, source_id, advisor))

@@ -8,11 +8,11 @@ from app.core.exceptions import BusinessError
 from . import assistant_chat as legacy, assistant_context, assistant_dify, assistant_store, assistant_mem0
 from . import assistant_tasks as tasks, assistant_workspace_repository as repo, service
 from . import assistant_guidance as guidance, assistant_knowledge as knowledge, assistant_dialogue as dialogue
-from . import assistant_safety_resources
+from . import assistant_safety_resources, assistant_personal
 from .assistant_intent import route
 from .assistant_safety import high_risk_hits
 from .schemas import AssistantUnderstanding
-from .assistant_reply_stream import safe_context_reply, StudentReplyInterrupted
+from .assistant_reply_stream import safe_context_reply, StudentReplyInterrupted, complete_reviewed_reply
 
 log = logging.getLogger(__name__)
 CONFIRM = {"确认提交", "确认办理"}
@@ -107,6 +107,8 @@ def fill_feedback(text, previous, extracted):
         content = text
     if content and content in text and len(content) >= (2 if explicit else 8):
         payload["content"] = content[:10000]
+    if feedback_service.personnel_complaint(text + " " + payload.get("content", "")) or re.search(r"交(?:给)?主管|向主管|由主管|主管处理", text):
+        payload["category"] = "company"
     return payload
 
 
@@ -119,7 +121,7 @@ def local_understanding(text, task):
         intent="support"
     if guidance.explicit_feedback(text):
         intent="feedback"
-    if legacy._academic_question(text) or any(w in text for w in ("我的资料","我的学籍","我的信息","我是谁")):
+    if intent not in ("leave_create","leave_query","feedback","progress","deadline","confirm","cancel","psych") and (assistant_personal.handles(text) or assistant_personal.summary_request(text)):
         intent="profile"
     if re.search(r"我(?:现在|目前)?(?:在哪(?:里|儿)?留学|(?:去|在)(?:哪个|什么)国家留学)|我的留学(?:国家|去向|地区)", text):
         intent="profile"
@@ -248,6 +250,9 @@ async def run_turn(db, *, student_id, query, conversation_id, use_dify, on_text=
                 result=_pack("好，这次先不提交了。" if intent=="cancel" else "已经提交，接下来等待负责人员处理。", "task_result",task=decision)
         elif intent=="progress":
             result=assistant_context.progress_result(context,query)
+        elif intent=="profile" and assistant_personal.handles(query):
+            result=assistant_personal.answer(query,context["profile"],preferred_name=legacy._name_from_memory_list(memories),memories=memories)
+            source="student_record"
         elif intent=="profile":
             profile=context["profile"]
             result=_pack("这是当前账号关联的学籍资料。未登记的部分可以请老师核对补充。","profile",cards=[
@@ -314,31 +319,45 @@ async def run_turn(db, *, student_id, query, conversation_id, use_dify, on_text=
         safety_state["verified_resources_available"]=bool(cards)
     answer=result.get("reply") or result.get("answer") or ""
     kind=result.get("intent", "chat")
-    # Public knowledge is already reviewed and organized for this exact question.
-    # Return it directly; never pay a second model call to recite or fake-stream it.
-    # Ordinary dialogue has one read-only visible generation call, no planning.
+    reply_evidence=result.pop("reply_evidence",None)
+    grounded_kind=("student_fact" if reply_evidence.get("kind")=="student_record" else "grounded_knowledge") if reply_evidence else None
+    if grounded_kind=="student_fact" and not reply_evidence.get("fields") and not reply_evidence.get("self_reports"):
+        grounded_kind=None
+    # One read-only generation uses question-sized official facts or retrieved evidence.
+    # Deterministic reviewed answers remain available if the model is unavailable.
     name_question=bool(re.search(r"记得我.*(?:叫|名字)|我叫(?:啥|什么)", query))
-    visible_model = use_dify and (safety_active or not name_question and kind in ("support", "chat"))
+    visible_model = use_dify and (grounded_kind or safety_active or not name_question and kind in ("support", "chat"))
     if visible_model:
         db.commit()
         emit=on_text or (lambda _text: None)
         reviewed_fallback=answer
         remaining=max(0.001,generation_deadline-monotonic())
         safety_options={"safety_context":safety_state,"initial_prefix":initial_prefix} if safety_active else {}
+        if grounded_kind:
+            safety_options["reply_evidence"]=reply_evidence
         try:
             answer=await assistant_dify.stream_reply(
                 query=query,context=context,history=history,memories=memories,
                 user_key=assistant_mem0.user_key(student_id),country=country or "",
-                reviewed_reply=answer,kind="safety_support" if safety_active else "general" if general else kind,on_text=emit,
+                reviewed_reply=answer,kind=grounded_kind or ("safety_support" if safety_active else "general" if general else kind),on_text=emit,
                 first_content_timeout=min(12,remaining),overall_timeout=remaining,**safety_options)
             source="dify"
         except StudentReplyInterrupted as exc:
             # Only the stream gate can certify this prefix. Keep exactly what was shown.
             has_model_text=bool(exc.safe_partial and exc.safe_partial != initial_prefix)
             source="dify_partial" if has_model_text else "local_safety_fallback" if safety_active else "local_fallback"
-            if has_model_text:
+            if grounded_kind and exc.reason_code=="reply_rejected":
+                answer=complete_reviewed_reply(exc.safe_partial,reviewed_fallback,reply_evidence)
+                source="student_record" if grounded_kind=="student_fact" else "reviewed_knowledge"
+                result.pop("reply_notice",None)
+                emit(answer)
+            elif has_model_text:
                 answer=exc.safe_partial
                 result["reply_notice"]="回复中断，以上内容已保留"
+            elif grounded_kind:
+                answer=reviewed_fallback
+                source="student_record" if grounded_kind=="student_fact" else "reviewed_knowledge"
+                emit(answer)
             elif safety_active:
                 # Only reviewed local text may extend an already-emitted safety seed.
                 answer=reviewed_fallback
@@ -348,12 +367,16 @@ async def run_turn(db, *, student_id, query, conversation_id, use_dify, on_text=
                 answer=dialogue.general_fallback() if general else "这次回复未能完成，请稍后重试。"
                 result["reply_notice"]="回复中断，请重试"
                 emit(answer)
-            log.warning("Student reply interrupted: %s", exc.reason_code)
+            log.warning("Student reply interrupted: %s (%s)", exc.reason_code, exc.__cause__ or "no detail")
         except BusinessError:
             log.warning("Student visible generation unavailable")
             source="local_safety_fallback" if safety_active else "local_fallback"
-            answer=reviewed_fallback if safety_active else dialogue.general_fallback() if general else "这次回复未能完成，请稍后重试。"
+            answer=reviewed_fallback if safety_active or grounded_kind else dialogue.general_fallback() if general else "这次回复未能完成，请稍后重试。"
+            if grounded_kind:
+                source="student_record" if grounded_kind=="student_fact" else "reviewed_knowledge"
             result["reply_notice"]="补充回复暂未完成，先按以上步骤寻求现实中的支持。" if safety_active else "回复中断，请重试"
+            if grounded_kind:
+                result.pop("reply_notice",None)
             emit(answer)
     elif on_text:
         on_text(answer)

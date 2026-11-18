@@ -8,12 +8,23 @@ import {
 import {useQuery, useQueryClient} from '@tanstack/react-query'
 import {useAuth} from '../auth'
 import {ReportVoiceInput} from '../components/ReportVoiceInput'
-import {ErrorNotice, Value} from '../components/shared'
+import {ErrorNotice, Value, stateNames} from '../components/shared'
+import {ReportNotes} from '../components/ReportNotes'
 import {api} from '../lib/api'
 import './assistant.css'
 
 const labels:Record<string,string>={formal_report:'生成并归档正式报告',lead_create:'录入客户',lead_update:'修改客户',lead_status:'更新客户状态',lead_follow_up:'追加跟进',daily_submit:'提交日报',guide_create:'新增指南',score_create:'录入成绩',score_correct:'更正成绩',leave_approve:'审批请假',ticket_update:'处理工单',todo_create:'新增待办',todo_update:'更新待办'}
 const fieldNames:Record<string,string>={report_kind:'报告类型',anchor:'统计日期',customer_name:'客户姓名',contact_info:'联系方式',intended_country:'意向国家',intended_major:'意向专业',lead_id:'客户编号',status:'目标状态',lost_reason:'流失原因',content:'内容',report_date:'日报日期',key_progress:'关键进展',risks:'风险',next_plan:'下一步计划',student_id:'学生编号',course_name:'课程',score:'成绩',semester:'学期',exam_key:'考试标识',expected_version:'当前版本',correction_reason:'更正原因',leave_id:'请假单编号',decision:'审批决定',approval_comment:'审批意见',ticket_id:'工单编号',solution:'解决说明',todo_id:'待办编号',title:'标题',description:'说明',priority:'优先级',due_time:'到期时间',expected_status:'原状态',category:'分类',remark:'备注'}
+
+function PendingValue({field,value}:{field:string;value:unknown}) {
+  if(field==='key_progress'||field==='risks')return <ReportNotes value={value}/>
+  const labels:Record<string,Record<string,string>>={
+    priority:stateNames,status:stateNames,expected_status:stateNames,
+    decision:{approved:'同意',rejected:'拒绝'},report_kind:{daily:'日报',weekly:'周报'},
+  }
+  const mapped=labels[field]
+  return <Value value={typeof value==='string'&&mapped&&Object.hasOwn(mapped,value)?mapped[value]:value}/>
+}
 
 const conversationsUrl = '/api/v1/ai/assistant/conversations'
 const messageLimit = 8000
@@ -45,8 +56,8 @@ function timestamp(date: Date, includeClock = false) {
   return includeClock ? day + ' ' + clock.format(date) : day
 }
 
-function MessageBubble({mine, content, initials, failed}: {
-  mine: boolean; content: string; initials?: string; failed?: boolean
+function MessageBubble({mine, content, initials, failed, streaming}: {
+  mine: boolean; content: string; initials?: string; failed?: boolean; streaming?: boolean
 }) {
   return <div className={'assistant-message' + (mine ? ' assistant-message--sent' : '')} aria-label={mine ? '我' : 'ENT 助手'}>
     <Avatar shape="square" size={34} className="assistant-avatar" icon={mine
@@ -55,6 +66,7 @@ function MessageBubble({mine, content, initials, failed}: {
     </Avatar>
     <div className="assistant-message-body">
       <div className="assistant-chat-bubble">{content}</div>
+      {streaming && <span className="assistant-streaming" role="status">正在输出…</span>}
       {failed && <span className="assistant-message-error">请求未完成</span>}
     </div>
   </div>
@@ -155,7 +167,7 @@ export function Assistant() {
     ...(can('scores:read') && user?.student_ids[0] ? ['查询学生' + user.student_ids[0] + '的成绩'] : []),
     ...(can('todos:read') ? ['查询我的到期待办'] : []),
     ...(can('leaves:read') ? ['查询我的待审批请假'] : []),
-    ...(can('reports:write') ? ['提交日报，内容是完成联调验证，没有风险，明天继续测试'] : []),
+    ...(can('reports:write') ? ['提交日报，内容是完成客户回访和资料核对，下一步安排语言测评'] : []),
     ...(can('reports:summary:read') ? ['查看今天所管组织的日报'] : []),
     ...(can('directory:read') ? ['查询组织架构'] : []),
   ]
@@ -223,7 +235,7 @@ export function Assistant() {
         })}
         {sending && <>
           <MessageBubble mine content={sending} initials={initials}/>
-          {partial ? <MessageBubble mine={false} content={partial}/> : <div className="assistant-message">
+          {partial ? <MessageBubble mine={false} content={partial} streaming/> : <div className="assistant-message">
             <Avatar shape="square" size={34} className="assistant-avatar" icon={<RobotOutlined/>}/>
             <div className="assistant-chat-bubble assistant-typing" role="status">助手正在回复…</div>
           </div>}
@@ -233,7 +245,7 @@ export function Assistant() {
           title={'请核对：' + (labels[pending.intent] || '业务操作')} extra={<Tag color="orange">待确认</Tag>}>
           <div className="assistant-confirmation-fields">
             {Object.entries(pending.params ?? {}).map(([key, value]) => <div key={key}>
-              <span>{fieldNames[key] || key}</span><Value value={value}/>
+              <span>{fieldNames[key] || key}</span><PendingValue field={key} value={value}/>
             </div>)}
           </div>
           <Space wrap>

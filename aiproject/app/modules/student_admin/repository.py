@@ -1,4 +1,5 @@
 from datetime import datetime
+import json
 
 from sqlalchemy import select, update
 from app.modules.auth.repository import student_info
@@ -7,11 +8,21 @@ from sqlalchemy.orm import Session
 
 from app.modules.student_admin.models import StudentAdminService, SysUser
 from app.shared.utils.time_util import now_naive
+from app.modules.auth.models import audit_log
 
 
 class StudentAdminRepository:
     def __init__(self, db: Session):
         self.db = db
+
+    def student_names(self, student_ids) -> dict[int, str]:
+        """Resolve names by ID for records the caller has already authorized."""
+        ids = set(student_ids)
+        if not ids:
+            return {}
+        return dict(self.db.execute(select(SysUser.id, SysUser.real_name).where(
+            SysUser.id.in_(ids), SysUser.user_type == 'student',
+        )).all())
 
     def list_student_leaves(self, student_id: int, before_id: int | None, limit: int) -> list[StudentAdminService]:
         stmt = select(StudentAdminService).where(
@@ -78,8 +89,28 @@ class StudentAdminRepository:
         rows = [dict(row) for row in self.db.execute(query).mappings()]
         return {"items": rows[:20], "has_more": len(rows) > 20}
 
-    def get_leave(self, leave_id: int) -> StudentAdminService | None:
-        row = self.db.get(StudentAdminService, leave_id)
+    def assigned_leaves(self, approver_id, status, before_id, limit):
+        stmt = select(StudentAdminService).where(
+            StudentAdminService.service_type == "leave", StudentAdminService.approver_id == approver_id,
+        )
+        if status:
+            stmt = stmt.where(StudentAdminService.status == status)
+        if before_id is not None:
+            stmt = stmt.where(StudentAdminService.id < before_id)
+        return list(self.db.scalars(stmt.order_by(StudentAdminService.id.desc()).limit(limit)))
+
+    def history(self, leave_id):
+        rows = self.db.execute(select(audit_log).where(
+            audit_log.c.action == "leave_approved", audit_log.c.target == str(leave_id),
+        ).order_by(audit_log.c.id)).mappings()
+        return [{"actor_id": row["actor_id"], "action": row["action"], "created_at": row["create_time"],
+                 "details": json.loads(row["details"])} for row in rows]
+
+    def get_leave(self, leave_id: int, *, lock=False) -> StudentAdminService | None:
+        stmt = select(StudentAdminService).where(StudentAdminService.id == leave_id)
+        if lock:
+            stmt = stmt.with_for_update().execution_options(populate_existing=True)
+        row = self.db.scalar(stmt)
         if row and row.service_type == "leave":
             return row
         return None

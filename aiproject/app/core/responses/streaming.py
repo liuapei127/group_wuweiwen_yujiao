@@ -18,7 +18,7 @@ def _frame(event, payload):
     return f"event: {event}\ndata: {data}\n\n"
 
 
-def chat_response(run):
+def chat_response(run, *, final_text=None):
     async def events():
         changed = asyncio.Event()
         loop = asyncio.get_running_loop()
@@ -61,6 +61,15 @@ def chat_response(run):
                     sent = visible
                     yield _frame("text", {"text": sent})
                 if outcome is not None:
+                    if outcome[0] == 'result' and final_text is not None:
+                        # Business data and local replies are available only after the turn commits.
+                        # Stream that actual saved answer before publishing its final conversation state.
+                        answer = final_text(outcome[1]['data'])
+                        if isinstance(answer, str) and answer != sent:
+                            start = len(sent) if answer.startswith(sent) else 0
+                            for end in range(start, len(answer), 80):
+                                yield _frame('text', {'text': answer[:end + 80]})
+                                await asyncio.sleep(.012)
                     yield _frame(*outcome)
                     break
         finally:

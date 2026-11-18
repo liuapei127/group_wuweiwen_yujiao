@@ -10,6 +10,7 @@ from app.core.security import EmployeePrincipal
 from app.core.security.authorization import require_permission
 from app.modules.classroom.models import ClassEnrollment, ProjectClass
 from app.modules.student_admin.models import SysUser
+from app.modules.student_admin.repository import StudentAdminRepository
 from app.modules.student import alerts
 
 from . import report_ai, scheduled_repository, wellbeing_repository
@@ -140,9 +141,9 @@ def week_statistics(db: Session, anchor: date, population: frozenset[int]):
     return data
 
 
-def _case_view(row):
+def _case_view(row, student_name=None):
     return {"id": row.id, "student_id": row.student_id, "status": row.status, "note": row.note,
-            "assigned_to": row.assigned_to, "created_at": row.created_at}
+            "assigned_to": row.assigned_to, "created_at": row.created_at, "student_name": student_name}
 
 
 def open_case(db, student_id, note, assignee=None):
@@ -160,7 +161,8 @@ def staff_cases(db, principal, offset, limit):
     stmt = select(WellbeingCase).where(WellbeingCase.student_id.in_(principal.student_ids)).order_by(
         WellbeingCase.id.desc()).offset(offset).limit(limit + 1)
     rows = list(db.scalars(stmt))
-    return {"items": [_case_view(row) for row in rows[:limit]], "has_more": len(rows) > limit}
+    names = StudentAdminRepository(db).student_names(row.student_id for row in rows[:limit])
+    return {"items": [_case_view(row, names.get(row.student_id)) for row in rows[:limit]], "has_more": len(rows) > limit}
 
 
 def case_detail(db, principal, case_id):
@@ -170,7 +172,8 @@ def case_detail(db, principal, case_id):
         raise BusinessError(404, "关怀个案不存在")
     actions = db.scalars(select(WellbeingFollowup).where(WellbeingFollowup.case_id == case_id).order_by(
         WellbeingFollowup.id.desc()).limit(100))
-    return {**_case_view(row), "followups": [
+    name = StudentAdminRepository(db).student_names([row.student_id]).get(row.student_id)
+    return {**_case_view(row, name), "followups": [
         {"note": item.note, "actor_id": item.actor_id, "created_at": item.created_at} for item in actions
     ]}
 

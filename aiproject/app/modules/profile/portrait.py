@@ -60,6 +60,23 @@ PORTRAIT_LABELS = {
     "学习态度": "learning_attitude",
     "性别": "gender", "核心需求": "core_demand", "动手能力": "hands_on", "逻辑思维": "logical_thinking",
 }
+_TRAIT_LABELS = {key: label for label, key in reversed(PORTRAIT_LABELS.items())}
+_DOCUMENT_FIELD_LABELS = {
+    "age": "年龄",
+    "gender": "性别",
+    "education": "学历",
+    "education_stage": "在读或毕业状态",
+    "location": "国内范围",
+    "annual_income_range": "家庭经济状况",
+    "core_demand": "核心需求",
+    "language_ability": "语言能力",
+    "intended_major": "意向专业",
+}
+_DOCUMENT_TRAIT_KEYS = tuple(
+    key for key in PORTRAIT_KEYS
+    if key not in {"gender", "domestic_scope", "family_finance", "core_demand", "language_ability", "german"}
+)
+_MISSING_PREFIX = "画像还没有这些属性："
 IMPORT_TRAIT_KEYS = {
     **PORTRAIT_LABELS, **{key: key for key in PORTRAIT_KEYS},
     "location": "domestic_scope", "地区": "domestic_scope", "城市": "domestic_scope",
@@ -160,7 +177,6 @@ def portrait_findings(project: str | None, values: dict[str, str]) -> tuple[str,
     if not traits:
         return ()
     filled = []
-    missing = []
     language = "；".join(
         item for item in _LANGUAGE_SPLIT.split(combined_language_ability(values.get("language_ability"), values.get("german")))
         if "德语" in item
@@ -169,14 +185,12 @@ def portrait_findings(project: str | None, values: dict[str, str]) -> tuple[str,
         text = language if trait.key == "german" else (values.get(trait.key) or "").strip()
         if text:
             filled.append(f"{trait.label}：{text}")
-        elif trait.key not in ("age", "education"):
-            missing.append(trait.label)
     notes = []
     if filled:
         notes.append("画像已记录" + "；".join(filled) + "。")
-    if missing:
-        notes.append("画像还没有这些属性：" + "、".join(missing) + "。")
-    if project == "de_vocational" and language:
+    if project == "de_vocational" and not language:
+        notes.append("画像尚未记录德语水平，匹配德国企业前需核对是否达到德语 B1。")
+    elif project == "de_vocational":
         levels = [match["level"].upper() for match in _LEVEL.finditer(language)]
         reached = bool(levels) and all(level in {"B1", "B2", "C1", "C2"} for level in levels) and not _UNCERTAIN.search(language)
         notes.append(
@@ -187,6 +201,33 @@ def portrait_findings(project: str | None, values: dict[str, str]) -> tuple[str,
     if "不想" in intent or "没有留学" in intent:
         notes.append("画像里的留学意愿偏低，请顾问确认是否还有其他项目可以推进。")
     return tuple(notes)
+
+
+def with_portrait_gaps(findings: tuple[str, ...], snapshot: list[dict] | None) -> tuple[str, ...]:
+    """按当次研判快照列出统一画像中的缺项，兼容历史提示。"""
+    if not isinstance(snapshot, list) or len(snapshot) != 1 or not isinstance(snapshot[0], dict):
+        return findings
+    document = snapshot[0]
+    traits = document.get("rule_attributes")
+    if not isinstance(traits, dict):
+        return findings
+
+    missing = [
+        label for key, label in _DOCUMENT_FIELD_LABELS.items()
+        if key in document and _is_blank(document[key])
+    ]
+    missing.extend(
+        _TRAIT_LABELS[key] for key in _DOCUMENT_TRAIT_KEYS
+        if key in traits and _is_blank(traits[key])
+    )
+    notes = tuple(note for note in findings if not note.startswith(_MISSING_PREFIX))
+    if missing:
+        notes += (_MISSING_PREFIX + "、".join(missing) + "。",)
+    return notes
+
+
+def _is_blank(value: object) -> bool:
+    return value is None or (isinstance(value, str) and not value.strip())
 
 
 _EDUCATION_LEVELS = (
@@ -288,13 +329,8 @@ def screening_document(subject_id: str, fields: dict, attributes: dict, *, proje
     def value(key):
         return attributes.get(key) or None
 
-    shared_attributes = {
-        key: value(key)
-        for key in PORTRAIT_KEYS
-        if key not in {"gender", "domestic_scope", "family_finance", "core_demand", "language_ability", "german"}
-    }
-    labels = {key: label for label, key in reversed(PORTRAIT_LABELS.items())}
-    known_traits = {labels[key]: item for key, item in shared_attributes.items() if item}
+    shared_attributes = {key: value(key) for key in _DOCUMENT_TRAIT_KEYS}
+    known_traits = {_TRAIT_LABELS[key]: item for key, item in shared_attributes.items() if item}
     return [{
         "id": subject_id,
         "name": fields.get("customer_name") or None,

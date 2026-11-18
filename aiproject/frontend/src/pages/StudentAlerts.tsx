@@ -8,7 +8,7 @@ import {api, query} from '../lib/api'
 import {ReportSchedules} from './ReportSchedules'
 
 type Alert = {
-  id: number; student_id: number; teacher_id: number | null; risk_level: string; status: string
+  id: number; student_id: number; student_name?: string | null; teacher_id: number | null; risk_level: string; status: string
   trigger_reason: string; follow_record: string | null; create_time: string
 }
 const endpoint = '/api/v1/student-admin/psych-alerts'
@@ -69,7 +69,8 @@ export function StudentAlerts() {
         onChange={value => {selectStudent(value); setBefore(undefined)}}/>
       <Table<Alert> rowKey="id" pagination={false} loading={records.isFetching} dataSource={records.data || []}
         scroll={{x: 780}} locale={{emptyText: '暂无可查看的预警'}} columns={[
-          {title: '学生编号', dataIndex: 'student_id'},
+          {title: '学生编号', dataIndex: 'student_id', width: 130},
+          {title: '姓名', dataIndex: 'student_name', width: 120, render: value => value || '—'},
           {title: '风险等级', render: (_, row) => <Tag color={row.risk_level === 'high' ? 'red' : undefined}>{levels[row.risk_level]}</Tag>},
           {title: '原因', dataIndex: 'trigger_reason'},
           {title: '跟进记录', dataIndex: 'follow_record', render: value => <span style={{whiteSpace: 'pre-wrap'}}>{value || '—'}</span>},

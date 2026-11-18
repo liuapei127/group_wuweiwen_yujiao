@@ -44,12 +44,6 @@ export function WellbeingTrend({anchor}:{anchor:string}) {
     <ErrorNotice error={result.error}/>
     <Typography.Paragraph type="secondary">各周均按当前可查看的学生范围统计。自评参与人数沿用现有展示门槛。</Typography.Paragraph>
     {!result.error&&<WellbeingTrendChart weeks={result.data?.weeks||[]}/>}
-    <Table<Week> rowKey="period_start" dataSource={result.data?.weeks||[]} pagination={false} size="small" scroll={{x:650}}
-      columns={[{title:'周报期间',render:(_,row)=>row.period_start+' 至 '+row.period_end},
-        {title:'参与自评',render:(_,row)=>row.suppressed?'低于展示人数':row.participants},
-        {title:'覆盖率',render:(_,row)=>row.suppressed||!row.eligible?'—':Math.round((row.participants||0)/row.eligible*100)+'%'},
-        {title:'新增预警',render:(_,row)=>row.items.reduce((sum,item)=>sum+item.count,0)},
-        {title:'高风险预警',render:(_,row)=>row.items.filter(item=>item.risk_level==='high').reduce((sum,item)=>sum+item.count,0)}]}/>
   </Card>
 }
 

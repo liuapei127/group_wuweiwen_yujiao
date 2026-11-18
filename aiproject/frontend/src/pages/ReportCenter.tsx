@@ -12,6 +12,7 @@ import {WellbeingBoard} from './Wellbeing'
 import {today} from './reportDates'
 import {Metric, statuses} from './ReportMetrics'
 import {CustomerFeatureCharts, DepartmentChart, DistributionChart} from './ReportCharts'
+import {complaintCategoryLabels,featureLabels} from '../lib/reportLabels'
 import './report-center.css'
 
 const root = '/api/v1/reporting'
@@ -115,9 +116,6 @@ function OperationBoard({kind}: {kind:'customers'|'complaints'}) {
     const title=metric==='new'?'新增线索':metric==='signed'?'签约记录':'流失记录'
     open(metric,label+' · '+title,department===null?{department_missing:true}:{department})
   }
-  function departmentCount(department:string|null,metric:'new'|'signed'|'lost',value:number) {
-    return value>0?<Button type="link" className="report-center-table-link" onClick={()=>openDepartment(department,metric)}>{value}</Button>:value
-  }
   const comparisons=customer?analysis.data?.comparisons:data?.comparisons
   return <Space orientation="vertical" size="middle" style={{width:'100%'}}>
     <Card className="report-center-panel report-filter-panel">
@@ -154,7 +152,7 @@ function OperationBoard({kind}: {kind:'customers'|'complaints'}) {
           drill={bucket=>open('status',statuses[bucket]||bucket,{bucket})}/>
         {customer?<DistributionChart title="已记录的流失原因" counts={data.lost_reasons||{}} labels={{}}
           drill={bucket=>open('lost','流失原因 · '+bucket,{bucket})}/>:<>
-          <DistributionChart title="投诉分类" counts={data.categories||{}} labels={{}} drill={bucket=>open('category','投诉分类 · '+bucket,{bucket})}/>
+          <DistributionChart title="投诉分类" counts={data.categories||{}} labels={complaintCategoryLabels} drill={bucket=>open('category','投诉分类 · '+(complaintCategoryLabels[bucket]||bucket),{bucket})}/>
           <DistributionChart title="积压账龄" counts={data.backlog||{}} variant="columns" order={['0–2 天','3–6 天','7–13 天','14 天以上']}
             drill={bucket=>open('backlog','积压账龄 · '+bucket,{bucket})}/>
           <DistributionChart title="满意度分布" counts={data.satisfaction||{}} variant="columns" order={['1','2','3','4','5']}
@@ -163,17 +161,10 @@ function OperationBoard({kind}: {kind:'customers'|'complaints'}) {
         </>}
       </div>
       {customer&&<>
-        {analysis.data?.groups&&<CustomerFeatureCharts groups={analysis.data.groups} onDrill={(metric,bucket)=>open(metric,'客户分组 · '+bucket,{bucket})}/>}
+        {analysis.data?.groups&&<CustomerFeatureCharts groups={analysis.data.groups} onDrill={(metric,bucket)=>open(metric,'客户分组 · '+(featureLabels[{country:'intended_country',education:'education_level',project:'intended_project',channel:'source_channel'}[metric]]?.[bucket]||bucket),{bucket})}/>}
         <DepartmentChart rows={data.departments||[]} onDrill={openDepartment}/>
         <DistributionChart title="客户跟进分析" counts={data.follow_ups||{}} labels={followLabels}
           summary={'周期内记录 '+countSum(data.follow_ups||{})+' 次跟进'} drill={bucket=>open('follow_up','跟进方式 · '+(followLabels[bucket]||bucket),{bucket})}/>
-        {!!data.departments?.length&&<Card title="分部门经营明细"><Table rowKey={row=>row.department??'missing'} pagination={false} scroll={{x:500}}
-          dataSource={data.departments} columns={[
-            {title:'部门',render:(_,row)=>row.department||'未填写部门'},
-            {title:'新增线索',render:(_,row)=>departmentCount(row.department,'new',row.new)},
-            {title:'已记录签约',render:(_,row)=>departmentCount(row.department,'signed',row.signed)},
-            {title:'已记录流失',render:(_,row)=>departmentCount(row.department,'lost',row.lost)},
-          ]}/></Card>}
       </>}
     </>}
     {!customer&&<OperationAnalysis kind={kind} start={range.start} end={range.end}/>}
@@ -184,11 +175,15 @@ function OperationBoard({kind}: {kind:'customers'|'complaints'}) {
       <Table<Row> rowKey={row=>row.record_id??row.id} loading={detail.isFetching} dataSource={detail.data?.items||[]} pagination={false}
         columns={[{title:'编号',dataIndex:'id'},{title:customer?'客户':'投诉',render:(_,row)=>row.customer_name||row.title||'—'},
           {title:'状态',render:(_,row)=>statuses[row.status]||row.status},
-          ...(['country','education','project'].includes(selection?.metric||'')?[{title:'客户特征',render:(_:unknown,row:Row)=>[row.intended_country,row.education_level,row.intended_project].filter(Boolean).join(' · ')}]:[]),
+          ...(['country','education','project'].includes(selection?.metric||'')?[{title:'客户特征',render:(_:unknown,row:Row)=>[
+            featureLabels.intended_country[row.intended_country||'']||row.intended_country,
+            featureLabels.education_level[row.education_level||'']||row.education_level,
+            featureLabels.intended_project[row.intended_project||'']||row.intended_project,
+          ].filter(Boolean).join(' · ')}]:[]),
           {title:'时间（北京时间）',render:(_,row)=>(row.occurred_at||row.create_time||'').replace('T',' ')},
           ...(selection?.metric==='follow_up'?[{title:'跟进方式',render:(_:unknown,row:Row)=>followLabels[row.follow_type||'']||row.follow_type||'—'}]:
             customer?[{title:'渠道 / 原因',render:(_:unknown,row:Row)=>[row.source_channel,row.reason].filter(Boolean).join(' · ')||'—'}]:
-              [{title:'分类',render:(_:unknown,row:Row)=>row.category?.trim()||'未分类'},
+              [{title:'分类',render:(_:unknown,row:Row)=>complaintCategoryLabels[row.category?.trim()||'']||row.category?.trim()||'未分类'},
                {title:'满意度',render:(_:unknown,row:Row)=>row.satisfaction??'—'}]),
         ]}/>
       <Pages offset={offset} more={detail.data?.has_more} move={setOffset}/>

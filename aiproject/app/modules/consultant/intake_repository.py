@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.modules.visitor.models import VisitorAccount
+from app.modules.events.models import EventLecture, EventRegistration
 
 from .models import CrmLead, VisitorCall, VisitorIntake
 
@@ -49,6 +50,21 @@ def calls(db: Session, visitor_id: int, before_id: int | None, limit: int) -> li
     if before_id is not None:
         query = query.where(VisitorCall.id < before_id)
     return list(db.scalars(query.order_by(VisitorCall.id.desc()).limit(limit)))
+
+
+def reservations(db: Session, visitor_id: int, advisor_id: int, before_id: int | None, limit: int):
+    query = select(
+        EventRegistration.id, EventRegistration.event_id, EventLecture.event_name,
+        EventLecture.start_time, EventLecture.end_time, EventLecture.location,
+        EventLecture.status.label("event_status"), EventRegistration.status,
+        EventRegistration.create_time.label("reserved_at"), EventRegistration.cancelled_at,
+        EventRegistration.attended_at,
+    ).join(EventLecture, EventLecture.id == EventRegistration.event_id).join(
+        VisitorIntake, VisitorIntake.visitor_id == EventRegistration.customer_id,
+    ).where(VisitorIntake.visitor_id == visitor_id, VisitorIntake.advisor_id == advisor_id)
+    if before_id is not None:
+        query = query.where(EventRegistration.id < before_id)
+    return db.execute(query.order_by(EventRegistration.id.desc()).limit(limit)).mappings().all()
 
 
 def call_history(db: Session, visitor_id: int):

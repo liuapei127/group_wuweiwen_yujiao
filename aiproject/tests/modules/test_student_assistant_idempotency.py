@@ -108,6 +108,8 @@ def test_concurrent_replays_share_execution_and_keep_other_turns_independent(mon
 
 
 def test_dify_failure_after_callback_reuses_the_existing_business_result(monkeypatch):
+    from app.core.config import Settings
+    monkeypatch.setattr("app.core.config.get_settings", lambda: Settings(_env_file=None, stu_assistant_mode="legacy"))
     cache = ReplayCache()
     calls = []
     stored = []

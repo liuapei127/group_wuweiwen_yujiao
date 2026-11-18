@@ -14,12 +14,14 @@ def create_todo(body, db, p):
 
 
 def list_todos(due_only, limit, db, p):
-    return TodoRepository(db).list_todos(p.employee_id, due_only, now_naive(), limit)
+    return TodoRepository(db).list_todos(p, due_only, now_naive(), limit)
 
 
 def finish_todo(todo_id, body, db, p):
     repo = TodoRepository(db)
     old = require_owned(repo.get(todo_id), p.employee_id, "assignee_id")
+    if old["related_type"] in ("student_admin_service", "student_feedback_ticket"):
+        raise BusinessError(409, "请到来源事项完成请假审批或反馈处理，待办将自动同步")
     transitions = {"pending": {"in_progress", "done", "cancelled"}, "in_progress": {"done", "cancelled"}, "done": set(), "cancelled": set()}
     if old["status"] != body.expected_status or body.status not in transitions[old["status"]]:
         raise BusinessError(409, "待办状态冲突")
@@ -33,4 +35,4 @@ def finish_todo(todo_id, body, db, p):
 
 
 def notifications(limit, db, p):
-    return TodoRepository(db).list_notifications(p.employee_id, limit)
+    return TodoRepository(db).list_notifications(p, limit)

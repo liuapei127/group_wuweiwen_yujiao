@@ -6,6 +6,7 @@ from app.modules.consultant import customer_service
 from app.modules.profile.dify_workflow import ReviewPreview
 from app.modules.profile.portrait import (
     DE_TRAITS, PORTRAIT_KEYS, SG_TRAITS, merge_observations, person_updates, portrait_findings, screening_document,
+    with_portrait_gaps,
 )
 
 
@@ -43,10 +44,47 @@ def test_screening_uses_the_saved_portrait():
     notes = portrait_findings("de_vocational", values)
 
     assert any("28岁" in note and "高中，已毕业" in note for note in notes)
-    assert any("移民需求" in note and "学习态度" in note for note in notes)
     assert any("德语 B1" in note for note in notes)
     assert any("留学意愿偏低" in note for note in notes)
     assert portrait_findings("sg_hospitality", values)[0].startswith("画像已记录")
+
+
+def test_screening_response_lists_all_missing_fields_from_original_snapshot():
+    from types import SimpleNamespace
+
+    values = dict.fromkeys(PORTRAIT_KEYS, "已记录")
+    values.update(education="大专", admission=None, family_support="  ", immigration=None, learning_attitude=None)
+    snapshot = screening_document(
+        "U_002", {"gender": "女", "education_stage": "graduated", "intended_major": "机械"},
+        values, project_label="新加坡专升本",
+    )
+    result = {"status": "potential_match", "findings": ["初筛通过。", "画像还没有这些属性：入学能力。"]}
+    row = SimpleNamespace(id=1, profile_version=2, background_info={
+        "screening": result, "input_snapshot": snapshot,
+    })
+
+    response = customer_service._screening_response(row, current_version=3)
+
+    assert response["stale"]
+    assert response["result"]["findings"] == (
+        "初筛通过。", "画像还没有这些属性：年龄、入学能力、移民需求、家庭支持、学习态度。",
+    )
+    assert result["findings"] == ["初筛通过。", "画像还没有这些属性：入学能力。"]
+
+
+def test_filled_snapshot_does_not_report_missing_attributes():
+    values = dict.fromkeys(PORTRAIT_KEYS, "已记录")
+    values["education"] = "高中"
+    snapshot = screening_document("U_002", {
+        "age": 0, "gender": "女", "education_stage": "graduated", "intended_major": "机械",
+    }, values, project_label="德国双元制")
+
+    assert with_portrait_gaps(("初筛通过。",), snapshot) == ("初筛通过。",)
+
+
+def test_german_requirement_is_reported_when_other_languages_are_recorded():
+    notes = portrait_findings("de_vocational", {"language_ability": "英语：雅思 6"})
+    assert any("尚未记录德语水平" in note for note in notes)
 
 
 def test_visitor_chat_respects_subject_and_negation():

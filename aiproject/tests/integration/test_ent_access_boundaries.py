@@ -128,6 +128,8 @@ def test_leave_command_requires_decision_and_unique_target(env):
     assert c.post("/api/v1/enterprise/commands",json=cmd).status_code==400
     assert db.get(StudentAdminService,1).status=="pending"
     cmd["params"]["decision"]="rejected"
+    assert c.post("/api/v1/enterprise/commands",json=cmd).status_code==422
+    cmd["params"]["approval_comment"]="请补充说明后重新申请"
     assert c.post("/api/v1/enterprise/commands",json=cmd).status_code==200
     assert db.get(StudentAdminService,1).status=="rejected"
     assert db.get(StudentAdminService,2).status=="pending"

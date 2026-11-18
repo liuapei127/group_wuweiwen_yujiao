@@ -15,7 +15,7 @@ ACTIVE = ("collecting", "awaiting_confirmation")
 LABELS = {"leave_type": "假别", "start_time": "开始时间（北京时间）", "end_time": "结束时间（北京时间）",
           "reason": "事由", "ticket_type": "反馈方式", "category": "所属业务", "content": "具体内容"}
 VALUES = {"sick": "病假", "personal": "事假", "emergency": "紧急事由", "complaint": "正式投诉",
-          "suggestion": "建议", "learning": "学习相关，按现有规则交老师", "company": "公司相关，按现有规则交主管"}
+          "suggestion": "建议", "learning": "学习事务，交班主任处理", "company": "交主管处理（不展示给班主任）"}
 
 
 def view(row):
@@ -37,6 +37,8 @@ def validate(kind, payload):
 
 
 def save_draft(db, sid, cid, kind, payload, expected):
+    if kind == "feedback" and feedback.personnel_complaint(payload.get("content", "")):
+        payload = {**payload, "category": "company"}
     if repo.conversation(db, sid, cid, lock=True) is None:
         raise BusinessError(404, "对话不存在")
     current = repo.latest_task(db, sid, cid, active=True, lock=True)

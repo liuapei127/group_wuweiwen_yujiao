@@ -1,4 +1,5 @@
 from typing import Annotated
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import StringConstraints
@@ -11,8 +12,26 @@ from app.modules.consultant.errors import ConflictError
 from app.modules.student_admin.schemas import LeaveApprove, LeaveOut
 from app.modules.student_admin.service import StudentAdminServiceLayer
 from .attachments import teacher_download, teacher_leave
+from app.core.security.authorization import require_permission
+from .repository import StudentAdminRepository
 
 router = APIRouter(prefix="/api/v1/student-admin", tags=["企业助手-学生行政（共用表）"])
+
+
+@router.get("/leaves", summary="本人请假审批与处理记录")
+def assigned_leaves(
+    status: Literal["pending", "approved", "rejected", "cancelled"] | None = None,
+    before_id: int | None = Query(default=None, ge=1), limit: int = Query(default=100, ge=1, le=100),
+    db: Session = Depends(get_db), principal: EmployeePrincipal = Depends(require_employee),
+):
+    require_permission(principal, "leaves:read")
+    return success(StudentAdminServiceLayer(db).assigned_leaves(principal.employee_id, status, before_id, limit))
+
+
+@router.get("/leaves/{leave_id}/history")
+def leave_history(leave_id: int, db: Session = Depends(get_db), principal: EmployeePrincipal = Depends(require_employee)):
+    teacher_leave(db, principal, leave_id)
+    return success(StudentAdminRepository(db).history(leave_id))
 
 
 @router.get("/leaves/{leave_id}/attachment")
@@ -26,6 +45,7 @@ def pending_leaves(
     db: Session = Depends(get_db),
     principal: EmployeePrincipal = Depends(require_employee),
 ):
+    require_permission(principal, "leaves:read")
     if approver_id is not None and approver_id != principal.employee_id:
         return fail("无权查询他人审批列表", code=403)
     items = StudentAdminServiceLayer(db).pending_leaves(principal.employee_id)
@@ -43,7 +63,7 @@ def leave_candidates(
 
 @router.get("/leaves/{leave_id}")
 def leave_record(leave_id: int, db: Session = Depends(get_db), principal: EmployeePrincipal = Depends(require_employee)):
-    return success(LeaveOut.model_validate(teacher_leave(db, principal, leave_id)))
+    return success(StudentAdminServiceLayer(db).leave_output(teacher_leave(db, principal, leave_id)))
 
 
 @router.post("/leaves/{leave_id}/approve", summary="请假审批（写操作）ENT-09/12")
@@ -53,6 +73,7 @@ def approve_leave(
     db: Session = Depends(get_db),
     principal: EmployeePrincipal = Depends(require_employee),
 ):
+    require_permission(principal, "leaves:approve")
     if payload.approver_id is None:
         payload = payload.model_copy(update={"approver_id": principal.employee_id})
     if payload.approver_id != principal.employee_id:

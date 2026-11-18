@@ -208,6 +208,69 @@ def article_matches(row, query):
                for faq in (row.get("details") or {}).get("faqs", []))
 
 
+def _reviewed_steps(faq, details, intent, category):
+    """Keep article-level legacy steps only when they match the requested facet."""
+    explicit = faq.get("steps")
+    candidates = explicit if isinstance(explicit, list) else details.get("steps", [])
+    if not isinstance(candidates, list):
+        return []
+    topics = _topics(intent, category)
+    facet = topics[0] if topics else ""
+    transport_facets = {
+        "payment": r"票|卡|支付|付款|余额|扣费|费用|感应|钱包|刷|注册|SimplyGo",
+        "tap": r"卡|感应|刷|进站|出站|上车|下车|记录",
+        "validation": r"票|激活|打票|验证|验票|查验|闸机",
+        "route": r"路线|方向|换乘|时刻|站点|运营|出发|目的地",
+        "fare_problem": r"扣费|退款|行程|记录|核对|卡|支付",
+        "student": r"学生|学期|资格|优惠|票|适用",
+        "ticket_scope": r"票|适用|覆盖|范围|区域|时段|ICE|IC|EC",
+    }
+    result = []
+    for step in candidates:
+        if not isinstance(step, str) or not step.strip():
+            continue
+        step = step.strip()
+        step_category = _category(step)
+        if step_category and step_category != category:
+            continue
+        # Explicit FAQ steps have already been scoped to that one question.
+        if not isinstance(explicit, list) and category == "transport":
+            cue = transport_facets.get(facet)
+            if cue and not re.search(cue, step, re.I):
+                continue
+            bus = bool(re.search(r"公交|巴士", intent))
+            rail = bool(re.search(r"地铁|mrt|u-bahn|s-bahn", intent, re.I))
+            if bus and not rail and re.search(r"地铁|MRT|轨道", step, re.I) and not re.search(r"公交|巴士", step):
+                continue
+            if rail and not bus and re.search(r"公交|巴士|下车铃", step) and not re.search(r"地铁|MRT|轨道", step, re.I):
+                continue
+        if step not in result:
+            result.append(step)
+    return result[:8]
+
+
+def _full_content(row):
+    full = row["answer"]
+    # A modern FAQ with distinct full/short forms is already its own complete guide.
+    if not row.get("has_short_answer") or full == row["short_answer"] or row.get("faq_steps"):
+        steps = [step for step in row.get("steps", []) if step not in full]
+        if steps:
+            full += "\n\n" + "\n".join(f"{i}. {step}" for i, step in enumerate(steps, 1))
+    return full
+
+
+def _detail_question(intent, country):
+    # Continue the student's actual request, not the retrieved FAQ's narrower title.
+    question = re.sub(r"^(?:德国|新加坡|Germany|Singapore)[：:]\s*", "", intent, flags=re.I)
+    subject = _subject(question, _category(question))
+    if subject and question.startswith(COUNTRIES[country] + subject + "："):
+        question = question[len(COUNTRIES[country]):]
+    question = re.sub(r"^(?:只用一句话|用一句话|一句话)(?:告诉我|说明|说说)?[，,:：\s]*", "", question)
+    question = re.sub(r"(?:请)?(?:简短|简洁|精简|简要|简单说|简单一点|简单点|短一点|短点|太长|别说这么多|不要这么多|不要这么长|少一点)(?:回答|说明|告诉我)?[，,:：\s]*", "", question)
+    question = re.sub(r"[，,；;\s]*(?:请)?(?:详细说明|详细说说|展开说明|展开|完整步骤)[。！!\s]*$", "", question)
+    return COUNTRIES[country] + "：" + question.strip() + "，请详细说明"
+
+
 def retrieve(db, country, query, limit=3, threshold=0.2, *, intent_query=None):
     if country not in COUNTRIES:
         return []
@@ -245,6 +308,8 @@ def retrieve(db, country, query, limit=3, threshold=0.2, *, intent_query=None):
             records.append({"key": country + "/" + row["category"] + "/" + str(index), "rank": rank,
                 "score": score, "question": faq["question"], "answer": faq["answer"],
                 "short_answer": faq.get("short_answer") or faq["answer"], "title": row["title"],
+                "has_short_answer": bool(faq.get("short_answer")), "faq_steps": bool(faq.get("steps")),
+                "steps": _reviewed_steps(faq, details, intent, row["category"]),
                 "category": row["category"], "topic": topic, "scope": faq.get("scope") or details.get("scope"),
                 "source_title": faq.get("source_title") or row.get("source_title"),
                 "source_url": faq.get("source_url") or row.get("source_url"),
@@ -262,7 +327,7 @@ def external_retrieval(db, body, token):
         return {"records": []}
     rows = retrieve(db, body.knowledge_id, body.query, body.retrieval_setting.top_k, body.retrieval_setting.score_threshold)
     return {"records": [{"title": row["question"],
-        "content": f"知识编号：{row['key']}\n适用地区：{COUNTRIES[row['country']]}\n问题：{row['question']}\n答案：{row['answer']}\n来源：{row['source_title']} {row['source_url']}\n核对日期：{row['verified_at']}",
+        "content": f"知识编号：{row['key']}\n适用地区：{COUNTRIES[row['country']]}\n问题：{row['question']}\n答案：{_full_content(row)}\n来源：{row['source_title']} {row['source_url']}\n核对日期：{row['verified_at']}",
         "score": row["score"], "metadata": {"knowledge_key": row["key"], "country": row["country"], "source_url": row["source_url"]}} for row in rows]}
 
 
@@ -300,8 +365,10 @@ def answer(db, country, query, evidence_ids=(), *, original_query=None, history=
                 selected.append(row)
             if len(selected) == 2:
                 break
-    content_key = "answer" if resolved["detailed"] else "short_answer"
-    parts = [row[content_key] for row in selected]
+    parts = [_full_content(row) if resolved["detailed"] else row["short_answer"] for row in selected]
+    has_detail = any(_full_content(row) != row["short_answer"] for row in selected)
+    if resolved["detailed"] and not has_detail:
+        parts = ["这条资料目前没有更多经过核对的操作步骤。已核实的说明是：" + parts[0]]
     if resolved["concise"]:
         # The curated short form retains conditions; do not truncate arbitrary facts.
         parts = [re.sub(r"[。！？]\s*(?=.)", "；", parts[0]).replace("\n", "").strip()]
@@ -314,7 +381,13 @@ def answer(db, country, query, evidence_ids=(), *, original_query=None, history=
         {"label": "核对日期", "value": main["verified_at"]}],
         "source_url": main["source_url"], "sources": sources}
     # A detail request is an optional continuation, never additional unsolicited prose.
-    detail_query = COUNTRIES[country] + "：" + main["question"] + "，请详细说明"
+    detail_query = _detail_question(intent, country)
+    evidence = {"kind": "knowledge", "question": intent, "country": country,
+                "depth": "detailed" if resolved["detailed"] else "brief",
+                "records": [{key: row.get(key) for key in
+                    ("key", "question", "answer", "short_answer", "steps", "scope",
+                     "source_title", "source_url", "verified_at", "country")} for row in selected]}
     return {"intent": "ask", "facts_kind": "public_knowledge", "reply": reply, "cards": [card],
             "knowledge_keys": [row["key"] for row in selected],
-            "choices": [] if resolved["detailed"] else [{"label": "查看详细步骤", "query": detail_query}]}
+            "reply_evidence": evidence,
+            "choices": [] if resolved["detailed"] or not has_detail else [{"label": "查看详细步骤", "query": detail_query}]}

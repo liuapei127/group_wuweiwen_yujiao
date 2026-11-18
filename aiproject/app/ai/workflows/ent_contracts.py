@@ -87,6 +87,9 @@ def plan(text, query, pending=''):
         out['reply']='这是功能咨询或暂不支持的操作，没有调用业务接口。可查询客户、日报、组织、指南、成绩、请假、工单、待办及通知；写操作需要确认。';return out
     method,template,required,allowed=ACTIONS[intent]
     params={k:v for k,v in action.get('params',{}).items() if v is not None}
+    if intent=='todo_create' and isinstance(params.get('priority'),str):
+        priority=params['priority'].strip()
+        params['priority']={'低':'low','普通':'medium','中':'medium','中等':'medium','高':'high','紧急':'urgent'}.get(priority,priority)
     if set(params)-set(allowed.split()):
         out['reply']='包含不支持的字段或身份参数；员工身份只能由后端可信认证提供。未执行。';return out
     if not confirmed and method!='get' and intent not in READ_POST and re.search(r'不要|别执行|先不|暂不|是否支持|能否|如何|怎么|只是咨询',query or ''):
@@ -115,6 +118,8 @@ def plan(text, query, pending=''):
         elif not confirmed and name not in (query or ''):
             params.pop('customer_name',None)
     needed=required.split()+(['leave_id'] if intent=='leave_approve' else [])
+    if intent=='leave_approve' and params.get('decision')=='rejected' and not str(params.get('approval_comment') or '').strip():
+        needed.append('approval_comment')
     missing=[k for k in needed if k not in params or params[k]=='']
     if missing:
         out['reply']='请补充：'+', '.join(missing)+'。未调用接口。'

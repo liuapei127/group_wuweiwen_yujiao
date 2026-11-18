@@ -21,8 +21,8 @@ def for_task(kind, payload, status):
             {"label":"提出建议","description":"希望提出改进意见","query":"提建议"}]}
     if not payload.get("category"):
         return {"kind":"choice","question":"这件事主要和哪方面有关？","step":2,"total":4,"choices":[
-            {"label":"课程与学习","description":"课程、教学或学习管理","query":"学习相关"},
-            {"label":"公司服务","description":"合同、收费或顾问服务","query":"公司相关"},
+            {"label":"学习事务，交班主任","description":"课程、教学或学习安排","query":"学习相关"},
+            {"label":"交主管处理","description":"合同、收费、人员服务或投诉班主任；不展示给班主任","query":"公司相关，交主管处理"},
             {"label":"我不确定","description":"先一起梳理，不急着选","query":"不确定反馈分类，先帮我分析"}]}
     return {"kind":"text","question":"可以说说具体发生了什么吗？涉及的时间和情况有助于后续核对。","step":3,"total":4,"field":"content","suggested_text":payload.get("_context", ""),"placeholder":"说说发生的事情，以及你希望如何改进"}
 
@@ -37,7 +37,7 @@ def explicit_feedback(text):
 def support(text, history=(), task=None):
     choices=[]
     if "不确定反馈分类" in text:
-        return {"reply":"我们先分清这件事。课程、教学和学习管理属于学习相关；合同、收费或顾问服务属于公司服务。如果仍不确定，可以具体说说涉及谁、发生了什么，再决定是否反馈。",
+        return {"reply":"课程和学习安排可以交班主任处理；合同、收费、人员服务，以及对班主任本人的投诉交主管处理，不展示给班主任。如果仍不确定，可以先说说涉及谁、发生了什么，再决定。",
             "intent":"support","choices":[{"label":"课程与学习","query":"学习相关"},{"label":"公司服务","query":"公司相关"}] if task else []}
     if any(word in text for word in ("环境","卫生","噪音","太吵","宿舍","设施")):
         reply="具体是哪方面最影响你，卫生、噪音还是设施？你可以先说说，我们一起看看有什么办法。"

@@ -291,3 +291,40 @@ for (const reader of ['visitor', 'employee']) {
     await expect(textDialog.getByRole('link', {name: '下载原件'})).toHaveCount(0)
   })
 }
+
+
+test('screening portrait findings display one field per row without losing internal punctuation', async ({page}) => {
+  await page.addInitScript(() => sessionStorage.setItem('ent-token', 'portrait-format-test'))
+  await page.route('**/api/v1/**', route => {
+    const url = new URL(route.request().url())
+    const reply = (data: unknown) => route.fulfill({json: {code: 0, data}})
+    if (url.pathname.endsWith('/auth/me')) return reply({id: 10, real_name: '测试顾问', role_code: 'advisor',
+      role_name: '顾问', permissions: ['crm:read'], student_ids: []})
+    if (url.pathname.endsWith('/profile')) {
+      if (url.searchParams.has('watch_version')) return route.fulfill({contentType: 'text/event-stream',
+        body: 'event: result\ndata: {"data":{"changed":false}}\n\n'})
+      return reply({version: 1, customer_name: '格式测试客户', age: 18,
+        readiness: {ready: true, missing_fields: []}, screening: {id: 12, version: 1, stale: false,
+          result: {status: 'potential_match', findings: [
+            '请补充材料；再安排沟通。',
+            '画像已记录年龄：18岁；学历：中职或同等学历，已毕业；国内范围：江苏苏州；家庭经济状况：家庭年收入50—80万元，重视课程质量；升学需求：完成语言学习后申请适合自身背景的海外学习项目；就业需求：关注实践训练、行业发展和毕业后的就业方向；语言能力：英语：雅思6分；日语：N2；政策关注度：关注签证申请材料与毕业后就业政策，申请前需再次核实。',
+          ]}, ai: {state: 'ready', recommendation: '先核对语言成绩。\n再安排下一次沟通。', talk_track: '您好，请提供语言成绩。'}}})
+    }
+    return reply({lead: {id: 10, customer_name: '格式测试客户', status: 'contacting'}, follow_ups: []})
+  })
+  await page.goto('/customers/10')
+  const portrait = page.getByRole('region', {name: '已记录画像', exact: true})
+  await expect(portrait.locator('dt')).toHaveText(['年龄','学历','国内范围','家庭经济状况','升学需求','就业需求','语言能力','政策关注度'])
+  await expect(portrait.locator('dd').nth(3)).toHaveText('家庭年收入50—80万元，重视课程质量')
+  await expect(portrait.locator('dd').nth(6)).toHaveText('英语：雅思6分；日语：N2')
+  await expect(portrait.locator('dd').last()).toHaveText('关注签证申请材料与毕业后就业政策，申请前需再次核实。')
+  await expect(page.locator('.customer-screening-result').getByText('请补充材料；再安排沟通。', {exact: true})).toBeVisible()
+  await expect(page.getByText('先核对语言成绩。\n再安排下一次沟通。', {exact: true})).toHaveCSS('white-space', 'pre-wrap')
+  const first = await portrait.locator('dd').first().boundingBox()
+  const second = await portrait.locator('dd').nth(1).boundingBox()
+  expect(second!.y).toBeGreaterThan(first!.y + first!.height)
+  await page.setViewportSize({width: 390, height: 844})
+  await expect(portrait).toBeVisible()
+  const mobile = await portrait.boundingBox()
+  expect(mobile!.width).toBeLessThanOrEqual(390)
+})

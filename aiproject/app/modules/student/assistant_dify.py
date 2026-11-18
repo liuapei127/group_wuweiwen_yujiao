@@ -135,7 +135,7 @@ async def understand(*, query, history, context, task, memories, user_key, count
 
 async def stream_reply(*, query, context, history, memories, user_key, country,
                        reviewed_reply, kind, on_text, first_content_timeout=None, overall_timeout=None,
-                       safety_context=None, initial_prefix=""):
+                       safety_context=None, initial_prefix="", reply_evidence=None):
     """A separate read-only generation phase in the same application.
 
     The Answer node points directly at its LLM so Dify forwards real upstream
@@ -143,7 +143,15 @@ async def stream_reply(*, query, context, history, memories, user_key, country,
     """
     from .assistant_reply_stream import ReplyGate, StudentReplyInterrupted
     gate = ReplyGate(kind=kind, reviewed_reply=reviewed_reply, query=query, history=history, on_text=on_text,
-                     safety_context=safety_context, initial_prefix=initial_prefix)
+                     safety_context=safety_context, initial_prefix=initial_prefix, reply_evidence=reply_evidence)
+    model_context=context
+    model_memories=memories
+    if kind=="student_fact" and reply_evidence:
+        model_context={"profile":reply_evidence.get("fields",{}),"notes":"只包含本轮所需资料；称呼偏好不修改正式姓名"}
+        model_memories=reply_evidence.get("self_reports",[])
+    elif kind=="grounded_knowledge":
+        model_context={"profile":{"abroad_country":country},"notes":"资料适用国家不是实时定位"}
+        model_memories=[]
     settings = get_settings()
     key = settings.stu_dify_api_key.get_secret_value().strip()
     if not key:
@@ -155,8 +163,9 @@ async def stream_reply(*, query, context, history, memories, user_key, country,
             "response_stage": "reply", "country": country or "",
             "reply_context_json": json.dumps({
                 "kind": kind, "reviewed_reply": reviewed_reply,
-                "student_context": context, "recent_user_context": history,
-                "self_reported_memories": memories,
+                "student_context": model_context, "recent_user_context": history,
+                "self_reported_memories": model_memories,
+                "reply_evidence": reply_evidence,
                 "safety_context": safety_context or {}, "initial_prefix": initial_prefix,
                 "response_instructions": {
                     "continue_after_prefix": bool(initial_prefix),

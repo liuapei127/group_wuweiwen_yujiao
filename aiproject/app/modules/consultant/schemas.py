@@ -123,6 +123,20 @@ class VisitorCallOut(BaseModel):
     recorded_at: datetime
 
 
+class VisitorReservationOut(BaseModel):
+    id: int
+    event_id: int
+    event_name: str
+    start_time: datetime
+    end_time: datetime | None
+    location: str | None
+    event_status: str
+    status: str
+    reserved_at: datetime
+    cancelled_at: datetime | None
+    attended_at: datetime | None
+
+
 class VisitorLeadCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 

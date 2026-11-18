@@ -206,6 +206,8 @@ function useStudentRecords<RecordType, Fields>(request: Request, kind: 'leaves' 
   const history = useQuery({
     queryKey: [...key, beforeId],
     queryFn: () => request<RecordType[]>(url + '?limit=' + pageSize + (beforeId ? '&before_id=' + beforeId : '')),
+    refetchOnWindowFocus: true,
+    refetchInterval: 30000,
   })
   const submit = useMutation({
     mutationFn: (values: Fields) => request<RecordType>(url, 'POST', values),
@@ -284,8 +286,9 @@ function Complaints({request}: {request: Request}) {
         <Form.Item label="反馈方式" name="ticket_type" initialValue="complaint"><select className="ant-input"><option value="complaint">正式投诉</option><option value="suggestion">提出建议</option></select></Form.Item>
         <Form.Item label="反馈类别" name="category" rules={[{required: true}]}>
           <select className="ant-input"><option value="">请选择</option>
-            <option value="learning">学习相关（交老师处理）</option><option value="company">公司相关（交主管处理）</option></select>
+            <option value="learning">学习事务（交班主任处理）</option><option value="company">服务或人员投诉（交主管，含投诉班主任）</option></select>
         </Form.Item>
+        <Alert type="info" showIcon title="对班主任本人的投诉请选择主管处理。主管受理的内容不会展示给班主任。" style={{marginBottom: 16}}/>
         <Form.Item label="标题" name="title"><Input maxLength={255}/></Form.Item>
         <Form.Item label="反馈内容" name="content" rules={[{required: true, whitespace: true}]}><Input.TextArea maxLength={10000}/></Form.Item>
         <Button type="primary" htmlType="submit" loading={submit.isPending}>提交反馈</Button>

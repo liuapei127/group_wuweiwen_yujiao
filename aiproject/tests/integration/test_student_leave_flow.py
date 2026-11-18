@@ -4,6 +4,7 @@ from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import BusinessError
+from app.modules.auth.models import audit_log
 from app.modules.student_admin.models import StudentAdminService, SysUser
 from app.modules.student_admin.schemas import LeaveApprove, StudentLeaveCreate
 from app.modules.student_admin.service import StudentAdminServiceLayer
@@ -15,7 +16,7 @@ from app.modules.todo.models import notification_log, todo_item
 def db():
     engine = create_engine("sqlite://")
     with engine.begin() as conn:
-        for table in (SysUser.__table__, StudentAdminService.__table__, todo_item, notification_log):
+        for table in (SysUser.__table__, StudentAdminService.__table__, todo_item, notification_log, audit_log):
             table.create(conn)
         conn.execute(text("CREATE TABLE student_info (user_id INTEGER, class_teacher_id INTEGER)"))
         conn.execute(text("INSERT INTO student_info VALUES (1, 3)"))

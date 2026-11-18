@@ -165,6 +165,7 @@
 .assistant-message--sent .assistant-chat-bubble::before { left: auto; right: -4px; }
 .assistant-message-error { display: block; margin-top: 4px; color: #a33733; font-size: 12px; }
 .assistant-typing { color: var(--chat-muted); font-size: 13px; }
+.assistant-streaming { display: block; margin-top: 4px; color: var(--chat-muted); font-size: 12px; }
 
 .assistant-welcome { margin: clamp(20px, 6vh, 62px) auto 12px; max-width: 530px; text-align: center; }
 .assistant-welcome h2 { margin: 11px 0 19px; font-size: 18px; font-weight: 650; }

@@ -189,6 +189,9 @@ async function visitorApi<T>(path: string, token: string, method = 'GET', body?:
 }
 
 export function Visitor() {
+  const [loginForm] = Form.useForm<Credentials>()
+  const localStudentTest = import.meta.env.DEV && ['127.0.0.1', 'localhost', '[::1]'].includes(window.location.hostname)
+    && import.meta.env.VITE_STUDENT_TEST_USERNAME && import.meta.env.VITE_STUDENT_TEST_PASSWORD
   const [token, setToken] = useState(() => sessionStorage.getItem(storageKey) || '')
   const [chatKey, setChatKey] = useState(() => token ? registeredChatKey() : guestChatKey)
   const current = useLocation()
@@ -425,7 +428,10 @@ export function Visitor() {
       keyboard={!authBusy}
       mask={{closable: !authBusy}}
     >
-      <Form<Credentials> key={String(register)} name="website-auth" layout="vertical" onFinish={v => void signIn(v)}>
+      <Form<Credentials> form={loginForm} key={String(register)} name="website-auth" layout="vertical" onFinish={v => void signIn(v)}>
+        {!register && localStudentTest && <Button type="dashed" block disabled={authBusy} style={{marginBottom: 16}}
+          onClick={() => loginForm.setFieldsValue({username: import.meta.env.VITE_STUDENT_TEST_USERNAME,
+            password: import.meta.env.VITE_STUDENT_TEST_PASSWORD})}>填入学生测试账号</Button>}
         {register && <Form.Item label="昵称" name="nickname"
           rules={[{required: true, whitespace: true, message: '请输入昵称'}]}>
           <Input autoComplete="nickname" maxLength={64}/>

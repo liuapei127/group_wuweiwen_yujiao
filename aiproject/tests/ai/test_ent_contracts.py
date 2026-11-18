@@ -101,3 +101,25 @@ def test_formal_report_uses_archive_id_after_confirmation():
     assert plan('', '确认', draft['pending'])['call_api']
     reply = format_result(200, '{"code":0,"data":{"archive_id":321}}', 'formal_report')['reply']
     assert '已归档（编号 321）' in reply
+
+
+def test_leave_rejection_collects_reason_before_confirming_a_write():
+    missing=plan(action('leave_approve',leave_id=23,decision='rejected'),'拒绝请假23')
+    assert not missing['call_api'] and 'approval_comment' in missing['reply']
+    assert json.loads(missing['pending'])['state']=='collect'
+    valid=plan(action('leave_approve',leave_id=23,decision='rejected',approval_comment='请补充材料'),'拒绝请假23，原因请补充材料')
+    assert json.loads(valid['pending'])['state']=='confirm'
+    assert plan('','确认',valid['pending'])['call_api']
+
+
+@pytest.mark.parametrize('label,expected',[('低','low'),('普通','medium'),('中','medium'),('中等','medium'),('高','high'),('紧急','urgent')])
+def test_chinese_todo_priority_is_validated_before_and_after_confirmation(label,expected):
+    draft=plan(action('todo_create',title='演讲准备',priority=label),'新增待办演讲准备，优先级'+label)
+    assert not draft['call_api']
+    pending=json.loads(draft['pending'])
+    assert pending['state']=='confirm' and pending['params']['priority']==expected
+    assert not plan('','取消',draft['pending'])['call_api']
+    saved=plan('','确认',draft['pending'])
+    assert saved['call_api'] and json.loads(saved['http_body'])['priority']==expected
+    pending['params']['priority']=label
+    assert json.loads(plan('','确认',json.dumps(pending))['http_body'])['priority']==expected

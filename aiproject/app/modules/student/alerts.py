@@ -28,6 +28,7 @@ _observation = table(
 class AlertOut(BaseModel):
     id: int
     student_id: int
+    student_name: str | None = None
     teacher_id: int | None
     risk_level: str
     status: str
@@ -44,7 +45,7 @@ class AlertUpdate(BaseModel):
 
 
 def _owned_query(principal: EmployeePrincipal):
-    return select(*(getattr(_alert.c, name) for name in AlertOut.model_fields)).where(
+    return select(*(getattr(_alert.c, name) for name in AlertOut.model_fields if name != 'student_name')).where(
         or_(_alert.c.teacher_id == principal.employee_id,
             and_(_alert.c.teacher_id.is_(None), _alert.c.status == "pending")),
         _alert.c.student_id.in_(principal.student_ids),
@@ -59,8 +60,9 @@ def list_alerts(db: Session, principal: EmployeePrincipal, before_id: int | None
         query = query.where(_alert.c.student_id == student_id)
     if before_id is not None:
         query = query.where(_alert.c.id < before_id)
-    rows = db.execute(query.order_by(_alert.c.id.desc()).limit(limit)).mappings()
-    return [AlertOut.model_validate(row) for row in rows]
+    rows = list(db.execute(query.order_by(_alert.c.id.desc()).limit(limit)).mappings())
+    names = StudentAdminRepository(db).student_names(row['student_id'] for row in rows)
+    return [AlertOut.model_validate({**row, 'student_name': names.get(row['student_id'])}) for row in rows]
 
 
 def follow_alert(db: Session, principal: EmployeePrincipal, alert_id: int, payload: AlertUpdate) -> AlertOut:
@@ -82,6 +84,7 @@ def follow_alert(db: Session, principal: EmployeePrincipal, alert_id: int, paylo
             resolved_time=now if payload.status != "following" else None,
         ))
         result = AlertOut.model_validate(db.execute(query.with_for_update()).mappings().one())
+        result = result.model_copy(update={'student_name': StudentAdminRepository(db).student_names([result.student_id]).get(result.student_id)})
         db.commit()
     except Exception:
         db.rollback()
@@ -113,6 +116,7 @@ def create_alert(db: Session, principal: EmployeePrincipal, payload: AlertCreate
         ))
         item = AlertOut(
             **payload.model_dump(), id=result.lastrowid, teacher_id=principal.employee_id, status="pending",
+            student_name=StudentAdminRepository(db).student_names([payload.student_id]).get(payload.student_id),
             follow_record=None, create_time=now,
         )
         db.commit()

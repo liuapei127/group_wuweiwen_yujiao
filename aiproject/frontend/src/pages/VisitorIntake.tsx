@@ -5,6 +5,7 @@ import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {useAuth} from '../auth'
 import {ErrorNotice, FormFields, PageTitle, type Field} from '../components/shared'
 import {CustomerImportDialog, useCustomerImport} from '../components/CustomerProfilePanel'
+import {VisitorReservations} from '../components/VisitorReservations'
 import {api, download, query} from '../lib/api'
 
 type Visitor = {visitor_id: number; registered_at: string; nickname?: string | null}
@@ -133,9 +134,12 @@ export function VisitorIntake() {
               {title: '联系方式', dataIndex: 'contact'},
               {title: '最近联系（北京时间）', dataIndex: 'last_contact_at',
                 render: value => value ? beijingTime(value) : <Tag>待联系</Tag>},
-              {title: '操作', render: (_, row) => row.crm_lead_id && can('crm:read')
-                ? <Link to={'/customers/' + row.crm_lead_id}>客户详情</Link>
-                : <Button type="link" onClick={() => openFollowup(row)}>查看跟进</Button>},
+              {title: '操作', render: (_, row) => <Space wrap>
+                {row.crm_lead_id && can('crm:read')
+                  ? <Link to={'/customers/' + row.crm_lead_id}>客户详情</Link>
+                  : <Button type="link" onClick={() => openFollowup(row)}>查看跟进</Button>}
+                <Button type="link" onClick={() => openFollowup(row)}>预约与签到</Button>
+              </Space>},
             ]}/>
         </>},
       ]}/>
@@ -292,6 +296,7 @@ function IntakeDetail({visitor, canWrite, scope, onUpdate}: {
       {key: 'contact', label: '联系方式', children: visitor.contact},
       {key: 'last', label: '最近联系（北京时间）', children: visitor.last_contact_at ? beijingTime(visitor.last_contact_at) : '待联系'},
     ]}/>
+    <VisitorReservations key={visitor.visitor_id} visitorId={visitor.visitor_id}/>
     <Card title="通话记录">
       {canWrite && <Form form={callForm} layout="vertical" onFinish={value => addCall.mutate(value.notes)}>
         <Form.Item label="沟通内容" name="notes" rules={[{required: true, whitespace: true}]}>

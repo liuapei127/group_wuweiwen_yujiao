@@ -23,9 +23,12 @@ def synchronize_source(db, source_type, source_id):
         old = repo.todo(source_type, source_id)
     values = {"source_status": marker}
     if active:
+        expected_todo_status = "in_progress" if status == "processing" else "pending"
         reactivated = old["source_status"] in ("approved", "rejected", "cancelled", "resolved", "closed", "missing", "unassigned")
-        if old["assignee_id"] != owner or reactivated:
-            values.update(assignee_id=owner, status="pending", completed_time=None, due_time=now, assignment_version=old["assignment_version"] + 1)
+        if old["assignee_id"] != owner or reactivated or old["status"] in ("done", "cancelled"):
+            values.update(assignee_id=owner, status=expected_todo_status, completed_time=None, due_time=now, assignment_version=old["assignment_version"] + 1)
+        elif old["status"] != expected_todo_status:
+            values.update(status=expected_todo_status, completed_time=None)
     else:
         terminal = "done" if valid and status in ("approved", "rejected", "resolved", "closed") else "cancelled"
         if old["status"] != terminal:

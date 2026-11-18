@@ -330,9 +330,10 @@ def test_staff_can_enroll_unlinked_visitor_and_keep_website_credentials(isolated
             db.execute(text("ALTER TABLE sys_user ADD COLUMN update_time DATETIME"))
             db.execute(text("CREATE TABLE student_info (user_id INTEGER UNIQUE, class_teacher_id INTEGER, abroad_country VARCHAR(64))"))
             db.execute(text("""CREATE TABLE overseas_life_knowledge (
-                id INTEGER PRIMARY KEY, country TEXT, category TEXT, title TEXT, content TEXT, status INTEGER
+                id INTEGER PRIMARY KEY, country TEXT, category TEXT, title TEXT, content TEXT, status INTEGER,
+                city TEXT, source_title TEXT, source_url TEXT, verified_at DATE, update_time DATETIME, details JSON
             )"""))
-            db.execute(text("""INSERT INTO overseas_life_knowledge VALUES
+            db.execute(text("""INSERT INTO overseas_life_knowledge (id,country,category,title,content,status) VALUES
                 (1, 'Germany', 'transport', '德国出行', '本地交通', 1),
                 (2, '新加坡', 'transport', '新加坡出行', '本地交通', 1),
                 (3, 'Germany', 'transport', '停用资料', '停用', 0)

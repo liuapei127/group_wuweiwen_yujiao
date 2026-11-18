@@ -16,7 +16,7 @@ type Count = {day:string;label:string;count:number}
 type Snapshot = WellbeingDistributionData & {period_start:string;period_end:string;eligible:number;participants:number|null;suppressed:boolean;
   emotion:Count[];stress:Count[];items:{status:string;risk_level:string;count:number}[]}
 type Archive = Snapshot & {archive_id:number;ai_summary?:string;review_status:string}
-type Case = {id:number;student_id:number;note:string;status:string;created_at:string;followups?:unknown[]}
+type Case = {id:number;student_id:number;student_name?:string|null;note:string;status:string;created_at:string;followups?:unknown[]}
 type Event = {id:number;day:string;title:string;note:string}
 type Checkin = {day:string;emotion:string;stress:string}
 type Panel = {version:string;description:string;granted:boolean;checkins:Checkin[]}
@@ -130,7 +130,7 @@ export function WellbeingBoard() {
     })}>新增个案</Button>}>
       <ErrorNotice error={cases.error||detail.error||careSuggestion.error}/>
       <Table<Case> rowKey="id" pagination={false} dataSource={cases.data?.items||[]} columns={[
-        {title:'编号',dataIndex:'id'},{title:'学生编号',dataIndex:'student_id'},{title:'状态',render:(_,row)=><Tag>{caseStates[row.status]}</Tag>},
+        {title:'编号',dataIndex:'id'},{title:'学生编号',dataIndex:'student_id',width:130},{title:'姓名',dataIndex:'student_name',width:120,render:value=>value||'—'},{title:'状态',render:(_,row)=><Tag>{caseStates[row.status]}</Tag>},
         {title:'操作',render:(_,row)=><Space><Button type="link" onClick={()=>setActiveCase(row.id)}>查看</Button>
           {row.status!=='closed'&&<Button type="link" loading={careSuggestion.isPending&&careSuggestion.variables===row.id}
             onClick={()=>careSuggestion.mutate(row.id)}>生成关怀建议</Button>}

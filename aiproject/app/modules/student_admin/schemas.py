@@ -27,9 +27,17 @@ class StudentLeaveCreate(BaseModel):
 
 
 class LeaveApprove(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
     approver_id: int | None = Field(default=None, ge=1)
     decision: Literal["approved", "rejected"]
-    approval_comment: str | None = None
+    approval_comment: str | None = Field(default=None, max_length=512)
+
+    @model_validator(mode="after")
+    def rejection_requires_reason(self):
+        if self.decision == "rejected" and not self.approval_comment:
+            raise ValueError("拒绝请假必须填写审批意见")
+        return self
 
 
 class LeaveOut(BaseModel):
@@ -37,6 +45,7 @@ class LeaveOut(BaseModel):
 
     id: int
     student_id: int
+    student_name: str | None = None
     service_type: str
     leave_type: str | None
     start_time: datetime | None

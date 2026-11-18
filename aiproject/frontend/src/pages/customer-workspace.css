@@ -8,5 +8,17 @@
 .customer-screening-result p { margin: 7px 0 14px; }
 .customer-document { background: #f4f8f5; border: 1px solid #e2eae4; border-radius: 9px; padding: 12px; overflow-wrap: anywhere; }
 .customer-website-profile { max-width: 1080px; margin-inline: auto; min-height: min(80vh, 560px); }
-@media (max-width: 920px) { .customer-detail-grid { grid-template-columns: 1fr; } }
+@media (max-width: 920px) { .customer-detail-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 540px) { .customer-detail-fields { grid-template-columns: 1fr; } }
+
+.screening-note {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8}
+.screening-portrait {margin:16px 0;min-width:0}
+.screening-portrait dl {margin:10px 0 0}
+.screening-portrait dl > div {display:grid;grid-template-columns:92px minmax(0,1fr);gap:12px;padding:10px 0;border-bottom:1px solid #edf0ee;break-inside:avoid}
+.screening-portrait dl > div:last-child {border-bottom:0}
+.screening-portrait dt {font-weight:600;color:#344c46;overflow-wrap:anywhere;line-height:1.8}
+.screening-portrait dd {margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8}
+@media(max-width:540px) {.screening-portrait dl > div {grid-template-columns:1fr;gap:3px}}
+
+.customer-detail-grid > *, .customer-detail-grid .ant-space-item {min-width:0}
+.customer-detail-grid .ant-table-wrapper {overflow-x:auto}

@@ -8,6 +8,7 @@ from app.modules.statistics.service import current_report_members
 from .repository import AssistantRepository
 from .replies import business_reply, chat_history, conversational_reply, display_stored_reply
 from .client import DifyIntentClient,call_business
+from app.modules.feedback.repository import FeedbackRepository
 
 logger=logging.getLogger(__name__)
 
@@ -36,10 +37,20 @@ class AssistantService:
                 pending = None
         messages=self.repo.history(cid)
         for message in messages:
+            meta = message['metadata']
+            if meta.get('action') in ('tickets', 'ticket_detail', 'ticket_update') and 200 <= meta.get('http_status', 0) < 300:
+                ids = meta.get('feedback_ticket_ids')
+                if (not isinstance(ids, list) or 'tickets:read' not in p.permissions
+                        or not set(ids).issubset(FeedbackRepository(self.db).visible_ids(p, ids))):
+                    message['content'] = '这条工单结果当前不可查看，请按当前权限重新查询。'
+                    # Do not reformat the original stored result after redaction.
+                    message['scope_unavailable'] = True
+            meta.pop('feedback_ticket_ids', None)
+        for message in messages:
             permission = ACTION_PERMISSIONS.get(message['metadata'].get('action'))
             if permission and permission not in p.permissions:
                 message['content'] = '当前账号没有查看这条业务结果的权限。'
-            else:
+            elif not message.get('scope_unavailable'):
                 message['content'] = display_stored_reply(message)
         scoped=[message for message in messages if 'report_employee_ids' in message['metadata']]
         if scoped:
@@ -87,6 +98,11 @@ class AssistantService:
                 if output['call_api']:
                     status,result=self.executor(output['method'],output['http_url'],output['http_body'],employee_token)
                     metadata.update(executed=True,http_status=status,action=output['intent'])
+                    if 200 <= status < 300 and output['intent'] in ('tickets', 'ticket_detail', 'ticket_update'):
+                        response = json.loads(result)
+                        rows = response.get('data')
+                        rows = rows if isinstance(rows, list) else [rows] if isinstance(rows, dict) else []
+                        metadata['feedback_ticket_ids'] = [row['id'] for row in rows if isinstance(row, dict) and type(row.get('id')) is int]
                     reply=business_reply(status,result,output['intent'])
                     if status==200 and output['intent']=='managed_daily_list':
                         rows=json.loads(result)['data']['items'][:10]

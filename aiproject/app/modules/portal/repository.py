@@ -5,6 +5,8 @@ from app.modules.employee_report.models import EmployeeDailyReport
 from app.modules.student_admin.models import StudentAdminService
 from app.modules.feedback.models import student_feedback_ticket as tickets
 from app.modules.todo.models import todo_item as todos, notification_log as notices
+from app.modules.todo.repository import visible_todos, visible_notifications
+from app.modules.feedback.access import visible_tickets
 
 class PortalRepository:
     def __init__(self,db):self.db=db
@@ -15,9 +17,9 @@ class PortalRepository:
             ('crm:read','customers',CrmLead,[CrmLead.owner_employee_id==p.employee_id]),
             ('reports:read','reports_today',EmployeeDailyReport,[EmployeeDailyReport.employee_id==p.employee_id,EmployeeDailyReport.report_date==date.today()]),
             ('leaves:read','leaves_pending',StudentAdminService,[StudentAdminService.approver_id==p.employee_id,StudentAdminService.service_type=='leave',StudentAdminService.status=='pending']),
-            ('todos:read','todos_open',todos,[todos.c.assignee_id==p.employee_id,todos.c.status.in_(['pending','in_progress'])]),
-            ('tickets:read','tickets_open',tickets,[tickets.c.assignee_id==p.employee_id,tickets.c.status.in_(['pending','processing'])]),
-            ('notifications:read','notifications',notices,[notices.c.user_id==p.employee_id,notices.c.channel=='system']),
+            ('todos:read','todos_open',todos,[visible_todos(p),todos.c.status.in_(['pending','in_progress'])]),
+            ('tickets:read','tickets_open',tickets,[visible_tickets(tickets.c,p,assigned_only=True),tickets.c.status.in_(['pending','processing'])]),
+            ('notifications:read','notifications',notices,[visible_notifications(p)]),
         ]
         for permission,key,model,conditions in definitions:
             if permission in p.permissions:

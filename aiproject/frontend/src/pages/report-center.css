@@ -56,8 +56,8 @@
 .report-chart-legend li > :nth-child(2) {flex:1;min-width:0;overflow-wrap:anywhere}
 .report-chart-legend li > :last-child {min-width:46px;text-align:right;color:#536963}
 .report-chart-dot {width:10px;height:10px;border-radius:50%;flex-shrink:0;print-color-adjust:exact}
-.report-chart-legend button,.report-inline-link {background:transparent;border:0;padding:0;text-align:left;font:inherit;color:#12685e;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
-.report-chart-legend button:focus-visible,.report-inline-link:focus-visible {outline:2px solid #23846f;outline-offset:3px}
+.report-chart-legend button {background:transparent;border:0;padding:0;text-align:left;font:inherit;color:#12685e;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.report-chart-legend button:focus-visible {outline:2px solid #23846f;outline-offset:3px}
 .report-columns {display:flex;align-items:flex-start;gap:12px;min-width:0;padding:12px 0 0}
 .report-column {flex:1;min-width:0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px}
 .report-column-plot {height:190px;width:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;border-bottom:1px solid #d8e5df;gap:6px}
@@ -77,8 +77,6 @@
 .report-department button:disabled {cursor:default;opacity:1}
 .report-department button:focus-visible {outline:2px solid #23846f;outline-offset:2px}
 .report-department .report-center-bar-track i {display:block;height:8px;border-radius:10px;print-color-adjust:exact}
-.report-chart-detail {margin-top:16px}
-.report-chart-detail .ant-collapse-header {padding-inline:0!important}
 .report-center-two:empty {display:none}
 .report-center section[hidden] {display:none!important}
 @media(max-width:760px) {
@@ -90,7 +88,6 @@
  .report-center .ant-form-item-control-input-content > .ant-space {flex-wrap:wrap}
 }
 @media print {
- .report-chart-detail {display:none}
  .report-center section[hidden] {display:none!important}
  .report-distribution,.report-department {break-inside:avoid}
  .report-columns button,.report-donut,.report-center-bar i {print-color-adjust:exact;-webkit-print-color-adjust:exact}

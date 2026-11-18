@@ -106,6 +106,60 @@ def test_directory_application_ownership_and_profile(teacher_world):
     assert client.patch("/api/v1/auth/profile", json={"real_name": "越权", "role_id": 1}, headers=auth("teacher")).status_code == 422
 
 
+def test_student_record_names_are_current_and_keep_existing_visibility(teacher_world):
+    client, engine = teacher_world
+    now = utc_now()
+    names = {21: '陈思远', 22: '林予安'}
+    with Session(engine) as db:
+        for sid, teacher, record_id in ((21, 30, 1), (22, 31, 2)):
+            db.execute(accounts.update().where(accounts.c.id == sid).values(real_name=names[sid]))
+            db.add(StudentAdminService(id=record_id, student_id=sid, service_type='leave', reason='办理材料',
+                status='pending', approver_id=teacher, create_time=now, update_time=now))
+            db.execute(student_feedback_ticket.insert().values(id=record_id, student_id=sid, ticket_type='complaint',
+                category='learning', content='课程反馈', status='pending', priority='medium', assignee_id=teacher,
+                is_notified=0, create_time=now, update_time=now))
+            db.execute(text('INSERT INTO student_psych_alert (id,student_id,teacher_id,status) VALUES (:id,:sid,:teacher,\'pending\')'),
+                {'id': record_id, 'sid': sid, 'teacher': teacher})
+            db.add(WellbeingCase(id=record_id, student_id=sid, status='open', note='学习关怀', assigned_to=teacher, created_at=now))
+        db.commit()
+
+    list_paths = [
+        '/api/v1/student-admin/psych-alerts',
+        '/api/v1/enterprise/tickets',
+        '/api/v1/student-admin/leaves/pending',
+        '/api/v1/reporting/wellbeing/cases',
+    ]
+    detail_paths = ['/api/v1/enterprise/tickets/1', '/api/v1/student-admin/leaves/1', '/api/v1/reporting/wellbeing/cases/1']
+
+    def verify_visible(expected_name):
+        for path in list_paths:
+            response = client.get(path, headers=auth('teacher'))
+            assert response.status_code == 200, response.text
+            data = response.json()['data']
+            rows = data['items'] if isinstance(data, dict) else data
+            assert [(row['student_id'], row['student_name']) for row in rows] == [(21, expected_name)]
+            assert names[22] not in response.text
+        for path in detail_paths:
+            response = client.get(path, headers=auth('teacher'))
+            assert response.status_code == 200, response.text
+            assert response.json()['data']['student_name'] == expected_name
+
+    verify_visible(names[21])
+    for path in detail_paths:
+        denied = client.get(path[:-1] + '2', headers=auth('teacher'))
+        assert denied.status_code in (403, 404)
+        assert names[22] not in denied.text
+    denied = client.get('/api/v1/student-admin/psych-alerts?student_id=22', headers=auth('teacher'))
+    assert denied.status_code == 403 and names[22] not in denied.text
+    routing = client.get('/api/v1/enterprise/ticket-routing', headers=auth('admin'))
+    assert {row['student_id']: row['student_name'] for row in routing.json()['data']} == names
+
+    with Session(engine) as db:
+        db.execute(accounts.update().where(accounts.c.id == 21).values(real_name='陈予安'))
+        db.commit()
+    verify_visible('陈予安')
+
+
 def test_three_stage_courses_scores_and_class_deadline_replay(teacher_world):
     client, engine = teacher_world
     courses = []

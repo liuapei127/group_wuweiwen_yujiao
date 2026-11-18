@@ -2,22 +2,23 @@ import json
 from sqlalchemy import insert, or_, select, update
 from app.modules.auth.models import audit_log
 from .models import student_feedback_ticket as tickets
+from .access import visible_tickets
 
 class FeedbackRepository:
     def __init__(self, db):
         self.db = db
 
-    def list_tickets(self, employee_id, status, limit, *, all_complaints=False):
-        visibility = tickets.c.assignee_id == employee_id
-        if all_complaints:
-            visibility = or_(visibility, tickets.c.ticket_type == "complaint")
-        stmt = select(tickets).where(visibility)
+    def list_tickets(self, principal, status, limit):
+        stmt = select(tickets).where(visible_tickets(tickets.c, principal))
         if status:
             stmt = stmt.where(tickets.c.status == status)
         return [dict(row._mapping) for row in self.db.execute(stmt.order_by(tickets.c.id.desc()).limit(limit))]
 
     def add_complaint(self, values):
         return self.db.execute(insert(tickets).values(**values)).inserted_primary_key[0]
+
+    def visible_ids(self, principal, ids):
+        return set(self.db.scalars(select(tickets.c.id).where(tickets.c.id.in_(ids), visible_tickets(tickets.c, principal))))
 
     def list_student_complaints(self, student_id, before_id, limit):
         stmt = select(tickets).where(tickets.c.student_id == student_id, tickets.c.ticket_type.in_(("complaint", "suggestion")))
@@ -40,7 +41,7 @@ class FeedbackRepository:
 
     def routing_queue(self):
         return [dict(row) for row in self.db.execute(select(tickets).where(
-            tickets.c.ticket_type == "complaint", tickets.c.status.in_(("pending", "processing")),
+            tickets.c.ticket_type.in_(("complaint", "suggestion")), tickets.c.status.in_(("pending", "processing")),
         ).order_by(tickets.c.id.desc()).limit(200)).mappings()]
 
     def history(self, ticket_id):
