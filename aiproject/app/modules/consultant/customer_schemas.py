@@ -63,6 +63,7 @@ class ImportConfirm(ScreeningRequest):
     preview_id: UUID
     fields: list[ProfileField] = Field(min_length=1, max_length=27)
     source_id: int | None = Field(default=None, ge=1)
+    ownership_confirmed: bool = Field(default=False, strict=True)
 
 
 class VerifiedIdentity(BaseModel):

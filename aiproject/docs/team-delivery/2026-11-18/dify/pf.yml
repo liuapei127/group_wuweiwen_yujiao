@@ -1,0 +1,928 @@
+app:
+  description: 按用户画像研判规则，判断新加坡定向培养或德国双元制
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  icon_type: emoji
+  mode: workflow
+  name: 客户研判 · 本机集成
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6
+    version: null
+kind: app
+version: 0.7.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 20
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: if-else
+      id: 1794465323838-source-1794466000001
+      selected: false
+      source: '1794465323838'
+      sourceHandle: source
+      target: '1794466000001'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: document-extractor
+      id: 1794466000001-has-file-1794466000002
+      selected: false
+      source: '1794466000001'
+      sourceHandle: has-file
+      target: '1794466000002'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: document-extractor
+        targetType: code
+      id: 1794466000002-source-1794466000003
+      selected: false
+      source: '1794466000002'
+      sourceHandle: source
+      target: '1794466000003'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: 1794466000001-false-1794466000004
+      selected: false
+      source: '1794466000001'
+      sourceHandle: 'false'
+      target: '1794466000004'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: variable-aggregator
+      id: 1794466000003-source-1794466000005
+      selected: false
+      source: '1794466000003'
+      sourceHandle: source
+      target: '1794466000005'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: variable-aggregator
+      id: 1794466000004-source-1794466000005
+      selected: false
+      source: '1794466000004'
+      sourceHandle: source
+      target: '1794466000005'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: variable-aggregator
+        targetType: code
+      id: 1794466000005-source-1794465387686
+      selected: false
+      source: '1794466000005'
+      sourceHandle: source
+      target: '1794465387686'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: 1794465387686-source-1794466000011
+      selected: false
+      source: '1794465387686'
+      sourceHandle: source
+      target: '1794466000011'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: end
+      id: 1794466000011-source-1794465705386
+      selected: false
+      source: '1794466000011'
+      sourceHandle: source
+      target: '1794465705386'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        selected: false
+        title: 用户输入
+        type: start
+        variables:
+        - default: ''
+          hint: ''
+          label: 客户资料
+          max_length: 48000
+          options: []
+          placeholder: 可直接粘贴一位客户的资料
+          required: false
+          type: paragraph
+          variable: raw_content
+        - allowed_file_extensions:
+          - .txt
+          - .csv
+          - .pdf
+          - .xlsx
+          - .xls
+          allowed_file_types:
+          - document
+          allowed_file_upload_methods:
+          - local_file
+          label: 客户文件
+          options: []
+          required: false
+          type: file
+          variable: customer_file
+      height: 134
+      id: '1794465323838'
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        cases:
+        - case_id: has-file
+          conditions:
+          - comparison_operator: not empty
+            id: cond-file
+            value: ''
+            varType: file
+            variable_selector:
+            - '1794465323838'
+            - customer_file
+          id: has-file
+          logical_operator: and
+        selected: false
+        title: 是否上传文件
+        type: if-else
+      height: 139
+      id: '1794466000001'
+      position:
+        x: 380
+        y: 220
+      positionAbsolute:
+        x: 380
+        y: 220
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        is_array_file: false
+        selected: false
+        title: 提取文件正文
+        type: document-extractor
+        variable_selector:
+        - '1794465323838'
+        - customer_file
+      height: 103
+      id: '1794466000002'
+      position:
+        x: 680
+        y: 80
+      positionAbsolute:
+        x: 680
+        y: 80
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        code: "def main(file_text: str, raw_content: str):\n    text = (file_text\
+          \ or \"\").strip() or (raw_content or \"\").strip()\n    return {\"material\"\
+          : text}\n"
+        code_language: python3
+        outputs:
+          material:
+            children: null
+            type: string
+        selected: false
+        title: 采用文件正文
+        type: code
+        variables:
+        - value_selector:
+          - '1794466000002'
+          - text
+          value_type: string
+          variable: file_text
+        - value_selector:
+          - '1794465323838'
+          - raw_content
+          value_type: string
+          variable: raw_content
+      height: 51
+      id: '1794466000003'
+      position:
+        x: 980
+        y: 80
+      positionAbsolute:
+        x: 980
+        y: 80
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        code: "def main(raw_content: str):\n    return {\"material\": (raw_content\
+          \ or \"\").strip()}\n"
+        code_language: python3
+        outputs:
+          material:
+            children: null
+            type: string
+        selected: false
+        title: 采用粘贴正文
+        type: code
+        variables:
+        - value_selector:
+          - '1794465323838'
+          - raw_content
+          value_type: string
+          variable: raw_content
+      height: 51
+      id: '1794466000004'
+      position:
+        x: 680
+        y: 360
+      positionAbsolute:
+        x: 680
+        y: 360
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        output_type: string
+        selected: false
+        title: 合并正文
+        type: variable-aggregator
+        variables:
+        - - '1794466000003'
+          - material
+        - - '1794466000004'
+          - material
+      height: 133
+      id: '1794466000005'
+      position:
+        x: 1280
+        y: 220
+      positionAbsolute:
+        x: 1280
+        y: 220
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        code: "import json\nimport re\n\nSINGAPORE = \"新加坡定向培养\"\nGERMANY = \"德国双元制\"\
+          \n\n_EDU_LEVELS = (\n    (\"本科\", (\"本科\", \"大学毕业\")),\n    (\"专科\", (\"\
+          专科\", \"大专\")),\n    (\"高中\", (\"高中\", \"高二\", \"高三\", \"中职\", \"中专\", \"\
+          职高\", \"技校\", \"中技\")),\n    (\"初中\", (\"初中\", \"初一\", \"初二\", \"初三\")),\n\
+          )\n\n\ndef judge_text(raw: str) -> dict:\n    \"\"\"返回可写入 customer_profile\
+          \ 的字段，以及解析结果。\"\"\"\n    text = (raw or \"\").strip()\n    if not text:\n\
+          \        raise ValueError(\"empty\")\n\n    fields = _extract(text)\n  \
+          \  singapore = _score_singapore(fields, text)\n    germany = _score_germany(fields,\
+          \ text)\n    decision = _decide(fields, text, singapore, germany)\n    background\
+          \ = {key: value for key, value in fields.items() if value not in (None,\
+          \ \"\", {}, [])}\n    return {\n        \"customer_name\": fields.get(\"\
+          name\"),\n        \"contact_info\": fields.get(\"contact_info\"),\n    \
+          \    \"background_info\": background,\n        \"match_result\": decision[\"\
+          match_result\"],\n        \"matched_product\": decision[\"matched_product\"\
+          ],\n        \"match_score\": decision[\"match_score\"],\n        \"match_reason\"\
+          : decision[\"match_reason\"],\n        \"recommended_programs\": decision[\"\
+          recommended_programs\"],\n        \"parse_result\": {\n            **background,\n\
+          \            \"missing_fields\": decision[\"missing_fields\"],\n       \
+          \     \"gaps\": decision[\"gaps\"],\n            \"next_stage\": decision[\"\
+          next_stage\"],\n            \"next_stage_reached\": decision[\"next_stage_reached\"\
+          ],\n        },\n    }\n\n\ndef _extract(text: str) -> dict:\n    payload\
+          \ = _json_object(text)\n    fields = {\n        \"name\": _pick(payload,\
+          \ \"name\", \"customer_name\") or _regex_group(text, r\"姓名[:：]\\s*(\\S+)\"\
+          ),\n        \"contact_info\": _pick(payload, \"contact_info\", \"phone\"\
+          ) or _regex(text, r\"1[3-9]\\d{9}\"),\n        \"age\": _age(payload, text),\n\
+          \        \"education\": _education(payload, text),\n        \"language_ability\"\
+          : _pick(payload, \"language_ability\") or _language(text),\n        \"core_demand\"\
+          : _pick(payload, \"core_demand\") or _demand(text),\n        \"annual_income_range\"\
+          : _pick(payload, \"annual_income_range\") or _regex(\n            text,\
+          \ r\"\\d+\\s*[-~到至]\\s*\\d+\\s*万|\\d+\\s*万以上\"\n        ),\n        \"target_project\"\
+          : _pick(payload, \"target_project\"),\n        \"gender\": _pick(payload,\
+          \ \"gender\"),\n        \"location\": _pick(payload, \"location\"),\n  \
+          \      \"profile_summary\": _pick(payload, \"profile_summary\"),\n     \
+          \   \"tag_weight\": _tag_payload(payload),\n    }\n    return fields\n\n\
+          \ndef _tag_payload(payload: dict) -> dict:\n    raw = payload.get(\"tag_weight\"\
+          )\n    if isinstance(raw, dict):\n        return raw\n    if isinstance(raw,\
+          \ str) and raw.strip().startswith(\"{\"):\n        try:\n            parsed\
+          \ = json.loads(raw)\n        except json.JSONDecodeError:\n            return\
+          \ {}\n        return parsed if isinstance(parsed, dict) else {}\n    return\
+          \ {}\n\n\ndef _json_object(text: str) -> dict:\n    stripped = text.strip()\n\
+          \    try:\n        value = json.loads(stripped)\n    except json.JSONDecodeError:\n\
+          \        value = None\n    if isinstance(value, list):\n        objects\
+          \ = [item for item in value if isinstance(item, dict)]\n        if len(objects)\
+          \ > 1:\n            raise ValueError(\"multiple\")\n        return objects[0]\
+          \ if objects else {}\n    if isinstance(value, dict):\n        return value\n\
+          \    start = text.find(\"{\")\n    end = text.rfind(\"}\")\n    if start\
+          \ < 0 or end <= start:\n        return {}\n    try:\n        embedded =\
+          \ json.loads(text[start : end + 1])\n    except json.JSONDecodeError:\n\
+          \        return {}\n    return embedded if isinstance(embedded, dict) else\
+          \ {}\n\n\ndef _pick(payload: dict, *keys: str) -> str | None:\n    for key\
+          \ in keys:\n        value = payload.get(key)\n        if value is None or\
+          \ isinstance(value, (dict, list)):\n            continue\n        text =\
+          \ str(value).strip()\n        if text:\n            return text\n    return\
+          \ None\n\n\ndef _regex(text: str, pattern: str) -> str | None:\n    found\
+          \ = re.search(pattern, text)\n    return found.group(0) if found else None\n\
+          \n\ndef _regex_group(text: str, pattern: str) -> str | None:\n    found\
+          \ = re.search(pattern, text)\n    return found.group(1) if found else None\n\
+          \n\ndef _age(payload: dict, text: str) -> int | None:\n    value = payload.get(\"\
+          age\")\n    if isinstance(value, int):\n        return value\n    if isinstance(value,\
+          \ str) and value.isdigit():\n        return int(value)\n    found = re.search(r\"\
+          (\\d{1,2})\\s*岁\", text)\n    if found:\n        return int(found.group(1))\n\
+          \    return None\n\n\ndef _education(payload: dict, text: str) -> str |\
+          \ None:\n    stated = _pick(payload, \"education\", \"education_level\"\
+          )\n    haystack = f\"{stated or ''} {text}\"\n    for _label, words in _EDU_LEVELS:\n\
+          \        if any(word in haystack for word in words):\n            return\
+          \ stated or next(word for word in words if word in haystack)\n    return\
+          \ stated\n\n\ndef _language(text: str) -> str | None:\n    for word in (\"\
+          德语\", \"雅思\", \"英语\", \"语言\"):\n        if word in text:\n            return\
+          \ word\n    return None\n\n\ndef _demand(text: str) -> str | None:\n   \
+          \ hits = [word for word in (\"升学\", \"就业\", \"留学\", \"移民\", \"专升本\", \"\
+          本升硕\", \"深造\") if word in text]\n    return \"、\".join(hits) or None\n\n\
+          \ndef _tags(fields: dict) -> dict:\n    raw = fields.get(\"tag_weight\"\
+          ) or {}\n    parsed = {}\n    for key, value in raw.items():\n        try:\n\
+          \            parsed[str(key)] = float(value)\n        except (TypeError,\
+          \ ValueError):\n            continue\n    return parsed\n\n\ndef _tag_points(tags:\
+          \ dict, keys: tuple[str, ...], full: int, ceiling: int | None = None) ->\
+          \ int:\n    best = 0\n    for key in keys:\n        if key in tags:\n  \
+          \          best = max(best, int(round(tags[key] * full)))\n    if ceiling\
+          \ is not None:\n        best = min(best, ceiling)\n    return best\n\n\n\
+          def _income_low(fields: dict) -> int | None:\n    raw = fields.get(\"annual_income_range\"\
+          ) or \"\"\n    above = re.search(r\"(\\d+)\\s*万以上\", raw)\n    if above:\n\
+          \        return int(above.group(1))\n    span = re.search(r\"(\\d+)\\s*[-~到至]\\\
+          s*(\\d+)\\s*万\", raw)\n    if span:\n        return int(span.group(1))\n\
+          \    return None\n\n\ndef _age_fit(age: int | None, low: int, high: int)\
+          \ -> str:\n    if not isinstance(age, int):\n        return \"missing\"\n\
+          \    if low <= age <= high:\n        return \"exact\"\n    if 0 < low -\
+          \ age <= 2 or 0 < age - high <= 2:\n        return \"near\"\n    return\
+          \ \"off\"\n\n\ndef _has_any(text: str, words: tuple[str, ...]) -> bool:\n\
+          \    return any(word in text for word in words)\n\n\ndef _score_singapore(fields:\
+          \ dict, text: str) -> dict:\n    education = fields.get(\"education\") or\
+          \ \"\"\n    age = fields.get(\"age\")\n    demand = _motive_text(fields,\
+          \ text)\n    target = fields.get(\"target_project\") or \"\"\n    tags =\
+          \ _tags(fields)\n    is_bachelor = \"本科\" in education\n    is_college =\
+          \ (not is_bachelor) and _has_any(education, (\"专科\", \"大专\"))\n    is_junior\
+          \ = _has_any(education, (\"初中\", \"初一\", \"初二\", \"初三\"))\n    is_senior\
+          \ = _has_any(education, (\"高中\", \"高二\", \"高三\", \"中职\", \"中专\", \"职高\"\
+          , \"技校\", \"中技\"))\n    is_vocational = _has_any(education, (\"职高\", \"\
+          中专\", \"中职\", \"技校\", \"中技\"))\n    wants_job = \"就业\" in demand or _has_any(target,\
+          \ (\"酒店\", \"航空\", \"6+6\", \"9+6\"))\n\n    candidates = []\n    if is_junior:\n\
+          \        candidates.append(_sg_age_band(age, 14, 16, \"升学\", [\"2+2新加坡定向培养本科班\"\
+          , \"2+2+1本硕连读\"], \"初中、14到16岁\"))\n    if is_senior and not is_college and\
+          \ not is_bachelor:\n        candidates.append(_sg_age_band(age, 16, 19,\
+          \ \"升学\", [\"0.5/1+2新加坡定向培养本科班\", \"0.5/1+2+1本硕连读\"], \"高中或同等学历、16到19岁\"\
+          ))\n    if is_vocational or (wants_job and (is_vocational or is_college\
+          \ or is_senior)):\n        candidates.append(_sg_job_band(age, is_vocational,\
+          \ [\"6+6酒店运营大专就业班\", \"9+6航空运营大专就业班\"]))\n    if is_college:\n        candidates.append({\"\
+          band\": 40, \"needs_age\": False, \"kind\": \"升学\", \"programs\": [\"新加坡一年制专升本\"\
+          ], \"label\": \"专科学历对应一年制专升本\"})\n    if is_bachelor:\n        candidates.append({\"\
+          band\": 40, \"needs_age\": False, \"kind\": \"升学\", \"programs\": [\"新加坡一年制本升硕\"\
+          ], \"label\": \"本科学历对应一年制本升硕\"})\n\n    parts: list[tuple[str, int]] = []\n\
+          \    programs: list[str] = []\n    needs_age = False\n    kind = None\n\
+          \    band = 0\n    if candidates:\n        for item in candidates:\n   \
+          \         item[\"demand\"] = _demand_points(demand, item[\"kind\"])\n  \
+          \          item[\"named\"] = _target_hits(target, item[\"programs\"])\n\
+          \            item[\"rank\"] = item[\"band\"] + item[\"demand\"] + (12 if\
+          \ item[\"named\"] else 0)\n        named = [item for item in candidates\
+          \ if item[\"named\"]]\n        chosen = max(named or candidates, key=lambda\
+          \ item: item[\"rank\"])\n        if chosen[\"named\"]:\n            programs\
+          \ = [program for program in chosen[\"programs\"] if _target_hits(target,\
+          \ [program])] or list(chosen[\"programs\"])\n        else:\n           \
+          \ programs = list(chosen[\"programs\"])\n        parts.append((chosen[\"\
+          label\"], chosen[\"band\"]))\n        if chosen[\"demand\"]:\n         \
+          \   parts.append((_demand_note(demand, chosen[\"kind\"]), chosen[\"demand\"\
+          ]))\n        needs_age = chosen[\"needs_age\"]\n        kind = chosen[\"\
+          kind\"]\n        band = chosen[\"band\"]\n\n    income_points, income_note\
+          \ = _sg_income(_income_low(fields), \"就业\" if programs and _has_any(\" \"\
+          .join(programs), (\"酒店\", \"航空\")) else \"升学\")\n    if income_points:\n\
+          \        parts.append((income_note, income_points))\n    language_points,\
+          \ language_note = _sg_language(text, tags)\n    if language_points:\n  \
+          \      parts.append((language_note, language_points))\n    intent = max(_tag_points(tags,\
+          \ (\"留学意愿\",), 10), 8 if _has_any(text, (\"新加坡\", \"留学\")) else 0)\n   \
+          \ if intent:\n        parts.append((\"有留学或新加坡意向\", intent))\n    if programs\
+          \ and _target_hits(target, programs):\n        parts.append((\"资料点名了这个项目\"\
+          , 5))\n\n    score = min(sum(points for _note, points in parts), 100)\n\
+          \    return {\n        \"score\": score,\n        \"programs\": _unique(programs),\n\
+          \        \"parts\": parts,\n        \"needs_age\": needs_age,\n        \"\
+          kind\": kind,\n        \"band\": band,\n    }\n\n\ndef _sg_age_band(age:\
+          \ int | None, low: int, high: int, kind: str, programs: list[str], label:\
+          \ str) -> dict:\n    fit = _age_fit(age, low, high)\n    points = {\"exact\"\
+          : 40, \"near\": 24, \"missing\": 16, \"off\": 8}[fit]\n    note = label\
+          \ if fit == \"exact\" else f\"{label}，年龄{'缺失' if fit == 'missing' else '只是接近'\
+          \ if fit == 'near' else '偏离档位'}\"\n    return {\"band\": points, \"needs_age\"\
+          : fit != \"exact\", \"kind\": kind, \"programs\": programs, \"label\": note}\n\
+          \n\ndef _sg_job_band(age: int | None, vocational: bool, programs: list[str])\
+          \ -> dict:\n    fit = _age_fit(age, 17, 45)\n    if vocational and fit ==\
+          \ \"exact\":\n        points, needs_age, note = 40, False, \"职高或中职、年满17岁，对应就业班\"\
+          \n    elif vocational and fit == \"near\":\n        points, needs_age, note\
+          \ = 24, True, \"职高或中职，年龄接近17岁\"\n    elif fit == \"exact\":\n        points,\
+          \ needs_age, note = 28, False, \"年满17岁且指向就业班，学历不是职高原档\"\n    else:\n   \
+          \     points, needs_age, note = 12, fit != \"exact\", \"就业班只对上一部分条件\"\n\
+          \    return {\"band\": points, \"needs_age\": needs_age, \"kind\": \"就业\"\
+          , \"programs\": programs, \"label\": note}\n\n\ndef _motive_text(fields:\
+          \ dict, text: str) -> str:\n    stated = \" \".join(\n        part for part\
+          \ in (fields.get(\"core_demand\"), fields.get(\"target_project\")) if part\n\
+          \    )\n    return stated or text\n\n\ndef _motives(demand: str) -> set[str]:\n\
+          \    \"\"\"把客户自己的说法归到规则里的升学、就业、移民。没写到的不补。\"\"\"\n    found: set[str] = set()\n\
+          \    if _has_any(demand, (\"升学\", \"学历\", \"留学\", \"深造\", \"本科\", \"硕士\"\
+          , \"镀金\", \"国际化\", \"素质教育\", \"本硕\")):\n        found.add(\"升学\")\n    if\
+          \ _has_any(demand, (\"就业\", \"工作\", \"高薪\", \"晋升\", \"技能\", \"转型\", \"求职\"\
+          )):\n        found.add(\"就业\")\n    if \"移民\" in demand:\n        found.add(\"\
+          移民\")\n    return found\n\n\ndef _demand_points(demand: str, kind: str)\
+          \ -> int:\n    motives = _motives(demand)\n    study = \"升学\" in motives\n\
+          \    job = \"就业\" in motives\n    if kind == \"升学\" and study and not job:\n\
+          \        return 20\n    if kind == \"就业\" and job and not study:\n     \
+          \   return 20\n    if study and job:\n        return 14\n    if study or\
+          \ job:\n        return 8\n    return 0\n\n\ndef _demand_note(demand: str,\
+          \ kind: str) -> str:\n    points = _demand_points(demand, kind)\n    if\
+          \ points == 20:\n        return \"升学需求对上\" if kind == \"升学\" else \"就业需求对上\"\
+          \n    if points == 14:\n        return \"升学和就业都有，和这一档只是部分一致\"\n    if points\
+          \ == 8:\n        return \"需求方向和这一档不完全一致\"\n    return \"没有写明升学或就业需求\"\n\n\
+          \ndef _sg_income(low: int | None, kind: str) -> tuple[int, str]:\n    if\
+          \ low is None:\n        return 0, \"\"\n    if kind == \"就业\":\n       \
+          \ if low <= 30:\n            return 12, \"就业方向更看重性价比，当前收入区间能覆盖\"\n     \
+          \   return 9, \"收入可以支撑就业方向\"\n    if low >= 30:\n        return 15, \"年收入下沿达到30万，属于中等以上\"\
+          \n    if low >= 20:\n        return 11, \"年收入下沿在20万到30万\"\n    if low >=\
+          \ 15:\n        return 8, \"年收入下沿在15万到20万，学费会有压力\"\n    if low >= 10:\n \
+          \       return 5, \"年收入下沿在10万到15万，升学费用偏紧\"\n    return 2, \"年收入下沿低于10万\"\
+          \n\n\ndef _sg_language(text: str, tags: dict) -> tuple[int, str]:\n    if\
+          \ _has_any(text, (\"薄弱\", \"基础差\", \"偏下\", \"零基础\")):\n        return 3,\
+          \ \"英语基础偏弱\"\n    if re.search(r\"雅思\\s*([6-9]|[1-9]\\d)\", text) or _has_any(text,\
+          \ (\"六级\", \"流利\", \"母语\")):\n        return 10, \"英语达到六级、雅思6分或流利\"\n  \
+          \  if re.search(r\"雅思\\s*5\", text) or _has_any(text, (\"四级\", \"中等\", \"\
+          良好\")):\n        return 7, \"英语处于中等、四级或雅思5分\"\n    lifted = _tag_points(tags,\
+          \ (\"英语能力\", \"英语优势\", \"语言优势\"), 10)\n    if lifted:\n        return lifted,\
+          \ \"语言标签较高\"\n    return 0, \"\"\n\n\ndef _target_hits(target: str, programs:\
+          \ list[str]) -> bool:\n    if not target:\n        return False\n    if\
+          \ \"2+2+1\" in target or \"2 + 2 + 1\" in target:\n        return any(\"\
+          2+2+1\" in program for program in programs)\n    if \"0.5\" in target and\
+          \ _has_any(target, (\"2+1\", \"+1\", \"本硕\")):\n        return any(\"0.5\"\
+          \ in program and \"2+1\" in program for program in programs)\n    if \"\
+          0.5\" in target:\n        return any(\"0.5\" in program and \"2+1\" not\
+          \ in program for program in programs)\n    if \"2+2\" in target or \"2 +\
+          \ 2\" in target:\n        return any(\"2+2\" in program and \"2+2+1\" not\
+          \ in program for program in programs)\n    for token in (\"专升本\", \"本升硕\"\
+          , \"酒店\", \"航空\"):\n        if token in target:\n            return any(token\
+          \ in program for program in programs)\n    return False\n\n\ndef _score_germany(fields:\
+          \ dict, text: str) -> dict:\n    education = fields.get(\"education\") or\
+          \ \"\"\n    age = fields.get(\"age\")\n    demand = _motive_text(fields,\
+          \ text)\n    tags = _tags(fields)\n    german_context = _has_any(text, (\"\
+          德国\", \"双元\", \"中德\", \"德语\"))\n    parts: list[tuple[str, int]] = []\n\
+          \    fit = _age_fit(age, 18, 35)\n    if fit == \"exact\":\n        parts.append((\"\
+          年龄在18到35岁\", 25))\n    elif fit == \"near\":\n        parts.append((\"年龄靠近18到35岁，但还在档外\"\
+          , 12))\n    qualified = _has_any(education, (\"高中\", \"高二\", \"高三\", \"\
+          中职\", \"中专\", \"职高\", \"技校\", \"中技\", \"专科\", \"大专\", \"本科\"))\n    if qualified:\n\
+          \        parts.append((\"学历达到高中及以上\", 20))\n    elif _has_any(education,\
+          \ (\"初中\", \"初一\", \"初二\", \"初三\")):\n        parts.append((\"学历是初中，低于德国项目要求的高中\"\
+          , 4))\n\n    motives = []\n    if _has_any(demand, (\"就业\", \"工作\")):\n\
+          \        motives.append(\"就业\")\n    if _has_any(demand, (\"升学\", \"深造\"\
+          , \"学历\")):\n        motives.append(\"升学\")\n    if \"移民\" in demand:\n\
+          \        motives.append(\"移民\")\n    if motives:\n        parts.append((\"\
+          职业诉求包含\" + \"、\".join(motives), min(8 * len(motives), 20)))\n\n    programs\
+          \ = _german_programs(text) if german_context else []\n    skill_tag = _tag_points(tags,\
+          \ (\"动手能力\",), 15)\n    if programs:\n        parts.append((\"专业方向对上德国培训目录\"\
+          , 15))\n    elif _has_any(text, (\"动手\", \"实践\", \"逻辑\")) or skill_tag >=\
+          \ 10:\n        parts.append((\"有动手或实践倾向，专业还没点名\", 10))\n    elif skill_tag:\n\
+          \        parts.append((\"动手能力标签有一些基础\", skill_tag))\n\n    language_points,\
+          \ language_note = _de_language(text, tags)\n    if language_points:\n  \
+          \      parts.append((language_note, language_points))\n\n    intent = max(\n\
+          \        _tag_points(tags, (\"移民意愿\", \"留学意愿\"), 5),\n        5 if _has_any(text,\
+          \ (\"德国\", \"双元\", \"中德\")) else 0,\n    )\n    if intent:\n        parts.append((\"\
+          有德国、双元或移民意向\", intent))\n\n    score = min(sum(points for _note, points\
+          \ in parts), 100)\n    return {\n        \"score\": score,\n        \"programs\"\
+          : programs,\n        \"parts\": parts,\n        \"needs_age\": fit != \"\
+          exact\",\n    }\n\n\ndef _german_b1_met(text: str) -> bool:\n    level =\
+          \ r\"(?:B1|B2|C1|C2|专业级)\"\n    for part in re.split(r\"[，,。；;\\n]\", text):\n\
+          \        for match in re.finditer(r\"(?:德语|German)\\s*(?:水平|等级|成绩|证书)?\\\
+          s*[:：]?\\s*(?:已达(?:到)?|达到|已通过|通过|已取得|取得|已获得|获得)?\\s*\" + level, part, re.I):\n\
+          \            before = part[max(0, match.start() - 12) : match.start()]\n\
+          \            after = part[match.end() : match.end() + 12]\n            if\
+          \ not re.search(r\"目标|计划|拟|希望|备考|未达|未过|未通过|要求\", before) and not re.match(r\"\
+          \\s*(?:未通过|备考|学习中|课程|培训)\", after):\n                return True\n    return\
+          \ False\n\n\ndef _de_language(text: str, tags: dict) -> tuple[int, str]:\n\
+          \    if _german_b1_met(text):\n        return 15, \"德语达到B1或以上\"\n    if\
+          \ _has_any(text, (\"A2\", \"A1\", \"学习中\")):\n        return 8, \"德语还在A1、A2或学习中，未到B1\"\
+          \n    tag = _tag_points(tags, (\"德语潜力\", \"语言学习力\", \"语言达标\"), 15)\n   \
+          \ if \"零基础\" in text:\n        lifted = min(max(4 if _has_any(text, (\"\
+          学习意愿\", \"愿意\", \"潜力\")) else 2, tag), 8)\n        return lifted, \"德语零基础，学习潜力有限\"\
+          \ if lifted <= 4 else \"德语零基础，但有学习潜力\"\n    if tag:\n        return min(tag,\
+          \ 12), \"有德语学习潜力，材料没写已考等级\"\n    if \"德语\" in text:\n        return 4, \"\
+          提到德语，但没有等级\"\n    return 0, \"\"\n\n\ndef _german_programs(text: str) ->\
+          \ list[str]:\n    \"\"\"专业名用《全专业方向名录》里的中文名，更具体的词先匹配。\"\"\"\n    mapping\
+          \ = (\n        ((\"老年\", \"康养\", \"养老\"), \"老年康养与康复治疗\"),\n        ((\"\
+          护理\", \"护士\"), \"综合护理与健康管理\"),\n        ((\"网络安全\", \"系统集成\"), \"IT系统集成与网络安全\"\
+          ),\n        ((\"计算机\", \"软件\", \"编程\", \"信息技术\"), \"应用软件开发\"),\n       \
+          \ ((\"数控\", \"精密加工\", \"模具\"), \"精密加工与数控技术\"),\n        ((\"电动汽车\", \"高压系统\"\
+          , \"新能源\"), \"电动汽车与高压系统\"),\n        ((\"车身\",), \"车身与车辆制造技术\"),\n     \
+          \   ((\"汽车\", \"汽修\"), \"汽车机电一体化（乘用车）\"),\n        ((\"焊接\",), \"金属构造与焊接技术\"\
+          ),\n        ((\"暖通\", \"楼宇\"), \"建筑设备与能源技术\"),\n        ((\"建筑\", \"施工\"\
+          ), \"建筑工程与项目管理\"),\n        ((\"航空\",), \"航空地勤与物流管理\"),\n        ((\"酒店\"\
+          , \"餐饮\"), \"酒店与餐饮管理\"),\n        ((\"自动化\", \"机器人\"), \"自动化技术\"),\n   \
+          \     ((\"工业机械\",), \"工业机械师\"),\n        ((\"机电\", \"机械\"), \"机电一体化技术\"\
+          ),\n    )\n    return _unique([program for words, program in mapping if\
+          \ any(word in text for word in words)])\n\n\n_INPUT_FIELDS = (\n    (\"\
+          age\", \"年龄\"),\n    (\"education\", \"学历\"),\n    (\"language_ability\"\
+          , \"语言能力\"),\n    (\"core_demand\", \"核心诉求\"),\n    (\"annual_income_range\"\
+          , \"年收入\"),\n    (\"target_project\", \"目标项目\"),\n    (\"tag_weight\", \"\
+          标签\"),\n)\n\n\ndef _decide(fields: dict, text: str, singapore: dict, germany:\
+          \ dict) -> dict:\n    \"\"\"选出一条产品线，并分开写匹配、待补和下一阶段。\"\"\"\n    singapore_view\
+          \ = _singapore_view(fields, text, singapore)\n    germany_view = _germany_view(fields,\
+          \ text, germany)\n    ranked = sorted(\n        (singapore_view, germany_view),\n\
+          \        key=lambda item: ({\"exact\": 2, \"partial\": 1, \"none\": 0}[item[\"\
+          level\"]], item[\"score\"]),\n        reverse=True,\n    )\n    best, other\
+          \ = ranked\n    named = _named_product(fields)\n    if named == SINGAPORE\
+          \ and singapore_view[\"level\"] != \"none\":\n        best, other = singapore_view,\
+          \ germany_view\n    elif named == GERMANY and germany_view[\"level\"] !=\
+          \ \"none\":\n        best, other = germany_view, singapore_view\n    missing_fields\
+          \ = [label for key, label in _INPUT_FIELDS if not fields.get(key)]\n   \
+          \ if best[\"level\"] == \"none\":\n        result = \"not_matched\"\n  \
+          \      product = None\n        programs: list[str] = []\n    elif best[\"\
+          next_stage_reached\"]:\n        result = \"matched\"\n        product =\
+          \ best[\"product\"]\n        programs = list(best[\"programs\"])\n    else:\n\
+          \        result = \"partial\"\n        product = best[\"product\"]\n   \
+          \     programs = list(best[\"programs\"])\n    return {\n        \"match_result\"\
+          : result,\n        \"matched_product\": product,\n        \"match_score\"\
+          : best[\"score\"],\n        \"match_reason\": _reason(best, other, missing_fields),\n\
+          \        \"recommended_programs\": programs,\n        \"missing_fields\"\
+          : missing_fields,\n        \"gaps\": list(best[\"gaps\"]),\n        \"next_stage\"\
+          : best[\"next_stage\"],\n        \"next_stage_reached\": best[\"next_stage_reached\"\
+          ],\n    }\n\n\ndef _singapore_view(fields: dict, text: str, scored: dict)\
+          \ -> dict:\n    band = scored.get(\"band\") or 0\n    programs = list(scored.get(\"\
+          programs\") or [])\n    if not programs or band < 16:\n        level = \"\
+          none\"\n    elif band == 40 and not scored.get(\"needs_age\"):\n       \
+          \ level = \"exact\"\n    else:\n        level = \"partial\"\n    gaps: list[str]\
+          \ = []\n    notes: list[str] = []\n    if level != \"none\":\n        if\
+          \ not fields.get(\"education\"):\n            gaps.append(\"学历\")\n    \
+          \    if scored.get(\"needs_age\") and not isinstance(fields.get(\"age\"\
+          ), int):\n            gaps.append(\"年龄\")\n        if not _motives(_motive_text(fields,\
+          \ text)) & {\"升学\", \"就业\"}:\n            gaps.append(\"升学或就业需求\")\n   \
+          \     if scored.get(\"kind\") != \"就业\" and _income_low(fields) is None:\n\
+          \            gaps.append(\"年收入\")\n        if not fields.get(\"language_ability\"\
+          ) and not _has_any(text, (\"英语\", \"雅思\", \"四级\", \"六级\")):\n          \
+          \  gaps.append(\"英语水平\")\n        elif _has_any(text, (\"薄弱\", \"基础差\",\
+          \ \"偏下\", \"零基础\")):\n            notes.append(\"英语基础偏弱，只说明可以参加入学测试，不写成已经通过\"\
+          )\n        if level == \"partial\" and band not in {0} and \"年龄\" not in\
+          \ gaps:\n            if scored.get(\"needs_age\") and isinstance(fields.get(\"\
+          age\"), int):\n                gaps.append(\"年龄和该项目档位不完全一致\")\n        \
+          \    elif not scored.get(\"needs_age\"):\n                gaps.append(\"\
+          学历和该项目的原档不完全一致\")\n    reached = level == \"exact\" and not gaps\n    stage\
+          \ = \"未进入办理阶段\" if level == \"none\" else \"入学测试（英语笔试、心理测评和面试）\"\n    return\
+          \ {\n        \"product\": SINGAPORE,\n        \"level\": level,\n      \
+          \  \"score\": scored.get(\"score\") or 0,\n        \"programs\": programs\
+          \ if level != \"none\" else [],\n        \"basis\": [note for note, points\
+          \ in scored.get(\"parts\") or [] if points],\n        \"gaps\": gaps if\
+          \ level != \"none\" else [\"年龄或学历没有对上新加坡项目档位\"],\n        \"notes\": notes,\n\
+          \        \"next_stage\": stage,\n        \"next_stage_reached\": reached,\n\
+          \    }\n\n\ndef _germany_view(fields: dict, text: str, scored: dict) ->\
+          \ dict:\n    education = fields.get(\"education\") or \"\"\n    fit = _age_fit(fields.get(\"\
+          age\") if isinstance(fields.get(\"age\"), int) else None, 18, 35)\n    qualified\
+          \ = _has_any(education, (\"高中\", \"高二\", \"高三\", \"中职\", \"中专\", \"职高\"\
+          , \"技校\", \"中技\", \"专科\", \"大专\", \"本科\"))\n    if fit == \"exact\" and\
+          \ qualified:\n        level = \"exact\"\n    elif (qualified and fit in\
+          \ {\"missing\", \"near\"}) or (fit == \"exact\" and not education):\n  \
+          \      level = \"partial\"\n    else:\n        level = \"none\"\n    programs\
+          \ = list(scored.get(\"programs\") or [])\n    gaps: list[str] = []\n   \
+          \ notes: list[str] = []\n    if level != \"none\":\n        if not education:\n\
+          \            gaps.append(\"学历\")\n        if not isinstance(fields.get(\"\
+          age\"), int):\n            gaps.append(\"年龄\")\n        elif fit != \"exact\"\
+          :\n            gaps.append(\"年龄不在18到35岁\")\n        if not _motives(_motive_text(fields,\
+          \ text)):\n            gaps.append(\"就业、升学或移民诉求\")\n        if not programs:\n\
+          \            gaps.append(\"专业方向\")\n        if not _german_b1_met(text):\n\
+          \            gaps.append(\"德语B1\")\n        if not _has_any(text, (\"动手\"\
+          , \"实践\", \"逻辑\")) and _tag_points(_tags(fields), (\"动手能力\",), 15) < 10:\n\
+          \            notes.append(\"材料未写动手能力或逻辑思维，不把它当成已经符合\")\n        if not fields.get(\"\
+          annual_income_range\"):\n            notes.append(\"年收入未提供。德国项目可以贷款，不因此否决\"\
+          )\n    reached = level == \"exact\" and not gaps\n    if level == \"none\"\
+          :\n        stage = \"未进入办理阶段\"\n    elif reached:\n        stage = \"赴德匹配企业\"\
+          \n    else:\n        stage = \"赴德匹配企业（待补齐所列条件）\"\n    return {\n       \
+          \ \"product\": GERMANY,\n        \"level\": level,\n        \"score\": scored.get(\"\
+          score\") or 0,\n        \"programs\": programs if level != \"none\" else\
+          \ [],\n        \"basis\": [note for note, points in scored.get(\"parts\"\
+          ) or [] if points],\n        \"gaps\": gaps if level != \"none\" else [\"\
+          年龄或学历没有达到德国项目的高中及以上、18到35岁\"],\n        \"notes\": notes,\n        \"next_stage\"\
+          : stage,\n        \"next_stage_reached\": reached,\n    }\n\n\ndef _named_product(fields:\
+          \ dict) -> str | None:\n    target = fields.get(\"target_project\") or \"\
+          \"\n    if _has_any(target, (\"德国\", \"中德\", \"双元\")):\n        return GERMANY\n\
+          \    if _has_any(target, (\"新加坡\", \"2+2\", \"6+6\", \"9+6\", \"0.5\", \"\
+          专升本\", \"本升硕\")):\n        return SINGAPORE\n    return None\n\n\ndef _reason(best:\
+          \ dict, other: dict, missing_fields: list[str]) -> str:\n    if best[\"\
+          level\"] == \"none\":\n        lines = [\"匹配产品：没有符合的产品线。\", \"推荐项目：无。\"\
+          ]\n    else:\n        programs = \"、\".join(best[\"programs\"]) if best[\"\
+          programs\"] else \"专业方向还没写明，先不推荐具体项目\"\n        lines = [f\"匹配产品：{best['product']}。\"\
+          , f\"推荐项目：{programs}。\"]\n    if best[\"basis\"]:\n        lines.append(\"\
+          匹配依据：\" + \"；\".join(best[\"basis\"]) + \"。\")\n    lines.append(\"待补条件：\"\
+          \ + (\"、\".join(best[\"gaps\"]) if best[\"gaps\"] else \"无\") + \"。\")\n\
+          \    if best[\"notes\"]:\n        lines.append(\"未写成已符合：\" + \"；\".join(best[\"\
+          notes\"]) + \"。\")\n    lines.append(\n        f\"下一办理阶段：{best['next_stage']}。\"\
+          \n        + (\"已达到进入该阶段的要求。\" if best[\"next_stage_reached\"] else \"尚有待补条件。\"\
+          )\n    )\n    if missing_fields:\n        lines.append(\"资料里没写的字段：\" + \"\
+          、\".join(missing_fields) + \"。\")\n    if other[\"level\"] != \"none\" and\
+          \ other[\"product\"] != best[\"product\"]:\n        lines.append(f\"另一条产品线{other['product']}也有部分对应，本次只保留更贴近的一条。\"\
+          )\n    lines.append(f\"评分：{best['score']}分，区间{_band_label(best['score'])}。\"\
+          )\n    return \"\".join(lines)\n\n\ndef _band_label(score: int) -> str:\n\
+          \    if score >= 80:\n        return \"80–100 高度符合\"\n    if score >= 60:\n\
+          \        return \"60–79 基本符合\"\n    if score >= 45:\n        return \"45–59\
+          \ 较符合但关键项不足\"\n    if score >= 25:\n        return \"25–44 只符合少部分条件\"\n\
+          \    return \"0–24 不符合\"\n\n\ndef _unique(items: list[str]) -> list[str]:\n\
+          \    seen: list[str] = []\n    for item in items:\n        if item not in\
+          \ seen:\n            seen.append(item)\n    return seen\n\n\ndef main(material:\
+          \ str):\n    \"\"\"Dify 代码节点入口。正文来自粘贴或上传文件抽出的文字。\"\"\"\n    try:\n     \
+          \   judgment = judge_text(material or \"\")\n    except ValueError as exc:\n\
+          \        code = str(exc)\n        reason = \"一份资料里有多位客户\" if code == \"\
+          multiple\" else \"没有可研判的正文\"\n        return {\n            \"customer_name\"\
+          : \"\",\n            \"contact_info\": \"\",\n            \"match_result\"\
+          : \"not_matched\",\n            \"matched_product\": \"\",\n           \
+          \ \"match_score\": 0,\n            \"match_reason\": reason,\n         \
+          \   \"recommended_programs\": [],\n            \"judgment_json\": json.dumps({\"\
+          error\": code}, ensure_ascii=False),\n        }\n    return {\n        \"\
+          customer_name\": judgment.get(\"customer_name\") or \"\",\n        \"contact_info\"\
+          : judgment.get(\"contact_info\") or \"\",\n        \"match_result\": judgment[\"\
+          match_result\"],\n        \"matched_product\": judgment.get(\"matched_product\"\
+          ) or \"\",\n        \"match_score\": judgment.get(\"match_score\") or 0,\n\
+          \        \"match_reason\": judgment.get(\"match_reason\") or \"\",\n   \
+          \     \"recommended_programs\": list(judgment.get(\"recommended_programs\"\
+          ) or []),\n        \"judgment_json\": json.dumps(judgment, ensure_ascii=False),\n\
+          \    }"
+        code_language: python3
+        outputs:
+          contact_info:
+            children: null
+            type: string
+          customer_name:
+            children: null
+            type: string
+          judgment_json:
+            children: null
+            type: string
+          match_reason:
+            children: null
+            type: string
+          match_result:
+            children: null
+            type: string
+          match_score:
+            children: null
+            type: number
+          matched_product:
+            children: null
+            type: string
+          recommended_programs:
+            children: null
+            type: array[string]
+        selected: false
+        title: 画像研判
+        type: code
+        variables:
+        - value_selector:
+          - '1794466000005'
+          - output
+          value_type: string
+          variable: material
+      height: 51
+      id: '1794465387686'
+      position:
+        x: 1580
+        y: 220
+      positionAbsolute:
+        x: 1580
+        y: 220
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        outputs:
+        - value_selector:
+          - '1794465387686'
+          - match_result
+          value_type: string
+          variable: match_result
+        - value_selector:
+          - '1794465387686'
+          - customer_name
+          value_type: string
+          variable: customer_name
+        - value_selector:
+          - '1794465387686'
+          - contact_info
+          value_type: string
+          variable: contact_info
+        - value_selector:
+          - '1794465387686'
+          - matched_product
+          value_type: string
+          variable: matched_product
+        - value_selector:
+          - '1794465387686'
+          - match_score
+          value_type: number
+          variable: match_score
+        - value_selector:
+          - '1794465387686'
+          - match_reason
+          value_type: string
+          variable: match_reason
+        - value_selector:
+          - '1794465387686'
+          - recommended_programs
+          value_type: array[string]
+          variable: recommended_programs
+        - value_selector:
+          - '1794465387686'
+          - judgment_json
+          value_type: string
+          variable: judgment_json
+        - value_selector:
+          - '1794466000011'
+          - text
+          value_type: string
+          variable: advisor_advice
+        selected: false
+        title: 输出
+        type: end
+      height: 295
+      id: '1794465705386'
+      position:
+        x: 2180
+        y: 220
+      positionAbsolute:
+        x: 2180
+        y: 220
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        default_value:
+        - key: text
+          type: string
+          value: ''
+        error_strategy: default-value
+        model:
+          completion_params:
+            temperature: 0.2
+          mode: chat
+          name: qwen-plus
+          provider: langgenius/tongyi/tongyi
+        prompt_template:
+        - id: customer-advice-system
+          role: system
+          text: '你是客户研判助手，根据当前这一位客户的记录、规则核对和检索条款生成顾问工作参考。
+
+            结论必须原样使用规则核对里的结论，只能是可以推进、需要补充信息、建议调整方向、暂不推进。
+
+            输出包含以下四个独立段落，使用给定段落名和中文冒号，不使用 Markdown 标记。
+
+            结论：填写规则核对里的结论。
+
+            跟进建议：读者是负责此客户的顾问。用内部工作指令说明顾问接下来应核实什么、收集什么资料、关注什么风险，以及核实后如何推进。以“建议顾问……”或“请先核实……”等表述开头，结合客户的实际情况给出可执行步骤。客户姓名只作为被跟进的对象，不在本段称呼客户或直接向客户提问。
+
+            沟通话术：听众是客户。站在顾问的立场，用顾问可以直接对客户说的口吻交流，使用合适的客户称呼以及“您”“我们”。说明已知情况、适合的方向及需要向客户核实的问题，表达自然简洁。本段只写可直接说给客户的话。
+
+            待补充资料：列出当前客户确实缺少的资料，已经提供的信息不重复索要。
+
+            两段的沟通对象必须分别保持一致。跟进建议不能照抄沟通话术。
+
+            只使用已有记录和检索条款支持的事实。禁止编造客户的经历、条件、政策、服务、费用、录取承诺或评估结果。规则核对里的内部参考用语需要按上述沟通对象重新组织。
+
+            '
+        - id: customer-advice-data
+          role: user
+          text: '客户记录：{{#1794466000005.output#}}
+
+            规则依据：{{#1794465387686.match_reason#}}'
+        selected: false
+        title: 顾问建议与沟通话术
+        type: llm
+        vision:
+          enabled: false
+      height: 123
+      id: '1794466000011'
+      position:
+        x: 1880
+        y: 220
+      positionAbsolute:
+        x: 1880
+        y: 220
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    viewport:
+      x: -457.2884607879641
+      y: 106.45912255827827
+      zoom: 0.5787037037037038
+  rag_pipeline_variables: []

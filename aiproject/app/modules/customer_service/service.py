@@ -55,6 +55,7 @@ async def _chat(body: PublicChatRequest, db: Session, visitor_id: int | None, on
     session_id = None
     conversation_id = None
     expanded = query
+    turn_history = body.history or []
     browser_history = body.history if visitor_id is None else None
     if body.start_session or body.session_id:
         previous = next((turn.content for turn in reversed(browser_history or []) if turn.role == "user"), "")
@@ -76,10 +77,13 @@ async def _chat(body: PublicChatRequest, db: Session, visitor_id: int | None, on
         if recalled:
             return PublicChatReply(answer=recalled, session_id=session_id)
         business_query = expanded
-        expanded = compose_query(expanded, browser_history or [], portrait, related)
+        expanded = compose_query(expanded, turn_history, portrait, related)
     else:
         if visitor_id is not None:
             await run_in_threadpool(remember_profile, db, visitor_id, query)
+            recalled = await run_in_threadpool(recall_identity, db, visitor_id, query, [])
+            if recalled:
+                return PublicChatReply(answer=recalled)
         if local := _catalog_fee_answer(query):
             return local
         if local := await run_in_threadpool(_catalog_answer, db, query):

@@ -14,4 +14,29 @@ export function Users(){const {user,reload,can}=useAuth();const [membershipId,se
     onSuccess={()=>{if(passwordTarget.id===user?.id) void reload()}}/>}
   {membershipId&&<MembershipEditor userId={membershipId} close={()=>setMembershipId(undefined)}/>}</>}
 export {Roles} from './RolePermissions'
-export function Audits(){const {user}=useAuth();const [detail,setDetail]=useState<any>(null);const result=useQuery({queryKey:[user?.id,'audit'],queryFn:()=>api<Row[]>('/api/v1/auth/audit?limit=200')});const names:Record<string,string>={login:'登录',logout:'退出登录',password_change:'修改本人密码',password_reset:'管理员重置员工密码',website_password_reset:'管理员重置官网密码',website_password_change:'官网用户修改本人密码',user_create:'新增员工',user_update:'修改员工',student_scope_update:'调整学生授权',role_save:'保存角色权限'};return <><PageTitle title="安全审计" description="核对登录、账号维护与权限变更，不记录密码和访问令牌。" extra={<Button onClick={()=>void result.refetch()} icon={<ReloadOutlined/>}>刷新</Button>}/><ErrorNotice error={result.error}/><Card className="table-card"><Table<Row> rowKey="id" loading={result.isFetching} dataSource={result.data||[]} columns={[{title:'时间（UTC）',dataIndex:'create_time'},{title:'操作者编号',dataIndex:'actor_id'},{title:'操作',dataIndex:'action',render:v=>names[v]||v},{title:'目标',dataIndex:'target'},{title:'详情',render:(_,r)=><Button type="link" onClick={()=>setDetail(r.details)}>查看</Button>} ]}/></Card><DetailDrawer title="审计详情" data={detail} onClose={()=>setDetail(null)}/></>}
+export function Audits(){
+  const {user}=useAuth()
+  const [detail,setDetail]=useState<Row|null>(null)
+  const result=useQuery({queryKey:[user?.id,'audit'],queryFn:()=>api<Row[]>('/api/v1/auth/audit?limit=200')})
+  const names:Record<string,string>={login:'登录',logout:'退出登录',password_change:'修改本人密码',password_reset:'管理员重置员工密码',website_password_reset:'管理员重置官网密码',website_password_change:'官网用户修改本人密码',user_create:'新增员工',user_update:'修改员工',student_scope_update:'调整学生授权',role_save:'保存角色权限'}
+  const detailData=detail?{
+    id:detail.id,
+    create_time:detail.create_time,
+    actor_id:detail.actor_id,
+    action:names[detail.action]||detail.action,
+    target:detail.target,
+    details:detail.details&&Object.keys(detail.details).length?detail.details:'无额外操作详情',
+  }:null
+  return <>
+    <PageTitle title="安全审计" description="核对登录、账号维护与权限变更，不记录密码和访问令牌。" extra={<Button onClick={()=>void result.refetch()} icon={<ReloadOutlined/>}>刷新</Button>}/>
+    <ErrorNotice error={result.error}/>
+    <Card className="table-card"><Table<Row> rowKey="id" loading={result.isFetching} dataSource={result.data||[]} columns={[
+      {title:'时间（UTC）',dataIndex:'create_time'},
+      {title:'操作者编号',dataIndex:'actor_id'},
+      {title:'操作',dataIndex:'action',render:v=>names[v]||v},
+      {title:'目标',dataIndex:'target'},
+      {title:'详情',render:(_,r)=><Button type="link" onClick={()=>setDetail(r)}>查看</Button>},
+    ]}/></Card>
+    <DetailDrawer title="审计详情" data={detailData} labels={{id:'审计编号',create_time:'时间（UTC）',actor_id:'操作者编号',action:'操作类型',target:'操作目标',details:'附加信息'}} onClose={()=>setDetail(null)}/>
+  </>
+}

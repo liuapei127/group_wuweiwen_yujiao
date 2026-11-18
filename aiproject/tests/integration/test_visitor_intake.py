@@ -370,7 +370,10 @@ def test_shared_customer_profile_import_and_screening(isolated_portal, monkeypat
             def upload(base_url, headers, content, filename="学习经历.txt"):
                 return client.post(base_url + "/imports/preview", headers=headers, files={"file": (filename, content.encode())})
 
-            assert upload(detail, owner, f"本人手机号：{phone_one}\n年龄：22", "林晓宁.txt").status_code == 422
+            phone_only = upload(detail, owner, f"本人手机号：{phone_one}\n年龄：22", "林晓宁.txt")
+            assert phone_only.status_code == 200
+            assert phone_only.json()["data"]["matches"] == ["本人手机号"]
+            assert not phone_only.json()["data"]["ownership_confirmation_required"]
             assert upload(detail, owner, f"姓名：陈明远\n本人手机号：{phone_two}\n年龄：22").status_code == 422
             assert upload(detail, owner, f"姓名：陈明远\n本人手机号：{phone_one}\n年龄：22").status_code == 422
             assert upload(detail, owner, f"姓名：林晓宁\n本人手机号：{phone_one}\n姓名：陈明远\n年龄：22").status_code == 422

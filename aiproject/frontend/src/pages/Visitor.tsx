@@ -125,6 +125,17 @@ const visitorHome = '/website/visitor'
 const visitorServicesPath = visitorHome + '/services'
 const customerProfilePath = '/website/profile'
 const storageKey = 'yujiao-visitor-token'
+const guestChatKey = 'website-customer-chat'
+const memberChatKey = 'website-customer-chat-session'
+
+function registeredChatKey(fresh = false) {
+  const previous = sessionStorage.getItem(memberChatKey)
+  if (previous && !fresh) return previous
+  if (previous) sessionStorage.removeItem(previous)
+  const key = guestChatKey + ':account:' + crypto.randomUUID()
+  sessionStorage.setItem(memberChatKey, key)
+  return key
+}
 const activityUrl = '/api/v1/visitor/events'
 const materialUrl = '/api/v1/visitor/materials'
 const statusNames: Record<string, string> = {
@@ -179,6 +190,7 @@ async function visitorApi<T>(path: string, token: string, method = 'GET', body?:
 
 export function Visitor() {
   const [token, setToken] = useState(() => sessionStorage.getItem(storageKey) || '')
+  const [chatKey, setChatKey] = useState(() => token ? registeredChatKey() : guestChatKey)
   const current = useLocation()
   const navigate = useNavigate()
   const publicPath = current.pathname.replace(/\/$/, '')
@@ -213,6 +225,9 @@ export function Visitor() {
 
   function clearSession() {
     sessionStorage.removeItem(storageKey)
+    if (chatKey !== guestChatKey) sessionStorage.removeItem(chatKey)
+    sessionStorage.removeItem(memberChatKey)
+    setChatKey(guestChatKey)
     setChangingPassword(false)
     setToken('')
     void cache.cancelQueries({queryKey: ['visitor']})
@@ -238,6 +253,7 @@ export function Visitor() {
         {username, password, ...(register ? {nickname: nickname?.trim()} : {})},
       )
       sessionStorage.setItem(storageKey, result.access_token)
+      setChatKey(registeredChatKey(true))
       message.destroy('website-auth')
       cache.setQueryData(['visitor', 'identity', result.access_token], {account_type: result.account_type})
       setAuthOpen(false)
@@ -354,7 +370,7 @@ export function Visitor() {
           <Button onClick={() => void navigate(customerProfilePath)}>我的学籍</Button>{accountActions}
         </div>
       </header>
-      <Student request={request} accountRecords={<VisitorServices token={token} expire={expire} showAssistant/>}/>
+      <Student request={request} accountRecords={<VisitorServices token={token} expire={expire} chatKey={chatKey} showAssistant/>}/>
       {changePassword}
     </main>
   }
@@ -447,16 +463,16 @@ export function Visitor() {
       </div>
     </footer>}
     <WebsiteAssistant
-      key={token || "guest"}
+      key={chatKey}
       title="粤教升学助手"
       hints={['德国项目', '新加坡项目', '如何报名活动']}
       intro={'你好，我是粤教升学助手。选国家和院校，一般可以按三步走：先看预算与学制，再看专业方向和院校匹配，最后确认签证与就业政策。\n\n如果有比较心仪的院校，或者更看重预算、学制还是专业排名？告诉我一个侧重点，我就能帮你把范围收窄。'}
       open={assistantOpen}
       onOpenChange={setAssistantOpen}
-      rememberGuestChat={!token}
+      chatStorageKey={chatKey}
       ask={async (query, history, sessionId, onText) => {
         const path = token ? '/api/cs/visitor/chat' : '/api/cs/chat'
-        const send = (id?: string) => visitorApi<CustomerChatReply>(path, token, 'POST', customerChatBody(query, id, token ? undefined : history), onText)
+        const send = (id?: string) => visitorApi<CustomerChatReply>(path, token, 'POST', customerChatBody(query, id, history), onText)
         try {
           const reply = await send(sessionId).catch(error => {
             if (error instanceof VisitorApiError && error.status === 404 && sessionId) return send()
@@ -483,8 +499,8 @@ export function Visitor() {
   </main>
 }
 
-function VisitorServices({token, expire, showAssistant = false, vertical = false}: {
-  token: string; expire: () => void; showAssistant?: boolean; vertical?: boolean
+function VisitorServices({token, expire, chatKey, showAssistant = false, vertical = false}: {
+  token: string; expire: () => void; chatKey?: string; showAssistant?: boolean; vertical?: boolean
 }) {
   const [activeTab, setActiveTab] = useState('events')
   const [offset, setOffset] = useState(0)
@@ -666,12 +682,14 @@ function VisitorServices({token, expire, showAssistant = false, vertical = false
     </Card>},
   ]}/>
     {showAssistant && <WebsiteAssistant
+      key={chatKey}
+      chatStorageKey={chatKey}
       title="登录客服"
       hints={['活动怎么预约', '材料怎么交', '有哪些留学项目']}
       intro="这里是游客客服。请假、投诉、学籍进度请到学生页使用学生助手。"
-      ask={async (query, _history, sessionId, onText) => {
+      ask={async (query, history, sessionId, onText) => {
         const send = (id?: string) => visitorApi<CustomerChatReply>(
-          '/api/cs/visitor/chat', token, 'POST', customerChatBody(query, id), onText,
+          '/api/cs/visitor/chat', token, 'POST', customerChatBody(query, id, history), onText,
         )
         const reply = await send(sessionId).catch(error => {
           if (error instanceof VisitorApiError && error.status === 401) expire()

@@ -86,7 +86,10 @@ export type CustomerProfile = CustomerFields & {
 }
 type Field = keyof CustomerFields | 'tag_weight'
 type Diff = {field: Field; current: FieldValue; proposed: FieldValue}
-type ImportPreview = {preview_id: string; version: number; file_name: string; matches: string[]; fields: Diff[]}
+type ImportPreview = {
+  preview_id: string; version: number; file_name: string; matches: string[]; fields: Diff[]
+  ownership_confirmation_required: boolean; ownership_confirmation_text: string; customer_name: string
+}
 type ImportInput = File | {source_id: number; file_name: string | null}
 type Draft = {profile: CustomerProfile; changes: Partial<CustomerFields>}
 
@@ -161,6 +164,7 @@ export function useCustomerEditor(profile: CustomerProfile | undefined, request:
 export function useCustomerImport(request: Request, endpoint: string, onSaved: () => void) {
   const [source, setSource] = useState<ImportInput>()
   const [selected, setSelected] = useState<Field[]>([])
+  const [ownershipConfirmed, setOwnershipConfirmed] = useState(false)
   const {message} = App.useApp()
   const preview = useMutation({
     mutationFn: (input: ImportInput) => {
@@ -172,11 +176,15 @@ export function useCustomerImport(request: Request, endpoint: string, onSaved: (
       body.append('file', input)
       return request<ImportPreview>(endpoint + '/imports/preview', 'POST', body)
     },
-    onSuccess: data => setSelected(data.fields.map(row => row.field)),
+    onSuccess: data => {
+      setSelected(data.fields.map(row => row.field))
+      setOwnershipConfirmed(false)
+    },
   })
   const confirm = useMutation({
     mutationFn: (data: ImportPreview) => request<CustomerProfile>(endpoint + '/imports/confirm', 'POST', {
       preview_id: data.preview_id, expected_version: data.version, fields: selected,
+      ownership_confirmed: ownershipConfirmed,
       ...(source && !(source instanceof File) ? {source_id: source.source_id} : {}),
     }),
     onSuccess: () => {
@@ -188,18 +196,20 @@ export function useCustomerImport(request: Request, endpoint: string, onSaved: (
   })
   const working = preview.isPending || confirm.isPending
   return {
-    source, selected, setSelected, preview, confirm, working,
+    source, selected, setSelected, ownershipConfirmed, setOwnershipConfirmed, preview, confirm, working,
     begin(input: ImportInput) {
       if (working) return
       confirm.reset()
       preview.reset()
       setSelected([])
+      setOwnershipConfirmed(false)
       setSource(input)
       preview.mutate(input)
     },
     close() {
       if (working) return
       setSource(undefined)
+      setOwnershipConfirmed(false)
       preview.reset()
       confirm.reset()
     },
@@ -209,14 +219,14 @@ export function useCustomerImport(request: Request, endpoint: string, onSaved: (
 export function CustomerImportDialog({importer, onChooseFile}: {
   importer: ReturnType<typeof useCustomerImport>; onChooseFile?: () => void
 }) {
-  const {source, selected, setSelected, preview, confirm, working} = importer
+  const {source, selected, setSelected, ownershipConfirmed, setOwnershipConfirmed, preview, confirm, working} = importer
   const fileName = source instanceof File ? source.name : source?.file_name || '文字资料'
   const data = preview.data
   return <Modal title={data ? '确认导入客户资料' : source instanceof File ? '上传资料' : '识别客户资料'} open={!!source}
     onCancel={importer.close} closable={!working} keyboard={!working} mask={{closable: !working}}
     width={690} footer={<Space wrap>
       <Button disabled={working} onClick={importer.close}>取消</Button>
-      {data ? <Button type="primary" disabled={!selected.length} loading={confirm.isPending}
+      {data ? <Button type="primary" disabled={!selected.length || (data.ownership_confirmation_required && !ownershipConfirmed)} loading={confirm.isPending}
         onClick={() => confirm.mutate(data)}>确认保存</Button>
         : onChooseFile && <Button type="primary" disabled={working} onClick={onChooseFile}>重新选择文件</Button>}
     </Space>}>
@@ -226,6 +236,12 @@ export function CustomerImportDialog({importer, onChooseFile}: {
       <ErrorNotice error={preview.error || confirm.error}/>
       {data && <>
         <Space wrap>{data.matches.map(name => <Tag key={name} color="success">{name}一致</Tag>)}</Space>
+        {data.ownership_confirmation_required && <>
+          <Alert type="warning" showIcon title="文件中缺少可核对的身份信息"
+            description={`请核对资料属于${data.customer_name || '当前客户'}，确认后再保存所选属性。`}/>
+          <Checkbox checked={ownershipConfirmed} disabled={confirm.isPending}
+            onChange={event => setOwnershipConfirmed(event.target.checked)}>{data.ownership_confirmation_text}</Checkbox>
+        </>}
         <Table<Diff> rowKey="field" size="small" pagination={false} dataSource={data.fields} columns={[
           {title: '选择', width: 58, render: (_, row) => <Checkbox aria-label={'更新' + customerLabels[row.field]}
             checked={selected.includes(row.field)} disabled={confirm.isPending} onChange={event => setSelected(current =>

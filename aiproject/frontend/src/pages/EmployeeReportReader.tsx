@@ -1,9 +1,6 @@
-import {Button, Card, Empty, Skeleton, Typography} from 'antd'
-import {useQuery} from '@tanstack/react-query'
+import {Empty, Skeleton, Typography} from 'antd'
 import dayjs from 'dayjs'
-import {useAuth} from '../auth'
 import {ErrorNotice} from '../components/shared'
-import {api, query} from '../lib/api'
 
 type Report = {
   content: string
@@ -29,11 +26,10 @@ function readableNotes(value: unknown): string[] {
   return []
 }
 
-export function EmployeeReportReader({employeeId, period, detail, loading, error}: {
-  employeeId: number; period: 'day' | 'week'
+export function EmployeeReportReader({period, detail, loading, error}: {
+  period: 'day' | 'week'
   detail?: StaffDetail; loading: boolean; error: unknown
 }) {
-  const {can} = useAuth()
   const weekly = period === 'week'
   const records = weekly
     ? detail?.weekly_report ? [{...detail.weekly_report, date: detail.weekly_report.week_start}] : []
@@ -60,40 +56,5 @@ export function EmployeeReportReader({employeeId, period, detail, loading, error
         </div>)}
       </article>)}
     </section>
-    {weekly && detail.weekly_report && can('reports:formal:generate') &&
-      <WeeklyReportSummary employeeId={employeeId} report={detail.weekly_report}/>}
   </div>
-}
-
-
-const summaryLabels = [
-  ['work_summary', '工作总结'],
-  ['key_progress_summary', '关键进展'],
-  ['risk_summary', '风险事项'],
-  ['next_work_suggestions', '下一步建议'],
-] as const
-type SummarySections = Record<(typeof summaryLabels)[number][0], string>
-
-function WeeklyReportSummary({employeeId, report}: {employeeId: number; report: WeeklyReport}) {
-  const {user} = useAuth()
-  const summary = useQuery({
-    queryKey: [user?.id, 'employee-weekly-summary', employeeId, report],
-    enabled: false,
-    retry: false,
-    queryFn: () => api<{sections: SummarySections}>(
-      '/api/v1/reporting/board/employees/' + employeeId + '/summary' +
-        query({anchor: report.week_start, period: 'week'}),
-      {method: 'POST', timeout: 130000},
-    ),
-  })
-
-  return <Card title="AI 总结" extra={<Button type="primary" loading={summary.isFetching}
-    onClick={() => void summary.refetch()}>{summary.data ? '重新生成' : '生成 AI 总结'}</Button>}>
-    <ErrorNotice error={summary.error}/>
-    {summary.isFetching ? <Skeleton active paragraph={{rows: 4}}/> : summary.data &&
-      summaryLabels.map(([key, label]) => <section key={key}>
-        <Typography.Title level={5}>{label}</Typography.Title>
-        <Typography.Paragraph className="employee-report-text">{summary.data.sections[key]}</Typography.Paragraph>
-      </section>)}
-  </Card>
 }

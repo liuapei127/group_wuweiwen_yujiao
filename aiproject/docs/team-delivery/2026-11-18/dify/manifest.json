@@ -1,0 +1,141 @@
+{
+  "source": "currently published Dify workflows",
+  "dify_version": "1.16.0",
+  "applications": {
+    "cs": {
+      "name": "粤教CRM-客服 · 本机集成",
+      "published_id": "d7829e83-2d76-4228-a57e-bc43dfbfa0aa",
+      "nodes": 36,
+      "edges": 44,
+      "file": "cs.yml",
+      "sha256": "de8e69a986c5fbc9c4fd5141b28ed3f430c112fa1a135495c33801ba9b88436d"
+    },
+    "stu-workspace": {
+      "name": "学生助手 · 草稿确认版 20261116",
+      "published_id": "882ba0b2-e278-4e35-bc67-3da80544b716",
+      "nodes": 22,
+      "edges": 22,
+      "file": "stu-workspace.yml",
+      "sha256": "993afdf9188124ec5ec1814df79ff94cfb1c1731800a51f257c8878764d6fa12"
+    },
+    "pf": {
+      "name": "客户研判 · 本机集成",
+      "published_id": "272b5d12-4fa8-49c4-b21b-f0cd680307ca",
+      "nodes": 9,
+      "edges": 9,
+      "file": "pf.yml",
+      "sha256": "d513978601daf035a3fdcd0a01ea39a3c4ac09516938cece7c9c165e43e1029e"
+    },
+    "rpt": {
+      "name": "员工正式报告 AI 总结 · 本机集成",
+      "published_id": "d31868a4-e1a1-44d4-a3e7-ce108052a680",
+      "nodes": 4,
+      "edges": 3,
+      "file": "rpt.yml",
+      "sha256": "cb28bbfeeb5aaad33246d269fc299c1d41530731dfd1933b507cf408a455a3fa"
+    },
+    "ent-fallback": {
+      "name": "ENT门户-参数理解",
+      "published_id": "7c83c3e7-35d7-4a63-a19b-abc51d025cd1",
+      "nodes": 3,
+      "edges": 2,
+      "file": "ent-fallback.yml",
+      "sha256": "ef94d7f0ce5e73e3fb664ab8e90f6c952cf3cc285ccfb0ac3b7646f4f14ea8b3"
+    },
+    "ent": {
+      "name": "企业智能助手-ENT",
+      "published_id": "afe17150-c953-4ca0-b39e-b378a6b86f30",
+      "nodes": 32,
+      "edges": 31,
+      "file": "ent.yml",
+      "sha256": "3a3a61da575fa7443f0192b2151a07e70254c92664b8f98f854a5ca43bea9e9f"
+    }
+  },
+  "knowledge": [
+    {
+      "id": "57577332-df10-40b1-b5da-57e2fbc53e9f",
+      "name": "学生生活指南 · 德国",
+      "provider": "external",
+      "files": []
+    },
+    {
+      "id": "74926e1f-eaa7-44ba-bf54-6a85b6c7ef47",
+      "name": "粤教官网·常见问题",
+      "provider": "vendor",
+      "files": [
+        {
+          "file": "knowledge/粤教官网·常见问题/01-粤教官网常见问题.txt",
+          "bytes": 243,
+          "sha256": "060b2cfe6b59bee09d0a3fd6ce7d7fcd36116ccd378c3147139409d6ed4441ce"
+        },
+        {
+          "file": "knowledge/粤教官网·常见问题/02-官网客服知识补充·材料报名与费用FAQ·20261114.txt",
+          "bytes": 1505,
+          "sha256": "d4d7fafb1a8f945251b12ee73a016d5880b9a3767ae6ce29caebf3b802db8fff"
+        }
+      ]
+    },
+    {
+      "id": "7c6317b3-04da-41da-9fd5-9c9fd499c9bc",
+      "name": "学生生活指南 · 新加坡",
+      "provider": "external",
+      "files": []
+    },
+    {
+      "id": "ac37b0d4-d54f-4a57-8090-603bba6761a5",
+      "name": "粤教官网·政策入口",
+      "provider": "vendor",
+      "files": [
+        {
+          "file": "knowledge/粤教官网·政策入口/01-德国和新加坡官方留学政策入口.txt",
+          "bytes": 387,
+          "sha256": "00d41a39f5a3648c48b3bd066714974934246e7250ca41f43d6bdcc15847ee41"
+        },
+        {
+          "file": "knowledge/粤教官网·政策入口/02-官网客服知识补充·留学政策查询指引·20261114.txt",
+          "bytes": 916,
+          "sha256": "5cdf108af7918498916c96afaf9b0110534896bbe601eb4419666324cbc23764"
+        }
+      ]
+    },
+    {
+      "id": "ad4039cf-ad3b-49da-8d54-a68bf28ed11c",
+      "name": "粤教官网·公司简介",
+      "provider": "vendor",
+      "files": [
+        {
+          "file": "knowledge/粤教官网·公司简介/01-粤教官网公开介绍.txt",
+          "bytes": 210,
+          "sha256": "9d0910b5f25c11f79cb00af9a7e75fc02c740b4e1d35f9f5e7765dd42671c481"
+        },
+        {
+          "file": "knowledge/粤教官网·公司简介/02-官网客服知识补充·公司公开介绍·20261114.txt",
+          "bytes": 559,
+          "sha256": "01c741873fe497ebf0a7f648f8717da9905e3166946ad7474a31d283bbde0cbb"
+        }
+      ]
+    },
+    {
+      "id": "c5919646-527e-4505-b5cb-a2fe4ad6f791",
+      "name": "粤教官网·留学项目",
+      "provider": "vendor",
+      "files": [
+        {
+          "file": "knowledge/粤教官网·留学项目/01-中德精英人才共建计划.txt",
+          "bytes": 5094,
+          "sha256": "103e67205a51a3b8e5b9ccd962da0d510097e2157beaca8acf587cfcc828818d"
+        },
+        {
+          "file": "knowledge/粤教官网·留学项目/02-新加坡国际本硕升学计划.txt",
+          "bytes": 6033,
+          "sha256": "7cea072316f9c13737f35dd40dbc378c8383dabe2f2ad7d7401e937aab7e1ecf"
+        },
+        {
+          "file": "knowledge/粤教官网·留学项目/03-官网客服知识补充·德国与新加坡项目摘要·20261114.txt",
+          "bytes": 583,
+          "sha256": "c721e563a05e4de8099c317435e381b7142a1d663abb39d11093d17335241a55"
+        }
+      ]
+    }
+  ]
+}

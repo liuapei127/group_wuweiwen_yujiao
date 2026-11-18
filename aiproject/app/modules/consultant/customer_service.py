@@ -13,7 +13,8 @@ from app.core.security.authorization import require_permission
 from app.core.security.credentials import utc_now
 from app.modules.auth.repository import AuthRepository
 from app.modules.profile.customer_import import (
-    EDUCATION_LABELS, PROJECT_LABELS, STAGE_LABELS, normalized_choice, normalized_name, normalized_phone, read_import,
+    EDUCATION_LABELS, PROJECT_LABELS, STAGE_LABELS, normalized_choice, normalized_name, normalized_phone,
+    read_import, read_import_text,
 )
 from app.modules.profile import repository as material_repository
 from app.modules.profile.dify_workflow import review_text
@@ -213,6 +214,14 @@ def remembered_name(db, visitor_id: int) -> str:
     return ((profile.display_name if profile else "") or "").strip()
 
 
+def remembered_age(db, visitor_id: int) -> int | None:
+    lead = repository.lead_for_visitor(db, visitor_id)
+    if lead is not None:
+        return lead.age
+    profile = db.get(CsVisitorProfile, visitor_id)
+    return (profile.attributes or {}).get('age') if profile else None
+
+
 def portrait_context(db, visitor_id: int, *, include_name: bool = True) -> str:
     account = db.get(VisitorAccount, visitor_id)
     lead = repository.lead_for_visitor(db, visitor_id)
@@ -399,6 +408,7 @@ def staff_profile(db, lead_id, staff):
         **fields, "website_linked": account is not None,
         **_portrait_view(lead, fields, account),
         "visitor_id": account.id if account is not None and "visitor-intake:read" in staff.permissions else None,
+        "imports": [dict(row) for row in repository.customer_imports(db, lead.id)],
         "readiness": readiness(fields),
         "screening": _screening_response(last, lead.profile_version) if last else None,
     }
@@ -428,7 +438,33 @@ def visitor_profile(db, visitor, *, include_pending=False):
         }
     fields = _profile(lead, account)
     return {**fields, **_portrait_view(lead, fields, account),
-            "imports": [dict(row) for row in repository.visitor_imports(db, lead.id, account.id)]}
+            "imports": [dict(row) for row in repository.customer_imports(db, lead.id)]}
+
+
+def _imported_source(db, lead, source_id):
+    row = repository.imported_source(db, lead.id, source_id)
+    if row is None:
+        raise BusinessError(404, "资料不存在")
+    return row
+
+
+def imported_details(db, source_id, *, lead_id=None, staff=None, visitor=None):
+    lead, _ = _staff_link(db, lead_id, staff) if staff is not None else _public_link(db, visitor)
+    source, has_attachment = _imported_source(db, lead, source_id)
+    return {
+        "source_id": source.id, "file_name": source.file_name, "create_time": source.create_time,
+        "raw_content": source.raw_content, "has_attachment": bool(has_attachment),
+    }
+
+
+def imported_attachment(db, source_id, *, lead_id=None, staff=None, visitor=None):
+    lead, _ = _staff_link(db, lead_id, staff) if staff is not None else _public_link(db, visitor)
+    source, _ = _imported_source(db, lead, source_id)
+    content = repository.imported_attachment(db, source.id)
+    if content is None:
+        raise BusinessError(404, "原件不存在，可查看资料正文")
+    filename = PurePosixPath((source.file_name or "资料附件").replace(chr(92), "/")).name
+    return filename, content
 
 
 def save_staff_profile(db, lead_id, staff, payload, *, on_saved=None):
@@ -491,22 +527,35 @@ def save_identity(db: Session, lead_id: int, payload: VerifiedIdentity, staff: E
         raise
 
 
-def _preview(db, lead, account, actor, file_name, content, extracted):
-    text, name, mobile, proposed = extracted
+def _import_matches(db, lead, account, name, mobile):
     current = _profile(lead, account)
     identity = db.get(CustomerIdentity, lead.id)
-    phone_owner = repository.identity_by_phone(db, mobile)
+    phone_owner = repository.identity_by_phone(db, mobile) if mobile else None
     if phone_owner is not None and phone_owner.lead_id != lead.id:
         raise BusinessError(422, "文件中的手机号已核验为其他客户，请核对资料归属")
     if identity is not None:
-        matches = identity.verified_name == name and identity.verified_mobile == mobile
+        expected_name = normalized_name(identity.verified_name)
+        phones = {normalized_phone(identity.verified_mobile)}
     else:
+        expected_name = normalized_name(current["customer_name"])
         phones = {normalized_phone(current["contact_info"] or "")}
         if account is not None:
             phones.add(normalized_phone(account.username))
-        matches = normalized_name(current["customer_name"]) == name and mobile in phones
-    if not matches:
-        raise BusinessError(422, "无法确认资料归属，请核对文件中的姓名和本人手机号是否与当前客户一致")
+        phones = {phone for phone in phones if re.fullmatch(r"1[3-9][0-9]{9}", phone)}
+    if (name and expected_name and name != expected_name) or (mobile and phones and mobile not in phones):
+        raise BusinessError(422, "文件中的身份信息与当前客户不一致，请核对资料归属")
+    matches = []
+    if name and name == expected_name:
+        matches.append("姓名")
+    if mobile and mobile in phones:
+        matches.append("本人手机号")
+    return matches
+
+
+def _preview(db, lead, account, actor, file_name, content, extracted):
+    text, name, mobile, proposed = extracted
+    current = _profile(lead, account)
+    matches = _import_matches(db, lead, account, name, mobile)
     proposed = {k: v for k, v in proposed.items() if current[k] != v and (k != "nickname" or account)}
     if not proposed:
         raise BusinessError(422, "文件中没有可补充的资料字段")
@@ -520,7 +569,10 @@ def _preview(db, lead, account, actor, file_name, content, extracted):
     db.add(preview)
     result = {
         "preview_id": preview.id, "version": lead.profile_version, "file_name": file_name,
-        "matches": ["姓名", "本人手机号"],
+        "matches": matches,
+        "ownership_confirmation_required": not matches,
+        "ownership_confirmation_text": "我确认该资料属于本人" if actor[0] == "visitor" else "我确认该资料属于当前客户",
+        "customer_name": current["customer_name"],
         "fields": [{"field": key, "current": current[key], "proposed": v} for key, v in proposed.items()],
     }
     db.commit()
@@ -580,6 +632,10 @@ def _confirm(db, lead, account, actor, payload: ImportConfirm, *, on_saved=None)
             or preview.expires_at <= utc_now()):
         raise BusinessError(404, "上传预览已失效，请重新上传")
     _version(lead, preview.profile_version)
+    _, name, mobile, _ = read_import_text(preview.raw_content)
+    matches = _import_matches(db, lead, account, name, mobile)
+    if not matches and not payload.ownership_confirmed:
+        raise BusinessError(422, "文件中缺少可核对的身份信息，请确认资料属于本人或当前客户后再保存")
     selected = set(payload.fields)
     if not selected <= preview.proposed.keys():
         raise BusinessError(422, "请选择预览中已识别的字段")
@@ -606,8 +662,17 @@ def _confirm(db, lead, account, actor, payload: ImportConfirm, *, on_saved=None)
         if actor[0] == "visitor":
             db.add(VisitorMaterial(source_id=source.id, visitor_id=actor[1], file_content=preview.file_content))
     source.lead_id = lead.id
+    if not source.raw_content:
+        source.raw_content = preview.raw_content
     source.parse_status = ParseStatus.success
-    source.parse_result = {"customer_id": lead.id, "confirmed_fields": delta}
+    source.parse_result = {
+        "customer_id": lead.id, "confirmed_fields": delta,
+        "ownership": {
+            "basis": "matched_identity" if matches else "uploader_confirmation",
+            "matched_fields": matches, "confirmed_by_kind": actor[0], "confirmed_by_id": actor[1],
+            "confirmed_at": utc_now().isoformat(),
+        },
+    }
     db.delete(preview)
     result = _profile(lead, account)
     visitor_id = account.id if account else None
@@ -628,18 +693,22 @@ def confirm_visitor(db, visitor, payload, *, on_saved=None):
 
 
 def _advice_section(text, label, following):
-    match = re.search(label + r"[：:]\s*(.+?)(?=" + following + r"[：:]|\Z)", text, re.S)
-    return match[1].strip() if match else ""
+    match = re.search(re.escape(label) + r"(?:\*\*)?\s*[：:]\s*(.+?)(?=\s*(?:\*\*)?(?:" + following
+                      + r")(?:\*\*)?\s*[：:]|\Z)", text, re.S)
+    return match[1].strip(" *\n\r") if match else ""
 
 
 def _generate_advice(document):
     reply = review_text(json.dumps(document, ensure_ascii=False))
     text = reply.advisor_advice or reply.match_reason
-    talk = _advice_section(text, "沟通时可以这样说", "还缺这些资料|下一步先问")
-    next_step = _advice_section(text, "下一步先问", "沟通时可以这样说|还缺这些资料")
-    if not talk or not next_step:
+    recommendation = _advice_section(text, "跟进建议", "沟通话术|待补充资料|结论")
+    talk = _advice_section(text, "沟通话术", "跟进建议|待补充资料|结论")
+    if not recommendation and not talk:
+        recommendation = _advice_section(text, "下一步先问", "沟通时可以这样说|还缺这些资料")
+        talk = _advice_section(text, "沟通时可以这样说", "还缺这些资料|下一步先问")
+    if not talk or not recommendation:
         raise BusinessError(502, "AI 未返回完整建议和话术，可以重新研判")
-    return {"state": "ready", "recommendation": next_step.strip(" *"), "talk_track": talk.strip(" *")}
+    return {"state": "ready", "recommendation": recommendation, "talk_track": talk}
 
 
 def _screening_response(row, current_version):

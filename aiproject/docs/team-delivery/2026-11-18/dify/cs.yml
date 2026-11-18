@@ -1,0 +1,1918 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#D1E9FF'
+  icon_type: emoji
+  mode: advanced-chat
+  name: 粤教CRM-客服 · 本机集成
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6
+    version: null
+kind: app
+version: 0.7.0
+workflow:
+  conversation_variables: []
+  environment_variables:
+  - description: FastAPI 根地址。Docker 中请使用宿主机可访问地址。
+    id: a11a1111-b22b-c33c-d44d-e55e55555570
+    name: cs_api_base
+    selector:
+    - env
+    - cs_api_base
+    value: http://host.docker.internal:8003
+    value_type: string
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 20
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: 您好，我是粤教升学助手。可以咨询留学项目、政策、常见问题，也可以查询活动，登录后选择场次并确认预约。
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions:
+    - 新加坡和德国有哪些留学项目？
+    - 德国双元制签证要求？
+    - 最近有什么线下讲座？
+    - 材料怎么提交？
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: code
+      id: 1711528914102-source-cs1700000050-target
+      selected: false
+      source: '1711528914102'
+      sourceHandle: source
+      target: cs1700000050
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: if-else
+      id: cs1700000050-source-cs1700000051-target
+      selected: false
+      source: cs1700000050
+      sourceHandle: source
+      target: cs1700000051
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: cs1700000051-case-force-event-cs1700000021-target
+      selected: false
+      source: cs1700000051
+      sourceHandle: case-force-event
+      target: cs1700000021
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: knowledge-retrieval
+      id: cs1700000051-case-force-business-cs1700000005-target
+      selected: false
+      source: cs1700000051
+      sourceHandle: case-force-business
+      target: cs1700000005
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: knowledge-retrieval
+      id: cs1700000051-case-force-faq-cs1700000012-target
+      selected: false
+      source: cs1700000051
+      sourceHandle: case-force-faq
+      target: cs1700000012
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: question-classifier
+      id: cs1700000051-false-cs1700000001-target
+      selected: false
+      source: cs1700000051
+      sourceHandle: 'false'
+      target: cs1700000001
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: question-classifier
+        targetType: knowledge-retrieval
+      id: cs1700000001-company_inquiry-cs1700000015-target
+      selected: false
+      source: cs1700000001
+      sourceHandle: company_inquiry
+      target: cs1700000015
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: question-classifier
+        targetType: knowledge-retrieval
+      id: cs1700000001-faq-cs1700000012-target
+      selected: false
+      source: cs1700000001
+      sourceHandle: faq
+      target: cs1700000012
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: question-classifier
+        targetType: knowledge-retrieval
+      id: cs1700000001-business_query-cs1700000005-target
+      selected: false
+      source: cs1700000001
+      sourceHandle: business_query
+      target: cs1700000005
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: question-classifier
+        targetType: knowledge-retrieval
+      id: cs1700000001-policy_query-cs1700000033-target
+      selected: false
+      source: cs1700000001
+      sourceHandle: policy_query
+      target: cs1700000033
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: question-classifier
+        targetType: code
+      id: cs1700000001-course_recommend-cs1700000020-target
+      selected: false
+      source: cs1700000001
+      sourceHandle: course_recommend
+      target: cs1700000020
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: question-classifier
+        targetType: code
+      id: cs1700000001-event_register-cs1700000021-target
+      selected: false
+      source: cs1700000001
+      sourceHandle: event_register
+      target: cs1700000021
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: question-classifier
+        targetType: code
+      id: cs1700000001-casual_chat-cs1700000040-target
+      selected: false
+      source: cs1700000001
+      sourceHandle: casual_chat
+      target: cs1700000040
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: if-else
+      id: cs1700000040-source-cs1700000041-target
+      selected: false
+      source: cs1700000040
+      sourceHandle: source
+      target: cs1700000041
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: knowledge-retrieval
+      id: cs1700000041-case-faq-cs1700000012-target
+      selected: false
+      source: cs1700000041
+      sourceHandle: case-faq
+      target: cs1700000012
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: cs1700000041-case-event-cs1700000021-target
+      selected: false
+      source: cs1700000041
+      sourceHandle: case-event
+      target: cs1700000021
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: knowledge-retrieval
+      id: cs1700000041-case-policy-cs1700000033-target
+      selected: false
+      source: cs1700000041
+      sourceHandle: case-policy
+      target: cs1700000033
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: knowledge-retrieval
+      id: cs1700000041-case-company-cs1700000015-target
+      selected: false
+      source: cs1700000041
+      sourceHandle: case-company
+      target: cs1700000015
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: cs1700000041-case-recommend-cs1700000020-target
+      selected: false
+      source: cs1700000041
+      sourceHandle: case-recommend
+      target: cs1700000020
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: knowledge-retrieval
+      id: cs1700000041-case-business-cs1700000005-target
+      selected: false
+      source: cs1700000041
+      sourceHandle: case-business
+      target: cs1700000005
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: llm
+      id: cs1700000041-false-cs1700000009-target
+      selected: false
+      source: cs1700000041
+      sourceHandle: 'false'
+      target: cs1700000009
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+      id: cs1700000015-source-cs1700000016-target
+      selected: false
+      source: cs1700000015
+      sourceHandle: source
+      target: cs1700000016
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+      id: cs1700000012-source-cs1700000013-target
+      selected: false
+      source: cs1700000012
+      sourceHandle: source
+      target: cs1700000013
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+      id: cs1700000005-source-cs1700000006-target
+      selected: false
+      source: cs1700000005
+      sourceHandle: source
+      target: cs1700000006
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+      id: cs1700000033-source-cs1700000034-target
+      selected: false
+      source: cs1700000033
+      sourceHandle: source
+      target: cs1700000034
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: answer
+      id: cs1700000016-source-cs1700000017-target
+      selected: false
+      source: cs1700000016
+      sourceHandle: source
+      target: cs1700000017
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: answer
+      id: cs1700000013-source-cs1700000014-target
+      selected: false
+      source: cs1700000013
+      sourceHandle: source
+      target: cs1700000014
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: answer
+      id: cs1700000009-source-cs1700000011-target
+      selected: false
+      source: cs1700000009
+      sourceHandle: source
+      target: cs1700000011
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: http-request
+      id: cs1700000020-source-cs1700000030-target
+      selected: false
+      source: cs1700000020
+      sourceHandle: source
+      target: cs1700000030
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: code
+      id: cs1700000030-source-cs1700000004-target
+      selected: false
+      source: cs1700000030
+      sourceHandle: source
+      target: cs1700000004
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: if-else
+      id: cs1700000004-source-cs1700000057-target
+      selected: false
+      source: cs1700000004
+      sourceHandle: source
+      target: cs1700000057
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: llm
+      id: cs1700000057-case-crm-ok-c-cs1700000035-target
+      selected: false
+      source: cs1700000057
+      sourceHandle: case-crm-ok-c
+      target: cs1700000035
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: answer
+      id: cs1700000057-false-cs1700000059-target
+      selected: false
+      source: cs1700000057
+      sourceHandle: 'false'
+      target: cs1700000059
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: answer
+      id: cs1700000035-source-cs1700000055-target
+      selected: false
+      source: cs1700000035
+      sourceHandle: source
+      target: cs1700000055
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: if-else
+      id: cs1700000021-source-cs1700000022-target
+      selected: false
+      source: cs1700000021
+      sourceHandle: source
+      target: cs1700000022
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: answer
+      id: cs1700000022-case-need-direct-cs1700000008-target
+      selected: false
+      source: cs1700000022
+      sourceHandle: case-need-direct
+      target: cs1700000008
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: http-request
+      id: cs1700000022-false-cs1700000031-target
+      selected: false
+      source: cs1700000022
+      sourceHandle: 'false'
+      target: cs1700000031
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: code
+      id: cs1700000031-source-cs1700000032-target
+      selected: false
+      source: cs1700000031
+      sourceHandle: source
+      target: cs1700000032
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: if-else
+      id: cs1700000032-source-cs1700000058-target
+      selected: false
+      source: cs1700000032
+      sourceHandle: source
+      target: cs1700000058
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: llm
+      id: cs1700000058-case-crm-ok-e-cs1700000036-target
+      selected: false
+      source: cs1700000058
+      sourceHandle: case-crm-ok-e
+      target: cs1700000036
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: answer
+      id: cs1700000058-false-cs1700000060-target
+      selected: false
+      source: cs1700000058
+      sourceHandle: 'false'
+      target: cs1700000060
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: answer
+      id: cs1700000036-source-cs1700000056-target
+      selected: false
+      source: cs1700000036
+      sourceHandle: source
+      target: cs1700000056
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: answer
+      id: cs1700000006-source-cs1700000053-target
+      selected: false
+      source: cs1700000006
+      sourceHandle: source
+      target: cs1700000053
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: answer
+      id: cs1700000034-source-cs1700000054-target
+      selected: false
+      source: cs1700000034
+      sourceHandle: source
+      target: cs1700000054
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        title: 开始
+        type: start
+        variables: []
+      height: 72
+      id: '1711528914102'
+      position:
+        x: 40
+        y: 520
+      positionAbsolute:
+        x: 40
+        y: 520
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        code: "import re\n\ndef main(user_query: str = \"\") -> dict:\n    q = (user_query\
+          \ or \"\").strip()\n    force_branch = \"\"\n    empathy = \"no\"\n    if\
+          \ re.search(r\"累|难过|焦虑|安慰|崩溃|烦死了|好丧\", q):\n        empathy = \"yes\"\n\
+          \    has_event = bool(re.search(r\"活动|宣讲|讲座|说明会|宣讲会\", q))\n    list_only\
+          \ = bool(re.search(r\"有哪些|有什么|几场|列表|查询|可以报名\", q)) and not re.search(\n\
+          \        r\"我想报名|我要报名|帮我报名|确认报名\", q\n    )\n    if has_event and not list_only\
+          \ and (\n        empathy == \"yes\" or re.search(r\"最近.*(活动|讲座)\", q)\n\
+          \    ):\n        force_branch = \"event_register\"\n    if re.search(r\"\
+          报名材料|交完资料|交了下一步|资料后还要\", q):\n        force_branch = \"faq\"\n    elif re.search(r\"\
+          德国双元制|双元制怎么学\", q) and \"推荐\" not in q:\n        force_branch = \"business_query\"\
+          \n    return {\"force_branch\": force_branch, \"empathy_hint\": empathy}\n"
+        code_language: python3
+        outputs:
+          empathy_hint:
+            children: null
+            type: string
+          force_branch:
+            children: null
+            type: string
+        title: query_preprocess
+        type: code
+        variables:
+        - value_selector:
+          - sys
+          - query
+          value_type: string
+          variable: user_query
+      height: 51
+      id: cs1700000050
+      position:
+        x: 240
+        y: 520
+      positionAbsolute:
+        x: 240
+        y: 520
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        cases:
+        - case_id: case-force-event
+          conditions:
+          - comparison_operator: is
+            id: cond-case-force-event
+            value: event_register
+            variable_selector:
+            - cs1700000050
+            - force_branch
+          id: case-force-event
+          logical_operator: and
+        - case_id: case-force-business
+          conditions:
+          - comparison_operator: is
+            id: cond-case-force-business
+            value: business_query
+            variable_selector:
+            - cs1700000050
+            - force_branch
+          id: case-force-business
+          logical_operator: and
+        - case_id: case-force-faq
+          conditions:
+          - comparison_operator: is
+            id: cond-case-force-faq
+            value: faq
+            variable_selector:
+            - cs1700000050
+            - force_branch
+          id: case-force-faq
+          logical_operator: and
+        title: 高置信意图直达
+        type: if-else
+      height: 291
+      id: cs1700000051
+      position:
+        x: 400
+        y: 520
+      positionAbsolute:
+        x: 400
+        y: 520
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        classes:
+        - id: company_inquiry
+          name: 公司信息咨询（品牌/资质/校区）
+        - id: business_query
+          name: 公司业务查询（留学/培训产品线）
+        - id: policy_query
+          name: 留学政策咨询（签证/门槛）
+        - id: course_recommend
+          name: 课程与项目推荐（画像匹配）
+        - id: event_register
+          name: 活动查询与报名
+        - id: faq
+          name: 常见问题（费用/流程/退费）
+        - id: casual_chat
+          name: 日常闲聊（问候/情绪/吐槽/与留学无关的唠嗑，非业务问答）
+        instruction: 每条用户消息只选一个最贴切场景。纯问候、情绪倾诉、与业务无关的唠嗑选「日常闲聊」；带具体留学/公司/政策/费用/活动/报名意图的勿选闲聊。
+        model:
+          completion_params:
+            temperature: 0.3
+          mode: chat
+          name: qwen-plus
+          provider: langgenius/tongyi/tongyi
+        query_variable_selector:
+        - sys
+        - query
+        title: CS 七意图分类
+        type: question-classifier
+        vision:
+          enabled: false
+      height: 387
+      id: cs1700000001
+      position:
+        x: 528.5294117647059
+        y: 628.8235294117648
+      positionAbsolute:
+        x: 528.5294117647059
+        y: 628.8235294117648
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        code: "from urllib.parse import quote\n\ndef main(user_query: str = '') ->\
+          \ dict:\n    query = (user_query or '').strip()\n    return {'query_params':\
+          \ 'query=' + quote(query)}\n"
+        code_language: python3
+        outputs:
+          query_params:
+            children: null
+            type: string
+        title: 整理项目推荐条件
+        type: code
+        variables:
+        - value_selector:
+          - sys
+          - query
+          value_type: string
+          variable: user_query
+      height: 51
+      id: cs1700000020
+      position:
+        x: 920
+        y: 340
+      positionAbsolute:
+        x: 920
+        y: 340
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        code: "import re\nfrom urllib.parse import quote\n\ndef main(user_query: str\
+          \ = '') -> dict:\n    q = (user_query or '').strip()\n    booking = bool(re.search(r'我要报名|我想报名|确认报名|帮我报名|我想预约|帮我预约|^报名$',\
+          \ q))\n    return {'query_params': 'query=' + quote(q), 'need_direct': 'yes'\
+          \ if booking else 'no', 'direct_reply': '请登录官网，在活动预约中选择场次，或在登录后的客服里选择场次并确认报名。'}\n"
+        code_language: python3
+        outputs:
+          direct_reply:
+            children: null
+            type: string
+          need_direct:
+            children: null
+            type: string
+          query_params:
+            children: null
+            type: string
+        title: 整理活动查询条件
+        type: code
+        variables:
+        - value_selector:
+          - sys
+          - query
+          value_type: string
+          variable: user_query
+      height: 51
+      id: cs1700000021
+      position:
+        x: 920
+        y: 480
+      positionAbsolute:
+        x: 920
+        y: 480
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        cases:
+        - case_id: case-need-direct
+          conditions:
+          - comparison_operator: is
+            id: cond-case-need-direct
+            value: 'yes'
+            variable_selector:
+            - cs1700000021
+            - need_direct
+          id: case-need-direct
+          logical_operator: and
+        title: 报名需澄清?
+        type: if-else
+      height: 147
+      id: cs1700000022
+      position:
+        x: 1360
+        y: 480
+      positionAbsolute:
+        x: 1360
+        y: 480
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        answer: '{{#cs1700000021.direct_reply#}}'
+        title: 澄清直答
+        type: answer
+      height: 102
+      id: cs1700000008
+      position:
+        x: 1800
+        y: 400
+      positionAbsolute:
+        x: 1800
+        y: 400
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: []
+          type: none
+        headers: ''
+        method: get
+        params: ''
+        retry_config:
+          retry_enabled: false
+        ssl_verify: true
+        timeout:
+          connect: 5
+          read: 10
+          write: 5
+        title: 读取官网项目目录
+        type: http-request
+        url: '{{#env.cs_api_base#}}/api/cs/catalog/recommendations?{{#cs1700000020.query_params#}}'
+      height: 130
+      id: cs1700000030
+      position:
+        x: 1360
+        y: 340
+      positionAbsolute:
+        x: 1360
+        y: 340
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: []
+          type: none
+        headers: ''
+        method: get
+        params: ''
+        retry_config:
+          retry_enabled: false
+        ssl_verify: true
+        timeout:
+          connect: 5
+          read: 10
+          write: 5
+        title: 读取官网活动
+        type: http-request
+        url: '{{#env.cs_api_base#}}/api/cs/catalog/activities?{{#cs1700000021.query_params#}}'
+      height: 130
+      id: cs1700000031
+      position:
+        x: 1800
+        y: 520
+      positionAbsolute:
+        x: 1800
+        y: 520
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        code: "import json\n\ndef main(http_body: str, http_status: int = 200) ->\
+          \ dict:\n    intent_code = \"course_recommend\"\n    try:\n        status\
+          \ = int(http_status if http_status is not None else 200)\n    except (TypeError,\
+          \ ValueError):\n        status = 200\n    if status >= 400 or not (http_body\
+          \ or \"\").strip():\n        return {\n            \"tool_context\": \"\"\
+          ,\n            \"answer_mode\": \"error\",\n            \"intent_code\"\
+          : intent_code,\n            \"crm_ok\": \"no\",\n        }\n    try:\n \
+          \       payload = json.loads(http_body or \"{}\")\n    except json.JSONDecodeError:\n\
+          \        return {\n            \"tool_context\": \"\",\n            \"answer_mode\"\
+          : \"error\",\n            \"intent_code\": intent_code,\n            \"\
+          crm_ok\": \"no\",\n        }\n    if payload.get(\"code\") != 0:\n     \
+          \   return {\n            \"tool_context\": \"\",\n            \"answer_mode\"\
+          : \"error\",\n            \"intent_code\": intent_code,\n            \"\
+          crm_ok\": \"no\",\n        }\n    data = payload.get(\"data\")\n    if isinstance(data,\
+          \ list) and data:\n        top = data[0]\n        lines = [\n          \
+          \  f\"code: {top.get('code')}\",\n            f\"name: {top.get('name')}\"\
+          ,\n            f\"country: {top.get('country')}\",\n            f\"summary:\
+          \ {top.get('summary') or top.get('description') or ''}\",\n            f\"\
+          target_audience: {top.get('target_audience') or ''}\",\n            f\"\
+          price: {top.get('price')}\",\n        ]\n        ctx = \"\\\\n\".join(lines)\n\
+          \    elif isinstance(data, list):\n        ctx = \"[]\"\n    elif isinstance(data,\
+          \ dict):\n        ctx = json.dumps(data, ensure_ascii=False, indent=2)\n\
+          \    else:\n        ctx = str(data)\n    return {\"tool_context\": ctx,\
+          \ \"answer_mode\": \"tool\", \"intent_code\": intent_code, \"crm_ok\": \"\
+          yes\"}\n"
+        code_language: python3
+        outputs:
+          answer_mode:
+            children: null
+            type: string
+          crm_ok:
+            children: null
+            type: string
+          intent_code:
+            children: null
+            type: string
+          tool_context:
+            children: null
+            type: string
+        title: 合并推荐数据
+        type: code
+        variables:
+        - value_selector:
+          - cs1700000030
+          - body
+          value_type: string
+          variable: http_body
+        - value_selector:
+          - cs1700000030
+          - status_code
+          value_type: number
+          variable: http_status
+      height: 51
+      id: cs1700000004
+      position:
+        x: 1800
+        y: 340
+      positionAbsolute:
+        x: 1800
+        y: 340
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        code: "import json\n\ndef main(http_body: str, http_status: int = 200) ->\
+          \ dict:\n    result = {'tool_context': '', 'answer_mode': 'error', 'intent_code':\
+          \ 'event_register', 'crm_ok': 'no'}\n    try:\n        payload = json.loads(http_body\
+          \ or '{}')\n    except (TypeError, ValueError):\n        return result\n\
+          \    if int(http_status or 200) >= 400 or not isinstance(payload, dict)\
+          \ or payload.get('code') != 0:\n        return result\n    rows = payload.get('data')\n\
+          \    if isinstance(rows, list):\n        result.update(tool_context=json.dumps(rows,\
+          \ ensure_ascii=False), answer_mode='tool', crm_ok='yes')\n    return result\n"
+        code_language: python3
+        outputs:
+          answer_mode:
+            children: null
+            type: string
+          crm_ok:
+            children: null
+            type: string
+          intent_code:
+            children: null
+            type: string
+          tool_context:
+            children: null
+            type: string
+        title: 合并活动数据
+        type: code
+        variables:
+        - value_selector:
+          - cs1700000031
+          - body
+          value_type: string
+          variable: http_body
+        - value_selector:
+          - cs1700000031
+          - status_code
+          value_type: number
+          variable: http_status
+      height: 51
+      id: cs1700000032
+      position:
+        x: 2240
+        y: 520
+      positionAbsolute:
+        x: 2240
+        y: 520
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        cases:
+        - case_id: case-crm-ok-c
+          conditions:
+          - comparison_operator: is
+            id: cond-case-crm-ok-c
+            value: 'yes'
+            variable_selector:
+            - cs1700000004
+            - crm_ok
+          id: case-crm-ok-c
+          logical_operator: and
+        title: CRM 推荐可用?
+        type: if-else
+      height: 123
+      id: cs1700000057
+      position:
+        x: 1880
+        y: 340
+      positionAbsolute:
+        x: 1880
+        y: 340
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        cases:
+        - case_id: case-crm-ok-e
+          conditions:
+          - comparison_operator: is
+            id: cond-case-crm-ok-e
+            value: 'yes'
+            variable_selector:
+            - cs1700000032
+            - crm_ok
+          id: case-crm-ok-e
+          logical_operator: and
+        title: CRM 活动可用?
+        type: if-else
+      height: 123
+      id: cs1700000058
+      position:
+        x: 2320
+        y: 520
+      positionAbsolute:
+        x: 2320
+        y: 520
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        answer: 暂时无法读取官网数据，请稍后再试，也可以通过官网联系顾问。
+        title: 推荐接口失败
+        type: answer
+      height: 115
+      id: cs1700000059
+      position:
+        x: 2240
+        y: 280
+      positionAbsolute:
+        x: 2240
+        y: 280
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        answer: 暂时无法读取官网数据，请稍后再试，也可以通过官网联系顾问。
+        title: 活动接口失败
+        type: answer
+      height: 115
+      id: cs1700000060
+      position:
+        x: 2680
+        y: 480
+      positionAbsolute:
+        x: 2680
+        y: 480
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        dataset_ids:
+        - WIinvNk0Igg+SI2sm6O9uOTtlt+WdDQBJEs9bByx0T76edYCVSVpsuLAMDLL7Jkq
+        multiple_retrieval_config:
+          reranking_enable: false
+          reranking_mode: weighted_score
+          score_threshold: null
+          top_k: 3
+          weights:
+            keyword_setting:
+              keyword_weight: 0.0
+            vector_setting:
+              embedding_model_name: multimodal-embedding-v1
+              embedding_provider_name: langgenius/tongyi/tongyi
+              vector_weight: 1.0
+            weight_type: customized
+        query_variable_selector:
+        - sys
+        - query
+        retrieval_mode: multiple
+        title: 公司信息快检索
+        type: knowledge-retrieval
+      height: 89
+      id: cs1700000015
+      position:
+        x: 920
+        y: 60
+      positionAbsolute:
+        x: 920
+        y: 60
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        dataset_ids:
+        - etNJvcTh5APOgFHCu/d8Cq7I+YwQQ1n2wCIeRD8nuzDS4MCKGQGGfnWvGgCMa6RU
+        multiple_retrieval_config:
+          reranking_enable: false
+          reranking_mode: weighted_score
+          score_threshold: null
+          top_k: 3
+          weights:
+            keyword_setting:
+              keyword_weight: 0.0
+            vector_setting:
+              embedding_model_name: multimodal-embedding-v1
+              embedding_provider_name: langgenius/tongyi/tongyi
+              vector_weight: 1.0
+            weight_type: customized
+        query_variable_selector:
+        - sys
+        - query
+        retrieval_mode: multiple
+        title: FAQ 快检索
+        type: knowledge-retrieval
+      height: 89
+      id: cs1700000012
+      position:
+        x: 920
+        y: 200
+      positionAbsolute:
+        x: 920
+        y: 200
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        dataset_ids:
+        - +T0Wk1B+3noknua93OghmBXvqgE3+S6xvQztg9OXqHq7WKDGE7zxLQzLpsA8e+oW
+        multiple_retrieval_config:
+          reranking_enable: false
+          reranking_mode: weighted_score
+          score_threshold: null
+          top_k: 6
+          weights:
+            keyword_setting:
+              keyword_weight: 0.0
+            vector_setting:
+              embedding_model_name: multimodal-embedding-v1
+              embedding_provider_name: langgenius/tongyi/tongyi
+              vector_weight: 1.0
+            weight_type: customized
+        query_variable_selector:
+        - sys
+        - query
+        retrieval_mode: multiple
+        title: 业务项目检索
+        type: knowledge-retrieval
+      height: 89
+      id: cs1700000005
+      position:
+        x: 920
+        y: 620
+      positionAbsolute:
+        x: 920
+        y: 620
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        dataset_ids:
+        - 8iLLs+knP1flvydDDKYBBhZYb9QslHZetkjR0JgtZSEjkuYFFRAac4sW4zJNKtIl
+        multiple_retrieval_config:
+          reranking_enable: false
+          reranking_mode: weighted_score
+          score_threshold: null
+          top_k: 6
+          weights:
+            keyword_setting:
+              keyword_weight: 0.0
+            vector_setting:
+              embedding_model_name: multimodal-embedding-v1
+              embedding_provider_name: langgenius/tongyi/tongyi
+              vector_weight: 1.0
+            weight_type: customized
+        query_variable_selector:
+        - sys
+        - query
+        retrieval_mode: multiple
+        title: 留学政策检索
+        type: knowledge-retrieval
+      height: 89
+      id: cs1700000033
+      position:
+        x: 920
+        y: 760
+      positionAbsolute:
+        x: 920
+        y: 760
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - cs1700000015
+          - result
+        model:
+          completion_params:
+            max_tokens: 512
+            temperature: 0.1
+          mode: chat
+          name: qwen-plus
+          provider: langgenius/tongyi/tongyi
+        prompt_template:
+        - id: co-s
+          role: system
+          text: '你是粤教升学助手。仅根据公司公开资料回答品牌、服务、地址和官方联系方式；限 2 到 4 句话。若资料没有对应信息，说明暂未查到并引导在官网联系顾问。禁止编造地址、电话、分校或资质。
+
+            公司公开资料：
+
+            {{#context#}}'
+        - id: co-u
+          role: user
+          text: '{{#sys.query#}}'
+        title: 公司介绍快答
+        type: llm
+        vision:
+          enabled: false
+      height: 87
+      id: cs1700000016
+      position:
+        x: 1360
+        y: 60
+      positionAbsolute:
+        x: 1360
+        y: 60
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - cs1700000012
+          - result
+        model:
+          completion_params:
+            max_tokens: 512
+            temperature: 0.1
+          mode: chat
+          name: qwen-plus
+          provider: langgenius/tongyi/tongyi
+        prompt_template:
+        - id: faq-s
+          role: system
+          text: '你是粤教升学助手。根据已经发布的 FAQ 直答，限 2 到 4 句。涉及费用、退费、具体材料或步骤，只有来源明确并适用于所问项目时才复述；其余引导在官网查看项目或联系顾问。已有材料可以先提交，顾问联系后可补录。不要编造金额、日期、电话和办理结果。
+
+            FAQ：
+
+            {{#context#}}'
+        - id: faq-u
+          role: user
+          text: '{{#sys.query#}}'
+        title: FAQ 快答
+        type: llm
+        vision:
+          enabled: false
+      height: 87
+      id: cs1700000013
+      position:
+        x: 1360
+        y: 200
+      positionAbsolute:
+        x: 1360
+        y: 200
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - cs1700000005
+          - result
+        model:
+          completion_params:
+            temperature: 0.2
+          mode: chat
+          name: qwen-plus
+          provider: langgenius/tongyi/tongyi
+        prompt_template:
+        - id: ans-s
+          role: system
+          text: '你是粤教升学助手。根据检索资料，直接回答访客提问，限 2 到 5 句话。可以介绍公开项目的学习形式和大致流程。禁止承诺就业、薪资、签证、升学录取、居留或移民结果，禁止转述资料中没有有效出处的免审、免考、补贴、费用或排名。此类条件引导访客在官网联系顾问核实。政策以主管机关最新公布为准；无依据明确说暂未查到。
+
+            资料：
+
+            {{#context#}}
+
+            无需主动列出资料里的津贴、薪资、商业优惠、名次或收入数字。'
+        - id: ans-u
+          role: user
+          text: '{{#sys.query#}}'
+        title: 业务回复
+        type: llm
+        vision:
+          enabled: false
+      height: 87
+      id: cs1700000006
+      position:
+        x: 1360
+        y: 620
+      positionAbsolute:
+        x: 1360
+        y: 620
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - cs1700000033
+          - result
+        model:
+          completion_params:
+            temperature: 0.1
+          mode: chat
+          name: qwen-plus
+          provider: langgenius/tongyi/tongyi
+        prompt_template:
+        - id: pol-s
+          role: system
+          text: '你是粤教升学助手。此分支仅提供官方政策查询入口。只输出与访客目的地和事项对应的机构名称、资料中已有的原始链接，以及一句以主管机关当前说明为准的提示。最多两条入口。即使访客明确追问或检索片段有数字，也不输出兼职天数或工时、申请费用、时限、实施年份、保险额度或其他量化门槛，不列具体签证及居留资格、申请结果或完整材料清单。不要从记忆补充政策，不修改链接。资料没有适用链接时，建议前往官网「留学政策」栏目或联系顾问。
+
+            官方查询指引：
+
+            {{#context#}}'
+        - id: pol-u
+          role: user
+          text: '{{#sys.query#}}'
+        title: 政策回复
+        type: llm
+        vision:
+          enabled: false
+      height: 87
+      id: cs1700000034
+      position:
+        x: 1360
+        y: 760
+      positionAbsolute:
+        x: 1360
+        y: 760
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          completion_params:
+            temperature: 0.2
+          mode: chat
+          name: qwen-plus
+          provider: langgenius/tongyi/tongyi
+        prompt_template:
+        - id: tool-c-s
+          role: system
+          text: '你是粤教升学助手。只推荐业务数据明确列出的项目，完整使用项目名称，并根据已列出的公开简介说明推荐原因。适合人群、价格为空时写「请联系顾问确认」，不要从简介推断入学条件。禁止编造项目名称、费用、入学条件、报名结果或保证就业；省略内部编号、字段名和空值。无匹配时说明并建议更换筛选条件。回复最多
+            5 句。
+
+            公开项目：
+
+            {{#cs1700000004.tool_context#}}'
+        - id: tool-c-u
+          role: user
+          text: '{{#sys.query#}}'
+        title: 推荐结果回复
+        type: llm
+        vision:
+          enabled: false
+      height: 87
+      id: cs1700000035
+      position:
+        x: 2240
+        y: 340
+      positionAbsolute:
+        x: 2240
+        y: 340
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          completion_params:
+            temperature: 0.5
+          mode: chat
+          name: qwen-plus
+          provider: langgenius/tongyi/tongyi
+        prompt_template:
+        - id: tool-e-s
+          role: system
+          text: '你是粤教升学助手。只展示数据中列出的场次，列出编号、活动名、北京时间、形式、地点和剩余名额。没有场次如实说明。报名请登录官网完成；此节点仅查询活动，不收集联系方式，也不声称已经报名。
+
+            公开活动：
+
+            {{#cs1700000032.tool_context#}}'
+        - id: tool-e-u
+          role: user
+          text: '{{#sys.query#}}'
+        title: 活动结果回复
+        type: llm
+        vision:
+          enabled: false
+      height: 87
+      id: cs1700000036
+      position:
+        x: 2240
+        y: 520
+      positionAbsolute:
+        x: 2240
+        y: 520
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        code: "import re\n\nORDER = [\"faq\", \"event\", \"policy\", \"company\",\
+          \ \"recommend\", \"business\"]\nRULES = {\"faq\": [\"退费\", \"费用\", \"多少钱\"\
+          , \"价格\", \"定金\", \"手续\", \"流程\", \"合同\"], \"event\": [\"活动\", \"报名\", \"\
+          分享会\", \"讲座\", \"预约\", \"宣讲\"], \"policy\": [\"签证\", \"移民\", \"政策\", \"\
+          要求\", \"门槛\", \"拒签\"], \"company\": [\"公司\", \"资质\", \"校区\", \"粤教\", \"\
+          品牌\", \"办公地址\"], \"recommend\": [\"推荐\", \"适合什么\", \"匹配\", \"我初中毕业\", \"\
+          我高中\", \"选校\"], \"business\": [\"项目\", \"课程\", \"2+2\", \"本硕\", \"新加坡\"\
+          , \"德国\", \"培训\", \"留学\"]}\n\ndef main(user_query: str = \"\") -> dict:\n\
+          \    q = (user_query or \"\").strip()\n    route = \"chat\"\n    if not\
+          \ q:\n        return {\"route\": route}\n    for key in ORDER:\n       \
+          \ for p in RULES.get(key) or []:\n            if p in q:\n             \
+          \   route = key\n                break\n        if route != \"chat\":\n\
+          \            break\n    return {\"route\": route}\n"
+        code_language: python3
+        outputs:
+          route:
+            children: null
+            type: string
+        title: 闲聊业务兜底检测
+        type: code
+        variables:
+        - value_selector:
+          - sys
+          - query
+          value_type: string
+          variable: user_query
+      height: 51
+      id: cs1700000040
+      position:
+        x: 920
+        y: 900
+      positionAbsolute:
+        x: 920
+        y: 900
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        cases:
+        - case_id: case-faq
+          conditions:
+          - comparison_operator: is
+            id: cond-case-faq
+            value: faq
+            variable_selector:
+            - cs1700000040
+            - route
+          id: case-faq
+          logical_operator: and
+        - case_id: case-event
+          conditions:
+          - comparison_operator: is
+            id: cond-case-event
+            value: event
+            variable_selector:
+            - cs1700000040
+            - route
+          id: case-event
+          logical_operator: and
+        - case_id: case-policy
+          conditions:
+          - comparison_operator: is
+            id: cond-case-policy
+            value: policy
+            variable_selector:
+            - cs1700000040
+            - route
+          id: case-policy
+          logical_operator: and
+        - case_id: case-company
+          conditions:
+          - comparison_operator: is
+            id: cond-case-company
+            value: company
+            variable_selector:
+            - cs1700000040
+            - route
+          id: case-company
+          logical_operator: and
+        - case_id: case-recommend
+          conditions:
+          - comparison_operator: is
+            id: cond-case-recommend
+            value: recommend
+            variable_selector:
+            - cs1700000040
+            - route
+          id: case-recommend
+          logical_operator: and
+        - case_id: case-business
+          conditions:
+          - comparison_operator: is
+            id: cond-case-business
+            value: business
+            variable_selector:
+            - cs1700000040
+            - route
+          id: case-business
+          logical_operator: and
+        title: 闲聊改走专业链?
+        type: if-else
+      height: 435
+      id: cs1700000041
+      position:
+        x: 1120
+        y: 900
+      positionAbsolute:
+        x: 1120
+        y: 900
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          completion_params:
+            max_tokens: 768
+            temperature: 0.88
+          mode: chat
+          name: qwen-plus
+          provider: langgenius/tongyi/tongyi
+        prompt_template:
+        - id: chat-s
+          role: system
+          text: '# 角色
+
+            你是广东省教育服务有限公司的在线顾问「小粤」，20 出头、懂留学圈也懂年轻人说话方式。服务对象多是准备出国的学生和家长。
+
+
+            # 语气与风格（甲方重点）
+
+            - 亲切、有温度，像靠谱的学长学姐，不像冷冰冰的说明书。
+
+            - 适度口语与网络热梗（如「绝绝子」「绷不住了」），每轮最多 1 处，自然即可；对家长用语可更稳重。
+
+            - 先共情再回应：用户吐槽/焦虑时，先简短接住情绪，再给一两句建议或陪伴，不要一上来卖项目。
+
+            - 回复长度：通常 2～5 句；用户只打招呼就简短回礼并问今天想了解啥。
+
+
+            # 边界
+
+            - 不硬推销、不编造政策/费用；闲聊里不假装已查库。
+
+            - 用户聊到具体国家、项目、费用、活动时，温和引导：「你直接问『新加坡 2+2 怎么样』或『有什么活动』，我帮你查准确信息～」
+
+            - 涉及心理危机、自伤他伤：表达关心，建议联系身边老师/家人，并给人工 请通过官网联系顾问。
+
+            - 政治敏感、违法、辱骂：礼貌拒绝，不辩论。
+
+
+            # 记忆
+
+            - 延续当前多轮对话里用户自称、提到的城市/年级等，不要每次像第一次见面。
+
+
+            # 示例（仅学风格）
+
+            用户：嗨，在吗
+
+            小粤：在的在的～我是小粤，有啥留学相关或者单纯想唠嗑都行，你今天想聊啥？
+
+
+            用户：最近好焦虑，怕考不上
+
+            小粤：懂，这种时候压力真的大。先喘口气～你是更担心语言还是选校方向？要是想听项目匹配也可以说下你的年级，我帮你理一理思路。
+
+
+            转人工电话：请通过官网联系顾问。'
+        - id: chat-u
+          role: user
+          text: '{{#sys.query#}}'
+        title: 闲聊回复
+        type: llm
+        vision:
+          enabled: false
+      height: 87
+      id: cs1700000009
+      position:
+        x: 1360
+        y: 900
+      positionAbsolute:
+        x: 1360
+        y: 900
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        answer: '{{#cs1700000016.text#}}'
+        title: 公司 Answer
+        type: answer
+      height: 102
+      id: cs1700000017
+      position:
+        x: 1800
+        y: 60
+      positionAbsolute:
+        x: 1800
+        y: 60
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        answer: '{{#cs1700000013.text#}}'
+        title: FAQ Answer
+        type: answer
+      height: 102
+      id: cs1700000014
+      position:
+        x: 1800
+        y: 200
+      positionAbsolute:
+        x: 1800
+        y: 200
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        answer: '{{#cs1700000006.text#}}'
+        title: 业务 Answer
+        type: answer
+      height: 102
+      id: cs1700000053
+      position:
+        x: 1920
+        y: 620
+      positionAbsolute:
+        x: 1920
+        y: 620
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        answer: '{{#cs1700000034.text#}}'
+        title: 政策 Answer
+        type: answer
+      height: 102
+      id: cs1700000054
+      position:
+        x: 1920
+        y: 760
+      positionAbsolute:
+        x: 1920
+        y: 760
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        answer: '{{#cs1700000035.text#}}'
+        title: 推荐 Answer
+        type: answer
+      height: 102
+      id: cs1700000055
+      position:
+        x: 2720
+        y: 340
+      positionAbsolute:
+        x: 2720
+        y: 340
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        answer: '{{#cs1700000036.text#}}'
+        title: 活动 Answer
+        type: answer
+      height: 102
+      id: cs1700000056
+      position:
+        x: 2720
+        y: 520
+      positionAbsolute:
+        x: 2720
+        y: 520
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        answer: '{{#cs1700000009.text#}}'
+        title: 闲聊 Answer
+        type: answer
+      height: 102
+      id: cs1700000011
+      position:
+        x: 1800
+        y: 900
+      positionAbsolute:
+        x: 1800
+        y: 900
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    viewport:
+      x: -891.9999999999998
+      y: 43.00000000000023
+      zoom: 0.68
+  rag_pipeline_variables: []

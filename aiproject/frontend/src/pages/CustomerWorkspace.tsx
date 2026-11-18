@@ -5,6 +5,7 @@ import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
 import {useAuth} from '../auth'
 import {ActionModal, ErrorNotice, PageTitle, Status, Value, options, type ActionSpec} from '../components/shared'
 import {CustomerPortraitInput, CustomerProfilePanel, customerValue, useCustomerEditor, usePortraitUpdates, type CustomerProfile, type Request} from '../components/CustomerProfilePanel'
+import {CustomerImportedMaterials, type ImportedMaterial} from '../components/CustomerImportedMaterials'
 import {api, query} from '../lib/api'
 import {CustomerVisitorMaterials, screeningStatuses} from './VisitorIntake'
 import './customer-workspace.css'
@@ -27,7 +28,7 @@ type Screening = {
   input_snapshot?: Record<string, unknown>[]
   ai?: {state: string; message?: string; recommendation?: string; talk_track?: string}
 }
-type StaffProfile = CustomerProfile & {visitor_id?: number | null; readiness: Missing; screening: Screening | null}
+type StaffProfile = CustomerProfile & {visitor_id?: number | null; readiness: Missing; screening: Screening | null; imports?: ImportedMaterial[]}
 
 export function Customers() {
   const {user} = useAuth()
@@ -154,6 +155,7 @@ function CustomerDetail({id, userId}: {id: string; userId?: number}) {
     {profile.data && <div className="customer-detail-grid">
       <Space orientation="vertical" size="middle" style={{width: '100%'}}>
         <CustomerProfilePanel profile={profile.data} request={request} endpoint={profileUrl} importEndpoint={base} editor={editor} canWrite={write} onSaved={refresh}/>
+        <CustomerImportedMaterials imports={profile.data.imports} request={request} endpoint={base} scope={userId}/>
         {profile.data.visitor_id != null && can('visitor-intake:read') &&
           <CustomerVisitorMaterials key={profile.data.visitor_id} visitorId={profile.data.visitor_id} userId={userId}
             importEndpoint={base} onImported={refresh}/>}
@@ -202,7 +204,7 @@ function CustomerDetail({id, userId}: {id: string; userId?: number}) {
 
 const publicProfileUrl = '/api/v1/visitors/customer-profile'
 const publicProfileRead = publicProfileUrl + '?include_pending=true'
-type WebsiteProfile = CustomerProfile & {imports?: {id: number; file_name: string; create_time: string}[]}
+type WebsiteProfile = CustomerProfile & {imports?: ImportedMaterial[]}
 
 export function WebsiteCustomerProfile({request, token, back}: {request: Request; token: string; back: () => void}) {
   const cache = useQueryClient()
@@ -235,14 +237,7 @@ export function WebsiteCustomerProfile({request, token, back}: {request: Request
       description="你可以向客服补充留学情况或提交材料。顾问建立客户资料后，可在这里编辑。"/>}
     {profile.data && <Space orientation="vertical" size="middle" style={{width: '100%'}}>
       <CustomerProfilePanel profile={profile.data} request={request} endpoint={publicProfileUrl} editor={editor} canWrite={!profile.data.pending_customer} onSaved={refresh}/>
-      {!!profile.data.imports?.length && <Card title="已导入资料">
-        <Table rowKey="id" size="small" pagination={false} dataSource={profile.data.imports} columns={[
-          {title: '文件', dataIndex: 'file_name'},
-          {title: '保存时间', dataIndex: 'create_time', render: value => <Value value={value}/>},
-          {title: '状态', render: () => <Tag color="success">资料已更新</Tag>},
-        ]}/>
-      </Card>}
-      <CustomerPortraitInput profile={profile.data}/>
+      <CustomerImportedMaterials imports={profile.data.imports} request={request} endpoint={publicProfileUrl} scope={token} token={token}/>
     </Space>}
   </section>
 }

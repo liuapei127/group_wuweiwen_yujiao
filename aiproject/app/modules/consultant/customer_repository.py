@@ -9,6 +9,13 @@ from app.modules.visitor.models import VisitorAccount
 from .customer_models import CustomerIdentity, CustomerImportPreview
 from .models import CrmLead, VisitorIntake
 
+
+def _imported_sources(lead_id: int):
+    return select(CustomerSource).where(
+        CustomerSource.lead_id == lead_id,
+        CustomerSource.parse_result['confirmed_fields'].as_string().is_not(None),
+    )
+
 def list_customers(
     db: Session, advisor_id: int, *, missing_name: str,
     keyword: str | None, status: str | None, page: int, page_size: int,
@@ -58,11 +65,24 @@ def identity_by_phone(db: Session, mobile: str) -> CustomerIdentity | None:
     return db.scalar(select(CustomerIdentity).where(CustomerIdentity.verified_mobile == mobile))
 
 
-def visitor_imports(db: Session, lead_id: int, visitor_id: int, limit: int = 5):
-    stmt = select(CustomerSource.id, CustomerSource.file_name, CustomerSource.create_time).join(
-        VisitorMaterial, VisitorMaterial.source_id == CustomerSource.id,
-    ).where(CustomerSource.lead_id == lead_id, VisitorMaterial.visitor_id == visitor_id)
+def customer_imports(db: Session, lead_id: int, limit: int = 5):
+    stmt = _imported_sources(lead_id).with_only_columns(
+        CustomerSource.id, CustomerSource.file_name, CustomerSource.create_time,
+    )
     return db.execute(stmt.order_by(CustomerSource.id.desc()).limit(limit)).mappings().all()
+
+
+def imported_source(db: Session, lead_id: int, source_id: int):
+    stmt = _imported_sources(lead_id).where(CustomerSource.id == source_id).add_columns(
+        or_(CustomerSource.file_content.is_not(None), VisitorMaterial.file_content.is_not(None)).label('has_attachment'),
+    ).outerjoin(VisitorMaterial, VisitorMaterial.source_id == CustomerSource.id)
+    return db.execute(stmt).first()
+
+
+def imported_attachment(db: Session, source_id: int):
+    return db.scalar(select(func.coalesce(CustomerSource.file_content, VisitorMaterial.file_content)).outerjoin(
+        VisitorMaterial, VisitorMaterial.source_id == CustomerSource.id,
+    ).where(CustomerSource.id == source_id))
 
 
 def newest_screening(db: Session, lead_id: int) -> CustomerProfile | None:

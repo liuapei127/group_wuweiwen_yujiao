@@ -6,12 +6,11 @@ import {CloseOutlined, CustomerServiceOutlined, MessageOutlined, ReloadOutlined,
 
 export type AssistantTurn = {role: 'user' | 'assistant'; content: string; at?: string}
 type Ask = (query: string, history: AssistantTurn[], sessionId: string | undefined, onText: (text: string) => void) => Promise<{answer: string; session_id?: string}>
-const guestStorage = 'website-customer-chat'
 type SavedChat = {history: AssistantTurn[]; sessionId?: string}
 
-function readGuestChat(): SavedChat {
+function readChat(storageKey: string): SavedChat {
   try {
-    const saved: SavedChat = JSON.parse(sessionStorage.getItem(guestStorage) || '{}')
+    const saved: SavedChat = JSON.parse(sessionStorage.getItem(storageKey) || '{}')
     const history = Array.isArray(saved.history) ? saved.history.filter(turn => turn &&
       (turn.role === 'user' || turn.role === 'assistant') && typeof turn.content === 'string').slice(-22) : []
     const sessionId = typeof saved.sessionId === 'string' && /^[0-9a-f]{64}$/.test(saved.sessionId) ? saved.sessionId : undefined
@@ -21,10 +20,10 @@ function readGuestChat(): SavedChat {
   }
 }
 
-function saveGuestChat(chat: SavedChat) {
+function saveChat(storageKey: string, chat: SavedChat) {
   try {
-    if (chat.history.length) sessionStorage.setItem(guestStorage, JSON.stringify(chat))
-    else sessionStorage.removeItem(guestStorage)
+    if (chat.history.length) sessionStorage.setItem(storageKey, JSON.stringify(chat))
+    else sessionStorage.removeItem(storageKey)
   } catch {
     // Best effort when browser storage is unavailable.
   }
@@ -62,7 +61,7 @@ export function WebsiteAssistant({
   intro = '你好，我是粤教升学助手。关于留学项目、活动预约和材料提交，都可以问我。',
   open,
   onOpenChange,
-  rememberGuestChat = false,
+  chatStorageKey,
 }: {
   title: string
   ask: Ask
@@ -70,12 +69,12 @@ export function WebsiteAssistant({
   intro?: string
   open?: boolean
   onOpenChange?: (open: boolean) => void
-  rememberGuestChat?: boolean
+  chatStorageKey?: string
 }) {
   const [innerOpen, setInnerOpen] = useState(false)
   const [question, setQuestion] = useState('')
   const [partial, setPartial] = useState('')
-  const [saved] = useState<SavedChat>(() => rememberGuestChat ? readGuestChat() : {history: []})
+  const [saved] = useState<SavedChat>(() => chatStorageKey ? readChat(chatStorageKey) : {history: []})
   const [history, setHistory] = useState<AssistantTurn[]>(saved.history)
   const [sessionStart, setSessionStart] = useState(clock)
   const [hintsOn, setHintsOn] = useState(true)
@@ -105,10 +104,12 @@ export function WebsiteAssistant({
         {role: 'assistant', content: data.answer, at},
       ]
       setHistory(updated)
-      if (rememberGuestChat) saveGuestChat({history: updated, sessionId: session.current})
+      if (chatStorageKey) saveChat(chatStorageKey, {history: updated, sessionId: session.current})
       setQuestion('')
     },
   })
+
+  useEffect(() => () => {generation.current += 1}, [])
 
   useEffect(() => {
     const messages = thread.current
@@ -125,7 +126,7 @@ export function WebsiteAssistant({
   function reset() {
     generation.current += 1
     session.current = undefined
-    if (rememberGuestChat) saveGuestChat({history: []})
+    if (chatStorageKey) saveChat(chatStorageKey, {history: []})
     setPartial('')
     setHistory([])
     setQuestion('')

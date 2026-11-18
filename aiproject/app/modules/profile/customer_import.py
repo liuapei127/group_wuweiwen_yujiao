@@ -114,17 +114,23 @@ def _sample_education(value: str) -> tuple[Education | None, EducationStage | No
 
 
 def read_import(file_name: str, content: bytes) -> tuple[str, str, str, dict]:
-    text = extract_text(file_name, content, preserve_pdf_pages=True).strip()
+    return read_import_text(extract_text(file_name, content, preserve_pdf_pages=True))
+
+
+def read_import_text(text: str) -> tuple[str, str, str, dict]:
+    text = text.strip()
     if not text or len(text.encode("utf-8")) > 60000:
         raise BusinessError(422, "无法读取有效正文，或文件正文过长")
     try:
         record = json.loads(text, object_pairs_hook=_unique_fields)
     except json.JSONDecodeError:
         records = [_labeled_fields(page) for page in text.split("\f")]
-        candidates = [r for r in records if r.get("name") or r.get("mobile")]
-        if len(candidates) > 1:
-            raise BusinessError(422, _MULTIPLE_CUSTOMERS)
-        record = candidates[0] if candidates else {}
+        record = {}
+        for page in records:
+            for field, normalize in (("name", normalized_name), ("mobile", normalized_phone)):
+                if page.get(field) and record.get(field) and normalize(page[field]) != normalize(record[field]):
+                    raise BusinessError(422, _MULTIPLE_CUSTOMERS)
+            record.update(page)
     if isinstance(record, list):
         if len(record) != 1:
             raise BusinessError(422, _MULTIPLE_CUSTOMERS)
@@ -134,8 +140,8 @@ def read_import(file_name: str, content: bytes) -> tuple[str, str, str, dict]:
     record = {_ALIASES.get(k, k): v for k, v in record.items()}
     name = normalized_name(str(record.get("name") or ""))
     mobile = normalized_phone(str(record.get("mobile") or ""))
-    if not name or not re.fullmatch(r"1[3-9][0-9]{9}", mobile):
-        raise BusinessError(422, "无法确认资料归属，正文需要同时包含本人姓名和手机号")
+    if mobile and not re.fullmatch(r"1[3-9][0-9]{9}", mobile):
+        raise BusinessError(422, "文件中的本人手机号格式有误，请核对后重新上传")
     fields = {}
     for field, raw in (("nickname", record.get("nickname")), ("contact_info", record.get("contact_info")),
                        ("intended_major", record.get("intended_major"))):

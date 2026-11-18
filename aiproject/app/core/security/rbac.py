@@ -97,6 +97,8 @@ def route_permission(method, path):
         ('POST','/api/v1/consultant/leads/{lead_id}/screening'):'crm:write',
         ('POST','/api/v1/consultant/leads/{lead_id}/imports/preview'):'crm:write',
         ('POST','/api/v1/consultant/leads/{lead_id}/imports/confirm'):'crm:write',
+        ('GET','/api/v1/consultant/leads/{lead_id}/imports/{source_id}'):'crm:read',
+        ('GET','/api/v1/consultant/leads/{lead_id}/imports/{source_id}/attachment'):'crm:read',
         ('POST','/api/v1/consultant/leads/{lead_id}/materials/{source_id}/imports/preview'):'crm:write',
         ('PUT','/api/v1/enterprise/website-accounts/customers/{lead_id}/identity'):'website-accounts:manage',
         ('GET','/api/v1/profile'):'crm:read',

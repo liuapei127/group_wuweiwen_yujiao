@@ -279,7 +279,7 @@ function EmployeeBoard() {
     </Card>}
     <Drawer title={employee.data?.real_name||'员工日报'} onClose={()=>setSelected(undefined)} open={!!selected} size="large">
       {selected && <EmployeeReportReader key={selected+'-'+anchor+'-'+period}
-        employeeId={selected} period={period} detail={employee.data}
+        period={period} detail={employee.data}
         loading={employee.isFetching} error={employee.error}/>}
     </Drawer>
     <ErrorNotice error={employee.error}/>

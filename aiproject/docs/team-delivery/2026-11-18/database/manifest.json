@@ -1,0 +1,772 @@
+{
+  "format": 1,
+  "kind": "synthetic_showcase",
+  "mysql_version": "8.0+",
+  "source_database": "education_service",
+  "exported_at": "2026-11-18T10:06:47.785097+08:00",
+  "sql_file": "showcase.mysql.sql.gz",
+  "sha256": "bbd4046ca6da8fd5f312055847be4a97ed7f8daef31fd321f4482c9412502f36",
+  "bytes": 167150,
+  "row_counts": {
+    "academic_class_batch": 0,
+    "academic_deadline": 126,
+    "application_progress": 42,
+    "auth_refresh_token": 0,
+    "auth_service_client": 0,
+    "auth_service_client_audience": 0,
+    "auth_service_session": 0,
+    "auth_service_session_kid": 0,
+    "auth_user_session_kid": 0,
+    "chat_message": 0,
+    "chat_session": 0,
+    "class_course": 18,
+    "class_placement_history": 42,
+    "course_project": 3,
+    "crm_customer_identity": 75,
+    "crm_customer_import_preview": 0,
+    "crm_follow_up": 266,
+    "crm_lead": 124,
+    "crm_lead_status_event": 390,
+    "cs_short_turn": 0,
+    "cs_visitor_memory": 0,
+    "cs_visitor_profile": 28,
+    "cs_website_session": 0,
+    "customer_profile": 116,
+    "customer_source": 124,
+    "employee_daily_report": 390,
+    "employee_weekly_submission": 104,
+    "ent_ai_conversation": 0,
+    "ent_ai_message": 0,
+    "ent_auth_audit": 0,
+    "ent_auth_login_attempt": 0,
+    "ent_auth_role_permission": 85,
+    "ent_auth_session": 0,
+    "ent_auth_student_scope": 0,
+    "event_lecture": 6,
+    "event_registration": 87,
+    "intent_config": 20,
+    "knowledge_base": 0,
+    "notification_log": 13,
+    "onboarding_guide": 4,
+    "overseas_life_knowledge": 12,
+    "profile_rule": 0,
+    "project_class": 6,
+    "report_analysis_rules": 0,
+    "report_employee_conflict": 0,
+    "report_generation": 0,
+    "report_rule_signal": 0,
+    "report_schedule": 0,
+    "report_schedule_options": 0,
+    "report_status_history_start": 1,
+    "report_wellbeing_case": 3,
+    "report_wellbeing_checkin": 1939,
+    "report_wellbeing_consent": 42,
+    "report_wellbeing_event": 0,
+    "report_wellbeing_followup": 3,
+    "stu_assistant_conversation": 0,
+    "stu_assistant_message": 0,
+    "stu_assistant_task": 0,
+    "stu_mem0_memory": 0,
+    "student_admin_service": 56,
+    "student_class_enrollment": 42,
+    "student_feedback_ticket": 21,
+    "student_info": 42,
+    "student_leave_attachment": 0,
+    "student_psych_alert": 3,
+    "student_psych_profile": 42,
+    "student_psych_record": 291,
+    "student_score": 378,
+    "student_score_history": 378,
+    "sys_org_member": 15,
+    "sys_org_member_history": 15,
+    "sys_organization": 4,
+    "sys_role": 5,
+    "sys_user": 60,
+    "sys_user_primary_org": 15,
+    "teaching_course": 6,
+    "teaching_project": 3,
+    "todo_item": 71,
+    "visitor_account": 110,
+    "visitor_avatar": 0,
+    "visitor_call": 202,
+    "visitor_intake": 82,
+    "visitor_material": 82,
+    "visitor_session": 0,
+    "website_section": 3,
+    "website_section_card": 5,
+    "website_student_access": 42
+  },
+  "empty_runtime_tables": [
+    "auth_refresh_token",
+    "auth_service_client",
+    "auth_service_client_audience",
+    "auth_service_session",
+    "auth_service_session_kid",
+    "auth_user_session_kid",
+    "chat_message",
+    "chat_session",
+    "crm_customer_import_preview",
+    "cs_short_turn",
+    "cs_visitor_memory",
+    "cs_website_session",
+    "ent_ai_conversation",
+    "ent_ai_message",
+    "ent_auth_audit",
+    "ent_auth_login_attempt",
+    "ent_auth_session",
+    "stu_assistant_conversation",
+    "stu_assistant_message",
+    "stu_assistant_task",
+    "stu_mem0_memory",
+    "visitor_session"
+  ],
+  "triggers": [
+    "trg_member_before_insert",
+    "trg_member_after_insert",
+    "trg_member_before_update",
+    "trg_user_before_update"
+  ],
+  "demo_password": "YuejiaoDemo_2026!",
+  "accounts": [
+    {
+      "type": "staff",
+      "username": "19900009003",
+      "name": "徐子恒",
+      "role_id": 2
+    },
+    {
+      "type": "staff",
+      "username": "19900009004",
+      "name": "吴佳慧",
+      "role_id": 2
+    },
+    {
+      "type": "staff",
+      "username": "19900001101",
+      "name": "何嘉敏",
+      "role_id": 1
+    },
+    {
+      "type": "staff",
+      "username": "19900001102",
+      "name": "周景明",
+      "role_id": 2
+    },
+    {
+      "type": "staff",
+      "username": "19900001103",
+      "name": "林若溪",
+      "role_id": 3
+    },
+    {
+      "type": "staff",
+      "username": "19900001104",
+      "name": "陈思齐",
+      "role_id": 4
+    },
+    {
+      "type": "staff",
+      "username": "19900001106",
+      "name": "刘婉宁",
+      "role_id": 1
+    },
+    {
+      "type": "staff",
+      "username": "19900007001",
+      "name": "赵启航",
+      "role_id": 3
+    },
+    {
+      "type": "staff",
+      "username": "19900007002",
+      "name": "许知远",
+      "role_id": 2
+    },
+    {
+      "type": "staff",
+      "username": "19900007003",
+      "name": "黄舒雅",
+      "role_id": 2
+    },
+    {
+      "type": "staff",
+      "username": "19900007004",
+      "name": "王清妍",
+      "role_id": 2
+    },
+    {
+      "type": "staff",
+      "username": "19900007005",
+      "name": "谢承泽",
+      "role_id": 2
+    },
+    {
+      "type": "staff",
+      "username": "19900007006",
+      "name": "苏芷晴",
+      "role_id": 4
+    },
+    {
+      "type": "staff",
+      "username": "19900007007",
+      "name": "陆安然",
+      "role_id": 4
+    },
+    {
+      "type": "staff",
+      "username": "19900007008",
+      "name": "沈书言",
+      "role_id": 4
+    },
+    {
+      "type": "website",
+      "username": "13802428111",
+      "name": "陈思远"
+    },
+    {
+      "type": "website",
+      "username": "13936963205",
+      "name": "林予安"
+    },
+    {
+      "type": "website",
+      "username": "15824229420",
+      "name": "周沐晴"
+    },
+    {
+      "type": "website",
+      "username": "18650568793",
+      "name": "赵奕辰"
+    },
+    {
+      "type": "website",
+      "username": "15884091833",
+      "name": "许清禾"
+    },
+    {
+      "type": "website",
+      "username": "18625421477",
+      "name": "沈嘉宁"
+    },
+    {
+      "type": "website",
+      "username": "18605574153",
+      "name": "刘沐阳"
+    },
+    {
+      "type": "website",
+      "username": "18877616869",
+      "name": "郑乐言"
+    },
+    {
+      "type": "website",
+      "username": "18856476777",
+      "name": "叶予宁"
+    },
+    {
+      "type": "website",
+      "username": "13672389040",
+      "name": "黄锦程"
+    },
+    {
+      "type": "website",
+      "username": "13916257664",
+      "name": "周予宁"
+    },
+    {
+      "type": "website",
+      "username": "13951727059",
+      "name": "刘昱辰"
+    },
+    {
+      "type": "website",
+      "username": "13651263308",
+      "name": "王瑾瑜"
+    },
+    {
+      "type": "website",
+      "username": "13600871864",
+      "name": "顾瑾瑜"
+    },
+    {
+      "type": "website",
+      "username": "18819405538",
+      "name": "梁锦程"
+    },
+    {
+      "type": "website",
+      "username": "18810884813",
+      "name": "宋浩然"
+    },
+    {
+      "type": "website",
+      "username": "13811929970",
+      "name": "刘诗涵"
+    },
+    {
+      "type": "website",
+      "username": "13968177229",
+      "name": "刘书瑶"
+    },
+    {
+      "type": "website",
+      "username": "18831980259",
+      "name": "郑泽宇"
+    },
+    {
+      "type": "website",
+      "username": "13975486717",
+      "name": "程云舒"
+    },
+    {
+      "type": "website",
+      "username": "13642672860",
+      "name": "程芷萱"
+    },
+    {
+      "type": "website",
+      "username": "18820475408",
+      "name": "徐沐阳"
+    },
+    {
+      "type": "website",
+      "username": "18815004344",
+      "name": "胡一诺"
+    },
+    {
+      "type": "website",
+      "username": "13825283695",
+      "name": "陈昱辰"
+    },
+    {
+      "type": "website",
+      "username": "13914185137",
+      "name": "程予宁"
+    },
+    {
+      "type": "website",
+      "username": "15868107824",
+      "name": "马景行"
+    },
+    {
+      "type": "website",
+      "username": "18692437489",
+      "name": "周景行"
+    },
+    {
+      "type": "website",
+      "username": "18843534399",
+      "name": "郭一诺"
+    },
+    {
+      "type": "website",
+      "username": "13678168808",
+      "name": "沈予宁"
+    },
+    {
+      "type": "website",
+      "username": "13936559761",
+      "name": "苏雨桐"
+    },
+    {
+      "type": "website",
+      "username": "13607369496",
+      "name": "宋雨桐"
+    },
+    {
+      "type": "website",
+      "username": "13626491856",
+      "name": "张浩然"
+    },
+    {
+      "type": "website",
+      "username": "18881012902",
+      "name": "许沐阳"
+    },
+    {
+      "type": "website",
+      "username": "18845175217",
+      "name": "何沐阳"
+    },
+    {
+      "type": "website",
+      "username": "18641620026",
+      "name": "马子墨"
+    },
+    {
+      "type": "website",
+      "username": "18878848762",
+      "name": "陆清越"
+    },
+    {
+      "type": "website",
+      "username": "13913864370",
+      "name": "胡景行"
+    },
+    {
+      "type": "website",
+      "username": "13621123952",
+      "name": "陈奕宁"
+    },
+    {
+      "type": "website",
+      "username": "13662934236",
+      "name": "林一诺"
+    },
+    {
+      "type": "website",
+      "username": "18895023849",
+      "name": "刘予曦"
+    },
+    {
+      "type": "website",
+      "username": "13976464285",
+      "name": "何语嫣"
+    },
+    {
+      "type": "website",
+      "username": "13923723543",
+      "name": "黄心怡"
+    },
+    {
+      "type": "website",
+      "username": "18619586205",
+      "name": "高诗涵"
+    },
+    {
+      "type": "website",
+      "username": "18842885470",
+      "name": "高晨曦"
+    },
+    {
+      "type": "website",
+      "username": "13977813151",
+      "name": "陆瑾瑜"
+    },
+    {
+      "type": "website",
+      "username": "13681922081",
+      "name": "王可欣"
+    },
+    {
+      "type": "website",
+      "username": "18609335089",
+      "name": "马清越"
+    },
+    {
+      "type": "website",
+      "username": "13666461300",
+      "name": "高梓涵"
+    },
+    {
+      "type": "website",
+      "username": "13948483534",
+      "name": "罗承宇"
+    },
+    {
+      "type": "website",
+      "username": "18816049785",
+      "name": "许予宁"
+    },
+    {
+      "type": "website",
+      "username": "13968240987",
+      "name": "吴奕宁"
+    },
+    {
+      "type": "website",
+      "username": "18806048994",
+      "name": "孙书瑶"
+    },
+    {
+      "type": "website",
+      "username": "13988842815",
+      "name": "梁明轩"
+    },
+    {
+      "type": "website",
+      "username": "13810737864",
+      "name": "吴若琳"
+    },
+    {
+      "type": "website",
+      "username": "18871168995",
+      "name": "李奕宁"
+    },
+    {
+      "type": "website",
+      "username": "13624367854",
+      "name": "顾安琪"
+    },
+    {
+      "type": "website",
+      "username": "18641541232",
+      "name": "叶奕宁"
+    },
+    {
+      "type": "website",
+      "username": "18841764115",
+      "name": "高乐言"
+    },
+    {
+      "type": "website",
+      "username": "15868166953",
+      "name": "胡晨曦"
+    },
+    {
+      "type": "website",
+      "username": "18651049975",
+      "name": "吴梦琪"
+    },
+    {
+      "type": "website",
+      "username": "18810015172",
+      "name": "周奕宁"
+    },
+    {
+      "type": "website",
+      "username": "18660489198",
+      "name": "王梦琪"
+    },
+    {
+      "type": "website",
+      "username": "13642166515",
+      "name": "徐予宁"
+    },
+    {
+      "type": "website",
+      "username": "18635733868",
+      "name": "徐诗涵"
+    },
+    {
+      "type": "website",
+      "username": "18817058875",
+      "name": "吴予宁"
+    },
+    {
+      "type": "website",
+      "username": "13693777401",
+      "name": "程清越"
+    },
+    {
+      "type": "website",
+      "username": "13879124699",
+      "name": "郑思睿"
+    },
+    {
+      "type": "website",
+      "username": "18699867478",
+      "name": "胡书瑶"
+    },
+    {
+      "type": "website",
+      "username": "13866978872",
+      "name": "唐奕宁"
+    },
+    {
+      "type": "website",
+      "username": "13645282750",
+      "name": "高沐阳"
+    },
+    {
+      "type": "website",
+      "username": "13893485703",
+      "name": "徐嘉言"
+    },
+    {
+      "type": "website",
+      "username": "18619684157",
+      "name": "苏梓涵"
+    },
+    {
+      "type": "website",
+      "username": "18652956286",
+      "name": "程承宇"
+    },
+    {
+      "type": "website",
+      "username": "15895700140",
+      "name": "苏子墨"
+    },
+    {
+      "type": "website",
+      "username": "15826131156",
+      "name": "沈可欣"
+    },
+    {
+      "type": "website",
+      "username": "18803129428",
+      "name": "朱梦琪"
+    },
+    {
+      "type": "website",
+      "username": "18807464052",
+      "name": "叶雨桐"
+    },
+    {
+      "type": "website",
+      "username": "18885161705",
+      "name": "胡芷萱"
+    },
+    {
+      "type": "website",
+      "username": "18875923260",
+      "name": "胡奕宁"
+    },
+    {
+      "type": "website",
+      "username": "18630553313",
+      "name": "胡知夏"
+    },
+    {
+      "type": "website",
+      "username": "13982759226",
+      "name": "顾梦琪"
+    },
+    {
+      "type": "website",
+      "username": "18602258954",
+      "name": "吴梓涵"
+    },
+    {
+      "type": "website",
+      "username": "18685355162",
+      "name": "何云舒"
+    },
+    {
+      "type": "website",
+      "username": "13801077176",
+      "name": "马芷萱"
+    },
+    {
+      "type": "website",
+      "username": "15860048573",
+      "name": "马宇航"
+    },
+    {
+      "type": "website",
+      "username": "18668006660",
+      "name": "谢景行"
+    },
+    {
+      "type": "website",
+      "username": "18805130587",
+      "name": "沈诗涵"
+    },
+    {
+      "type": "website",
+      "username": "13806388632",
+      "name": "徐安琪"
+    },
+    {
+      "type": "website",
+      "username": "18841248772",
+      "name": "陈亦舟"
+    },
+    {
+      "type": "website",
+      "username": "13685459131",
+      "name": "顾嘉言"
+    },
+    {
+      "type": "website",
+      "username": "18837436855",
+      "name": "谢心怡"
+    },
+    {
+      "type": "website",
+      "username": "13865204672",
+      "name": "顾子墨"
+    },
+    {
+      "type": "website",
+      "username": "13696969712",
+      "name": "王晨曦"
+    },
+    {
+      "type": "website",
+      "username": "13883084623",
+      "name": "王明轩"
+    },
+    {
+      "type": "website",
+      "username": "13942489213",
+      "name": "程嘉言"
+    },
+    {
+      "type": "website",
+      "username": "18870974509",
+      "name": "吴锦程"
+    },
+    {
+      "type": "website",
+      "username": "13643405957",
+      "name": "许梦琪"
+    },
+    {
+      "type": "website",
+      "username": "18671614162",
+      "name": "郭昱辰"
+    },
+    {
+      "type": "website",
+      "username": "18865882060",
+      "name": "许清越"
+    },
+    {
+      "type": "website",
+      "username": "18818768895",
+      "name": "孙思睿"
+    },
+    {
+      "type": "website",
+      "username": "15856101694",
+      "name": "马乐言"
+    },
+    {
+      "type": "website",
+      "username": "13814736640",
+      "name": "王清越"
+    },
+    {
+      "type": "website",
+      "username": "13807507713",
+      "name": "苏一诺"
+    },
+    {
+      "type": "website",
+      "username": "18861291449",
+      "name": "郭芷萱"
+    },
+    {
+      "type": "website",
+      "username": "13660362021",
+      "name": "罗书瑶"
+    },
+    {
+      "type": "website",
+      "username": "13686411158",
+      "name": "唐乐言"
+    },
+    {
+      "type": "website",
+      "username": "15874744018",
+      "name": "周宇航"
+    },
+    {
+      "type": "website",
+      "username": "18607767414",
+      "name": "高以恒"
+    },
+    {
+      "type": "website",
+      "username": "13640744523",
+      "name": "马知夏"
+    },
+    {
+      "type": "website",
+      "username": "18834648986",
+      "name": "顾宇航"
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 from functools import partial
 from typing import Annotated
+from urllib.parse import quote
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Query, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
@@ -62,6 +63,23 @@ def confirm_staff(lead_id: int, body: ImportConfirm, db: Database, staff: Staff,
     return success(service.confirm_staff(db, lead_id, staff, body, on_saved=partial(background.add_task, sync_profile)))
 
 
+@staff_router.get("/{lead_id}/imports/{source_id}")
+def staff_import_details(lead_id: int, source_id: int, db: Database, staff: Staff, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    return success(service.imported_details(db, source_id, lead_id=lead_id, staff=staff))
+
+
+def _attachment_response(filename, content):
+    return Response(content, media_type="application/pdf" if filename.lower().endswith(".pdf") else "application/octet-stream",
+        headers={"Content-Disposition": "attachment; filename*=UTF-8''" + quote(filename, safe=""),
+                 "X-Content-Type-Options": "nosniff", "Cache-Control": "no-store"})
+
+
+@staff_router.get("/{lead_id}/imports/{source_id}/attachment")
+def staff_import_attachment(lead_id: int, source_id: int, db: Database, staff: Staff):
+    return _attachment_response(*service.imported_attachment(db, source_id, lead_id=lead_id, staff=staff))
+
+
 @staff_router.post("/{lead_id}/materials/{source_id}/imports/preview")
 def preview_staff_material(lead_id: int, source_id: int, db: Database, staff: Staff):
     return success(service.preview_staff_material(db, lead_id, source_id, staff))
@@ -93,6 +111,17 @@ async def preview_visitor(file: Upload, db: Database, visitor: VisitorPrincipal)
 @visitor_router.post("/imports/confirm")
 def confirm_visitor(body: ImportConfirm, db: Database, visitor: VisitorPrincipal, background: BackgroundTasks):
     return success(service.confirm_visitor(db, visitor, body, on_saved=partial(background.add_task, sync_profile)))
+
+
+@visitor_router.get("/imports/{source_id}")
+def visitor_import_details(source_id: int, db: Database, visitor: VisitorPrincipal, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    return success(service.imported_details(db, source_id, visitor=visitor))
+
+
+@visitor_router.get("/imports/{source_id}/attachment")
+def visitor_import_attachment(source_id: int, db: Database, visitor: VisitorPrincipal):
+    return _attachment_response(*service.imported_attachment(db, source_id, visitor=visitor))
 
 
 @admin_router.put("/customers/{lead_id}/identity")
