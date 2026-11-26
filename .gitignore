@@ -30,3 +30,6 @@ private-env*.txt
 .env.*
 *.env
 !.env.example
+
+# Generated delivery / submission bundles
+outputs/

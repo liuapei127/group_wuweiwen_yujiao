@@ -33,34 +33,38 @@ export function CustomerImportedMaterials({imports, request, endpoint, scope, to
   imports?: ImportedMaterial[]; request: Request; endpoint: string; scope: string | number | undefined; token?: string
 }) {
   const [selected, setSelected] = useState<ImportedMaterial>()
-  const [attachment, setAttachment] = useState<Attachment>({})
+  const [attachmentState, setAttachmentState] = useState<Attachment & {id?: number}>({})
+  const selectedId = selected?.id
   const details = useQuery({
-    queryKey: ['customer-import-details', scope, endpoint, selected?.id], enabled: !!selected,
-    queryFn: () => request<MaterialDetails>(endpoint + '/imports/' + selected!.id), staleTime: 0,
+    queryKey: ['customer-import-details', scope, endpoint, selectedId], enabled: !!selectedId,
+    queryFn: () => request<MaterialDetails>(endpoint + '/imports/' + selectedId!), staleTime: 0,
   })
   const hasAttachment = details.data?.has_attachment
+  const attachment: Attachment = !selectedId || !hasAttachment
+    ? {}
+    : attachmentState.id === selectedId
+      ? attachmentState
+      : {loading: true}
   useEffect(() => {
-    setAttachment({})
-    if (!selected || !hasAttachment) return
+    if (!selectedId || !hasAttachment) return
     const controller = new AbortController()
     let active = true
     let url: string | undefined
-    setAttachment({loading: true})
-    void readAttachment(endpoint + '/imports/' + selected.id + '/attachment', token, controller.signal)
+    void readAttachment(endpoint + '/imports/' + selectedId + '/attachment', token, controller.signal)
       .then(blob => {
         if (active) {
           url = URL.createObjectURL(blob)
-          setAttachment({url})
+          setAttachmentState({id: selectedId, url})
         }
       }).catch((error: Error) => {
-        if (active) setAttachment({error})
+        if (active) setAttachmentState({id: selectedId, error})
       })
     return () => {
       active = false
       controller.abort()
       if (url) URL.revokeObjectURL(url)
     }
-  }, [endpoint, selected?.id, hasAttachment, token])
+  }, [endpoint, selectedId, hasAttachment, token])
 
   if (!imports?.length) return null
   const fileName = details.data?.file_name || selected?.file_name || '文字资料'

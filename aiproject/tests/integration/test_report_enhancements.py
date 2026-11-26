@@ -78,7 +78,7 @@ def test_complaint_escalation_and_repeat_notifications_are_deduplicated(teacher_
         db.execute(text("INSERT INTO student_feedback_ticket "
             "(id,student_id,ticket_type,content,status,priority,assignee_id,is_notified,create_time,update_time) "
             "VALUES (1,21,'complaint','测试','pending','medium',30,0,:stamp,:stamp)"),
-            {"stamp":now-timedelta(days=6)})
+            {"stamp":(now-timedelta(days=6)).isoformat(sep=" ")})
         db.commit()
         assert rule_signals.scan_operational_signals(db) == 2
         assert rule_signals.scan_operational_signals(db) == 0
@@ -177,7 +177,7 @@ def test_project_health_uses_configured_weights_and_includes_shared_deadlines(te
             "project_application_weight":0.25,"project_deadline_weight":0.25},updated_by=10,updated_at=now))
         db.execute(text("INSERT INTO student_feedback_ticket "
             "(id,student_id,ticket_type,content,status,priority,assignee_id,is_notified,create_time,update_time) "
-            "VALUES (1,21,'complaint','测试','pending','medium',30,0,:stamp,:stamp)"),{"stamp":now})
+            "VALUES (1,21,'complaint','测试','pending','medium',30,0,:stamp,:stamp)"),{"stamp":now.isoformat(sep=" ")})
         db.add(ApplicationProgress(student_id=21,target_school="测试院校",stage="document_prep",
             deadline=now.date()-timedelta(days=1),handler_id=30,create_time=now,update_time=now))
         db.add(AcademicDeadline(student_id=None,deadline_type="exam",title="共享考试",study_stage="preparatory",

@@ -12,6 +12,10 @@ from app.core.exceptions import BusinessError
 
 logger = logging.getLogger(__name__)
 
+_FINAL_TEXT_MIN_CHUNK = 18
+_FINAL_TEXT_MAX_CHUNKS = 30
+_FINAL_TEXT_INTERVAL_SECONDS = 0.035
+
 
 def _frame(event, payload):
     data = json.dumps(jsonable_encoder(payload), ensure_ascii=False)
@@ -67,9 +71,15 @@ def chat_response(run, *, final_text=None):
                         answer = final_text(outcome[1]['data'])
                         if isinstance(answer, str) and answer != sent:
                             start = len(sent) if answer.startswith(sent) else 0
-                            for end in range(start, len(answer), 80):
-                                yield _frame('text', {'text': answer[:end + 80]})
-                                await asyncio.sleep(.012)
+                            remaining = len(answer) - start
+                            chunk_size = max(
+                                _FINAL_TEXT_MIN_CHUNK,
+                                (remaining + _FINAL_TEXT_MAX_CHUNKS - 1) // _FINAL_TEXT_MAX_CHUNKS,
+                            )
+                            for offset in range(start, len(answer), chunk_size):
+                                if offset > start:
+                                    await asyncio.sleep(_FINAL_TEXT_INTERVAL_SECONDS)
+                                yield _frame('text', {'text': answer[:offset + chunk_size]})
                     yield _frame(*outcome)
                     break
         finally:

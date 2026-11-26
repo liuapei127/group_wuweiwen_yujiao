@@ -9,7 +9,7 @@ import {ActionModal,ErrorNotice,PageTitle,type ActionSpec} from '../components/s
 import {PasswordChangeDialog} from '../components/PasswordChangeDialog'
 import {navigation,navGroups,permissionNames} from '../navigation'
 const metricNames:Record<string,string>={customers:'本人客户',reports_today:'今日日报',leaves_pending:'待审批请假',todos_open:'未完成待办',tickets_open:'待处理工单',notifications:'站内通知',authorized_students:'授权学生'}
-const kpiIcons=[<TeamOutlined/>,<FileTextOutlined/>,<AuditOutlined/>,<CheckSquareOutlined/>,<CustomerServiceOutlined/>,<BellOutlined/>,<TrophyOutlined/>]
+const kpiIcons=[TeamOutlined,FileTextOutlined,AuditOutlined,CheckSquareOutlined,CustomerServiceOutlined,BellOutlined,TrophyOutlined]
 export function Dashboard(){
   const {user,can}=useAuth()
   const result=useQuery({queryKey:[user?.id,'portal-context'],queryFn:()=>api('/api/v1/portal/context')})
@@ -17,7 +17,7 @@ export function Dashboard(){
   const features=navigation.filter(n=>(can(n.permission)||Boolean(n.alternatePermission&&can(n.alternatePermission)))&&n.path!=='/dashboard')
   const counters=Object.entries(result.data?.counters||{})
   const groups=navGroups.map(g=>({label:g.label,items:features.filter(n=>g.paths.includes(n.path))})).filter(g=>g.items.length)
-  const today=new Intl.DateTimeFormat('zh-CN',{month:'long',day:'numeric',weekday:'long'}).format(new Date())
+  const [today]=useState(()=>new Intl.DateTimeFormat('zh-CN',{month:'long',day:'numeric',weekday:'long'}).format(new Date()))
   return <>
     <div className="workspace-head">
       <div>
@@ -30,11 +30,11 @@ export function Dashboard(){
     </div>
     <ErrorNotice error={result.error}/>
     <div className="kpi-grid">
-      {counters.map(([k,v],i)=><Card key={k} className="kpi-card">
-        <div className="kpi-top"><div className="kpi-icon">{kpiIcons[i%kpiIcons.length]}</div><span className="kpi-label">{metricNames[k]||k}</span></div>
+      {counters.map(([k,v],i)=>{const Icon=kpiIcons[i%kpiIcons.length];return <Card key={k} className="kpi-card">
+        <div className="kpi-top"><div className="kpi-icon"><Icon/></div><span className="kpi-label">{metricNames[k]||k}</span></div>
         <Statistic value={Number(v)}/>
         <span className="stat-hint">当前授权范围</span>
-      </Card>)}
+      </Card>})}
     </div>
     <div className="workspace-grid">
       <div className="workspace-main">

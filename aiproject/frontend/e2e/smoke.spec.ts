@@ -126,6 +126,7 @@ test('advisor can claim, record a call and screen a visitor', async ({page}) => 
     if (pathname.endsWith('/auth/me')) return reply(user)
     if (pathname.endsWith('/pending')) return reply(claimed ? [] : [visitor])
     if (pathname.endsWith('/assigned')) return reply(claimed ? [caseData()] : [])
+    if (pathname.endsWith('/visitor-intake/42')) return reply(caseData())
     if (pathname.endsWith('/claim')) {
       claimed = true
       return reply(caseData())
@@ -145,6 +146,7 @@ test('advisor can claim, record a call and screen a visitor', async ({page}) => 
       return reply({id: leadId})
     }
     if (pathname.endsWith('/materials')) return reply([])
+    if (pathname.endsWith('/reservations')) return reply([])
     if (pathname.endsWith('/screening')) {
       if (method === 'POST') {
         saved = route.request().postDataJSON()
@@ -158,8 +160,12 @@ test('advisor can claim, record a call and screen a visitor', async ({page}) => 
   await page.goto('/visitor-intake')
   await expect(page.getByRole('heading', {name: '资源池'})).toBeVisible()
   await expect(page.getByText('13700000000')).toHaveCount(0)
-  await page.getByRole('button', {name: /^认\s*领$/}).click()
-  await page.getByRole('button', {name: '确认认领'}).click()
+  await page.getByRole('button', {name: '跟进该游客'}).click()
+  await page.getByRole('button', {name: '确认跟进'}).click()
+  await expect(page).toHaveURL(/\/customers$/)
+  await page.goto('/visitor-intake')
+  await page.getByRole('tab', {name: '我已认领'}).click()
+  await page.getByRole('button', {name: '查看跟进'}).click()
   const detail = page.getByRole('dialog', {name: '访客甲 · 跟进记录'})
   await expect(detail.getByText('13700000000')).toBeVisible()
   await expect(detail.getByRole('button', {name: '保存并研判'})).toHaveCount(0)
@@ -174,11 +180,7 @@ test('advisor can claim, record a call and screen a visitor', async ({page}) => 
   await detail.getByRole('button', {name: '保存并研判'}).click()
   await expect(detail.getByText('初筛符合', {exact: true})).toBeVisible()
   await expect(detail.getByLabel('年龄')).toHaveValue('18')
-  await detail.getByRole('button', {name: '意向客户建档'}).click()
-  const lead = page.getByRole('dialog', {name: '确认意向并建立客户档案'})
-  await lead.getByLabel('回访后的意向确认').fill('回访确认有意向')
-  await lead.getByRole('button', {name: '确认提交'}).click()
-  await expect(detail.getByRole('link', {name: '已建档 · 客户编号 125'})).toBeVisible()
+  await expect(detail.getByText('该历史记录尚未同步至客户管理')).toBeVisible()
 })
 
 
@@ -194,7 +196,10 @@ test('website sends a student to student services after same-entry login', async
   }}}))
   await page.route('**/api/v1/student/**', route => {
     const path = new URL(route.request().url()).pathname
-    const data = path.endsWith('/policies') ? {
+    const data = path.endsWith('/assistant/overview') ? {
+      profile: {student_name: '测试学生', abroad_country: 'Germany'},
+      applications: [], deadlines: [],
+    } : path.endsWith('/policies') ? {
       country: 'Germany', resources: [{
         title: '德国职业培训签证', description: '职业培训申请入口', publisher: '德国联邦政府门户',
         url: 'https://www.make-it-in-germany.com/en/visa-recognition/visa-types/training',
@@ -224,11 +229,11 @@ test('website sends a student to student services after same-entry login', async
   await loginDialog.getByLabel('密码').fill('test-password')
   await loginDialog.getByRole('button', {name: /^登\s*录$/}).click()
   await expect(page).toHaveURL(/website\/student$/)
-  await expect(page.getByRole('heading', {name: '学生服务'})).toBeVisible()
+  await expect(page.getByRole('heading', {name: /欢迎回来，测试学生/})).toBeVisible()
   const studentNav = page.getByLabel('学生服务导航')
   await expect(studentNav.getByRole('button', {name: '投诉反馈'})).toBeVisible()
-  await expect(page.getByText('留学地区：德国')).toBeVisible()
-  await expect(page.getByRole('button', {name: '查看考务'})).toBeVisible()
+  await expect(page.getByText('留学方向 · 德国')).toBeVisible()
+  await expect(page.getByRole('button', {name: /全部考务/})).toBeVisible()
   await studentNav.getByRole('button', {name: '申请进度'}).press('Enter')
   await expect(page.getByText('示例大学', {exact: true})).toBeVisible()
   await expect(page.getByText('等待审核', {exact: true})).toBeVisible()
@@ -241,7 +246,7 @@ test('website sends a student to student services after same-entry login', async
   await page.getByRole('tab', {name: '材料提交'}).click()
   await expect(page.getByText('原报名材料.pdf', {exact: true})).toBeVisible()
   await page.reload()
-  await expect(page.getByRole('heading', {name: '学生服务'})).toBeVisible()
+  await expect(page.getByRole('heading', {name: /欢迎回来，测试学生/})).toBeVisible()
 })
 
 for (const {role, permission, expected} of [
@@ -274,9 +279,10 @@ test('website account operator can create a student record from a visitor', asyn
     const path = new URL(route.request().url()).pathname
     const reply = (data: unknown) => route.fulfill({json: {code: 0, data}})
     if (path.endsWith('/auth/me')) return reply(user)
-    if (path.endsWith('/teachers')) return reply([{id: 30, real_name: '班主任甲'}])
+    if (path.endsWith('/enrollment-projects')) return reply([{id: 1, project_name: '德国预科项目'}])
+    if (path.endsWith('/enrollment-projects/1/classes')) return reply([{id: 10, name: '2026秋季一班', teacher_id: 30, teacher_name: '班主任甲'}])
     if (path.endsWith('/student-access') && route.request().method() === 'POST') {
-      expect(route.request().postDataJSON()).toEqual({class_teacher_id: 30, abroad_country: 'Germany'})
+      expect(route.request().postDataJSON()).toEqual({project_id: 1, class_id: 10})
       saved = true
       return reply({...account, student_id: 8, student_enabled: true})
     }
@@ -289,17 +295,17 @@ test('website account operator can create a student record from a visitor', asyn
   await page.getByRole('button', {name: '开通学生身份'}).click()
   const dialog = page.getByRole('dialog', {name: '开通学生身份'})
   await dialog.getByRole('button', {name: '新建学生档案'}).click()
-  await dialog.getByLabel('班主任').click()
-  await page.getByText('班主任甲 · 员工 30', {exact: true}).last().click()
-  await dialog.getByLabel('留学地区').click()
-  await page.getByText('德国', {exact: true}).last().click()
+  await dialog.getByLabel('项目').click()
+  await page.getByText('德国预科项目', {exact: true}).last().click()
+  await dialog.getByLabel('班级').click()
+  await page.getByText('2026秋季一班', {exact: true}).last().click()
   await dialog.getByRole('button', {name: /^确\s*定$/}).click()
   await expect(page.getByText('学生已开通', {exact: true})).toBeVisible()
 })
 
 
 test('student assistant keeps the chosen conversation and draft after an older reply', async ({page}) => {
-  const conversations = [{id: 'old', title: '原来的对话'}]
+  const conversations = [{id: 'old', title: '原来的对话'}, {id: 'new', title: '新对话'}]
   const originalTurns = Array.from({length: 24}, (_, index) => ({
     id: index + 1, role: index % 2 === 0 ? 'user' : 'assistant', content: '历史消息 ' + index,
   }))
@@ -317,12 +323,10 @@ test('student assistant keeps the chosen conversation and draft after an older r
     const path = new URL(route.request().url()).pathname
     const method = route.request().method()
     let data: unknown = []
-    if (path.endsWith('/assistant/conversations')) {
-      if (method === 'POST') {
-        const newConversation = {id: 'new', title: '新对话'}
-        conversations.unshift(newConversation)
-        data = newConversation
-      } else data = conversations
+    if (path.endsWith('/assistant/overview')) {
+      data = {profile: {student_name: '测试学生', abroad_country: 'Germany'}, applications: [], deadlines: []}
+    } else if (path.endsWith('/assistant/conversations')) {
+      data = conversations
     } else if (path.includes('/assistant/conversations/')) {
       const id = path.split('/').pop()
       data = {id, title: '', messages: id === 'old' ? originalTurns : []}
@@ -345,81 +349,35 @@ test('student assistant keeps the chosen conversation and draft after an older r
   await login.getByLabel('密码').fill('test-password')
   await login.getByRole('button', {name: /^登\s*录$/}).click()
   await expect(page).toHaveURL(/website\/student$/)
-  await expect(page.getByRole('button', {name: '原来的对话'})).toHaveAttribute('aria-pressed', 'true')
+  const studentNav = page.getByLabel('学生服务导航')
+  await studentNav.getByRole('button', {name: '学生助手'}).click()
+  await page.getByRole('button', {name: '对话记录'}).click()
+  const history = page.getByRole('dialog', {name: '对话记录'})
+  await history.getByRole('button', {name: '原来的对话'}).click()
   const input = page.getByRole('textbox', {name: '输入要办的事'})
   await input.fill('发给旧对话')
   await input.press('Enter')
-  await expect(page.getByText('正在理解并办理…')).toBeVisible()
-  await page.locator('.assistant-shell__aside-head').getByRole('button', {name: '新对话'}).click()
-  const selected = page.locator('.assistant-shell__list').getByRole('button', {name: '新对话'})
-  await expect(selected).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByText('正在了解你的问题…')).toBeVisible()
+  await page.getByRole('button', {name: '对话记录'}).click()
+  await history.getByRole('button', {name: '新对话', exact: true}).click()
   await input.fill('新会话里的草稿')
   const scrollBeforeReply = await page.evaluate(() => window.scrollY)
   const reply = page.waitForResponse(response => response.url().endsWith('/api/v1/student/assistant'))
   finishReply()
   await reply
   await expect(page.getByRole('button', {name: /^发\s*送$/})).toBeEnabled()
-  await expect(selected).toHaveAttribute('aria-pressed', 'true')
   await expect(input).toHaveValue('新会话里的草稿')
   expect(await page.evaluate(() => window.scrollY)).toBe(scrollBeforeReply)
-  await page.getByRole('button', {name: '原来的对话'}).click()
+  await page.getByRole('button', {name: '对话记录'}).click()
+  await history.getByRole('button', {name: '原来的对话'}).click()
   await expect(page.getByText('旧对话收到的新回复')).toBeVisible()
-  await page.locator('.assistant-shell__list').getByRole('button', {name: '新对话'}).click()
+  await page.getByRole('button', {name: '对话记录'}).click()
+  await history.getByRole('button', {name: '新对话', exact: true}).click()
   await expect(input).toHaveValue('新会话里的草稿')
-  const studentNav = page.getByLabel('学生服务导航')
   await studentNav.getByRole('button', {name: '申请进度'}).click()
   await studentNav.getByRole('button', {name: '学生助手'}).click()
   await expect(input).toHaveValue('新会话里的草稿')
 })
-
-test.describe('local test login shortcuts', () => {
-  // Block the session worker so mocked auth calls cannot reach the real backend.
-  test.use({serviceWorkers:'block'})
-const quickLoginRoles = [
-  {role:'管理员',code:'admin',username:'19900001101',password:'001101'},
-  {role:'顾问',code:'advisor',username:'19900001102',password:'001102'},
-  {role:'主管',code:'manager',username:'19900001103',password:'001103'},
-  {role:'教师',code:'teacher',username:'19900001104',password:'001104'},
-]
-for (const account of quickLoginRoles) {
-  test('local quick login authenticates '+account.code+' through the normal API', async ({page}) => {
-    let loginCalls = 0
-    await page.route('**/api/v1/**', async route => {
-      const path = new URL(route.request().url()).pathname
-      const reply = (data:unknown) => route.fulfill({json:{code:0,data}})
-      if (path === '/api/v1/auth/status') return reply({mode:'base_rs256',ready:true})
-      if (path === '/api/v1/auth/login') {
-        loginCalls += 1
-        expect(route.request().postDataJSON()).toEqual({username:account.username,password:account.password})
-        return reply({access_token:'test-'+account.code,user:{id:1,username:account.username,
-          real_name:'快捷测试'+account.role,role_code:account.code,role_name:account.role,
-          permissions:['dashboard:read'],student_ids:[]}})
-      }
-      return reply({})
-    })
-    await page.goto('/customers/757')
-    await page.getByLabel('员工手机号').fill('15072228372')
-    await page.getByLabel('登录密码').fill('wrong-password')
-    await page.getByRole('button',{name:account.role+'一键登录',exact:true}).click()
-    await expect(page.locator('.user-menu')).toContainText('快捷测试'+account.role)
-    await expect(page).toHaveURL(/\/dashboard$/)
-    expect(loginCalls).toBe(1)
-  })
-}
-
-test('local quick login shows backend rejection and lets the user retry', async ({page}) => {
-  await page.route('**/api/v1/auth/status', route => route.fulfill({json:{code:0,data:{ready:true}}}))
-  await page.route('**/api/v1/auth/login', route => route.fulfill({status:401,json:{detail:'测试账号密码已变更'}}))
-  await page.goto('/')
-  await page.getByRole('button',{name:'顾问一键登录',exact:true}).click()
-  await expect(page.getByText('测试账号密码已变更',{exact:true})).toBeVisible()
-  await expect(page.getByRole('heading',{name:'登录你的工作空间'})).toBeVisible()
-  await expect(page.getByLabel('员工手机号')).toHaveValue('19900001102')
-  await expect(page.getByRole('button',{name:'主管一键登录',exact:true})).toBeEnabled()
-})
-
-})
-
 
 test.describe('todo status form initialization', () => {
   test.use({serviceWorkers:'block'})
@@ -518,7 +476,7 @@ test.describe('report center review changes', () => {
     await expect(panel.getByRole('button',{name:/下载 PDF$/})).toBeDisabled()
     await page.emulateMedia({media:'print'})
     await expect(panel.locator('.report-filter-panel')).toBeHidden()
-    await expect(panel.locator('.report-center-table-link').first()).toBeVisible()
+    await expect(panel.getByRole('region',{name:'部门经营对比'})).toBeVisible()
     await expect(page.locator('.report-center > section:visible')).toHaveCount(1)
   })
 

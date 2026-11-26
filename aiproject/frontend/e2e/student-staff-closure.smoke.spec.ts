@@ -1,5 +1,4 @@
 import {expect, test} from '@playwright/test'
-import {existsSync, readFileSync} from 'node:fs'
 
 test.use({serviceWorkers: 'block'})
 
@@ -79,31 +78,4 @@ test('manager can act only on assigned tickets and source todos have no completi
   await expect(page.getByRole('row').filter({hasText: '待审批请假'}).getByRole('button', {name: '处理', exact: true})).toHaveCount(0)
   await expect(page.getByRole('row').filter({hasText: '待处理投诉'}).getByRole('button', {name: '处理', exact: true})).toHaveCount(0)
   await expect(page.getByRole('row').filter({hasText: '自己的手工待办'}).getByRole('button', {name: '处理', exact: true})).toHaveCount(1)
-})
-
-test('local student test fill still requires a normal login', async ({page}) => {
-  let loginRequests = 0
-  await page.route('**/api/v1/**', route => {
-    if (new URL(route.request().url()).pathname.endsWith('/visitors/login')) loginRequests++
-    return route.fulfill({json: {code: 0, data: []}})
-  })
-  await page.goto('/website')
-  await page.getByRole('button', {name: /^登\s*录$/}).click()
-  const modal = page.getByRole('dialog', {name: '官网登录', exact: true})
-  const fill = modal.getByRole('button', {name: '填入学生测试账号'})
-  const localFile = new URL('../.env.local', import.meta.url)
-  const localConfig = existsSync(localFile) ? readFileSync(localFile, 'utf8') : ''
-  const configured = ['VITE_STUDENT_TEST_USERNAME', 'VITE_STUDENT_TEST_PASSWORD']
-    .every(name => Boolean(process.env[name]) || new RegExp('^' + name + '=.+$', 'm').test(localConfig))
-  if (!configured) {
-    await expect(fill).toBeHidden()
-    await expect(modal.getByLabel('手机号')).toHaveValue('')
-    expect(loginRequests).toBe(0)
-    return
-  }
-  await expect(fill).toBeVisible()
-  await fill.click()
-  await expect(modal.getByLabel('手机号')).not.toHaveValue('')
-  await expect(modal.getByLabel('密码')).not.toHaveValue('')
-  expect(loginRequests).toBe(0)
 })

@@ -342,12 +342,12 @@ def test_wellbeing_week_scope_and_archives_follow_the_class_roster(teacher_world
         db.execute(text("INSERT INTO student_psych_alert (student_id, teacher_id, status, risk_level, create_time) "
                         "VALUES (21,30,'pending','low',:stamp),(22,31,'pending','high',:stamp),"
                         "(23,NULL,'pending','medium',:stamp),(27,30,'pending','high',:stamp)"),
-                   {"stamp": stamp})
+                   {"stamp": stamp.isoformat(sep=" ")})
         for uid in range(21, 28):
             db.add(WellbeingConsent(student_id=uid, granted=uid != 26, version="v1", updated_at=stamp))
             db.add(WellbeingCheckin(student_id=uid, day=stamp.date(), emotion="good", stress="light", updated_at=stamp))
             db.execute(text("INSERT INTO student_psych_record (student_id,emotion_tag,emotion_score,record_date) "
-                            "VALUES (:uid,'焦虑',65,:day)"), {"uid": uid, "day": stamp.date()})
+                            "VALUES (:uid,'焦虑',65,:day)"), {"uid": uid, "day": stamp.date().isoformat()})
         db.execute(text("INSERT INTO student_psych_record (student_id,emotion_tag,emotion_score,record_date) "
                         "VALUES (21,'焦虑',65,'2026-11-10'),(21,'稀少标签',NULL,'2026-11-10'),"
                         "(21,'焦虑',65,'2026-11-01')"))

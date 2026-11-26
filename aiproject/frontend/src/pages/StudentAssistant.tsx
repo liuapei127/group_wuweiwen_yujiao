@@ -140,7 +140,9 @@ export function StudentAssistant({request, launch}: {request: Request; launch?: 
   const task = newestAssistantTask(detail.data?.task, latest?.task, latest?.receivedAt, detail.dataUpdatedAt)
   const busy = send.isPending || decision.isPending || attachment.isPending
   const lastAssistant = messages.filter(turn => turn.role === 'assistant').at(-1)
-  const activeLocalTurns = activeId ? localTurns[activeId] || [] : []
+  const activeLocalTurns = activeId
+    ? (localTurns[activeId] || []).filter(turn => !detail.data || detail.isFetching || turn.reply.history_warning || !assistantTurnStored(detail.data.messages, turn.query, turn.reply.answer, turn.afterMessageId))
+    : []
   const latestUnrecorded = activeLocalTurns.some(turn => turn.id === latest?.localRequestId)
   const displayTurns = orderAssistantTurns(messages, activeLocalTurns)
   const localPresentationIsCurrent = !!latest && (latestUnrecorded || latest.intent === 'task_result' || (latest.receivedAt || 0) > detail.dataUpdatedAt)
@@ -197,14 +199,6 @@ export function StudentAssistant({request, launch}: {request: Request; launch?: 
       scrollThread(Math.min(position.scrollTop + position.viewportHeight * .8, position.scrollHeight - position.viewportHeight))
     }
   }
-  useEffect(() => {
-    if (!activeId || !detail.data || detail.isFetching) return
-    setLocalTurns(current => {
-      const previous = current[activeId] || []
-      const remaining = previous.filter(turn => turn.reply.history_warning || !assistantTurnStored(detail.data.messages, turn.query, turn.reply.answer, turn.afterMessageId))
-      return remaining.length === previous.length ? current : {...current, [activeId]: remaining}
-    })
-  }, [activeId, detail.dataUpdatedAt])
   function choose(id?: string) {
     if (!id && busy) return
     selection.current += 1
@@ -215,6 +209,7 @@ export function StudentAssistant({request, launch}: {request: Request; launch?: 
     followReply.current = true
     setReadingAction(undefined)
   }
+  const sendMutate = send.mutate
   function sendQuery(query: string, fromInput = false, cid: string | null = activeId || null) {
     if (!query.trim() || busy || inFlight.current) return
     inFlight.current = true
@@ -225,15 +220,27 @@ export function StudentAssistant({request, launch}: {request: Request; launch?: 
     setPartial({id, text: ''})
     setFailed(current => ({...current, [cid || '']: undefined}))
     if (fromInput) setDrafts(current => ({...current, [cid || '']: ''}))
-    send.mutate({query: query.trim(), cid: cid || undefined, selection: selection.current, id, fromInput, afterMessageId: cid === activeId ? (messages.at(-1)?.id || 0) : 0})
+    sendMutate({query: query.trim(), cid: cid || undefined, selection: selection.current, id, fromInput, afterMessageId: cid === activeId ? (messages.at(-1)?.id || 0) : 0})
   }
   useEffect(() => {
     if (!launch || consumedLaunch.current === launch.id || busy || inFlight.current) return
+    if (!launch.query.trim()) return
     consumedLaunch.current = launch.id
     selection.current += 1
-    setActiveId(undefined)
-    sendQuery(launch.query, false, null)
-  }, [launch, busy])
+    inFlight.current = true
+    followReply.current = true
+    const id = ++requestCount.current
+    const queryText = launch.query.trim()
+    const currentSelection = selection.current
+    queueMicrotask(() => {
+      setActiveId(undefined)
+      setHintsOpen(false)
+      setSyncWarning('')
+      setPartial({id, text: ''})
+      setFailed(current => ({...current, '': undefined}))
+      sendMutate({query: queryText, cid: undefined, selection: currentSelection, id, fromInput: false, afterMessageId: 0})
+    })
+  }, [launch, busy, sendMutate])
   function submit() {
     if (!question.trim() || busy || detail.isFetching && !!activeId) return
     sendQuery(question, true)

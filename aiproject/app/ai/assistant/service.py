@@ -1,9 +1,12 @@
 import json
 import logging
+import re
 from app.core.exceptions import BusinessError
 from app.core.security.rbac import ACTION_PERMISSIONS, INTENT_PERMISSIONS
 from app.core.security.authorization import require_permission
 from app.ai.workflows.ent_contracts import plan,CONFIRM,CANCEL,parse_action,selected_id
+from app.modules.consultant.errors import ConflictError
+from app.modules.consultant.repository import ConsultantRepository
 from app.modules.statistics.service import current_report_members
 from .repository import AssistantRepository
 from .replies import business_reply, chat_history, conversational_reply, display_stored_reply
@@ -11,6 +14,18 @@ from .client import DifyIntentClient,call_business
 from app.modules.feedback.repository import FeedbackRepository
 
 logger=logging.getLogger(__name__)
+
+_CUSTOMER_NAME_LOOKUP = re.compile(
+    r"(?:请|帮我)?\s*(?:查询|查看|查找|查)(?:一下)?\s*(?:(?P<customer>(?:我(?:的|名下的))?客户)\s*)?"
+    r"(?P<name>[\u3400-\u9fff·]{2,16}?)(?P<details>的(?:资料|档案|详情))?[。！!？?]*"
+)
+_NON_CUSTOMER_PREFIXES = (
+    "同事", "员工", "老师", "学生", "班级", "联系人", "通知", "待办", "日报", "周报", "组织", "工单", "成绩", "请假",
+)
+_NON_CUSTOMER_NAMES = (
+    "列表", "名单", "资料", "档案", "详情", "信息", "状态", "跟进", "记录",
+    "数量", "总数", "情况", "线索", "统计", "报表", "明细", "清单", "全部", "所有", "客户",
+)
 
 class AssistantService:
     def __init__(self,db,extractor=None,executor=None):
@@ -80,13 +95,18 @@ class AssistantService:
                 pending = old['pending'] or ''
                 metadata['source'] = '服务端'
             else:
-                output = self._interpret(cid, text, old['pending'], metadata, on_text)
+                customer_lookup = self._lookup_customer(text, p, old['pending'])
+                if customer_lookup is None:
+                    output = self._interpret(cid, text, old['pending'], metadata, on_text)
+                else:
+                    output = customer_lookup
+                    metadata['source'] = '服务端'
                 pending = output['pending']
                 requested = output['intent']
                 if requested == 'chat':
                     metadata['mode'] = 'chat'
                 else:
-                    if pending:
+                    if pending and customer_lookup is None:
                         requested = json.loads(pending).get('intent', requested)
                     if requested in ACTION_PERMISSIONS:
                         require_permission(p, ACTION_PERMISSIONS[requested])
@@ -128,6 +148,32 @@ class AssistantService:
         except Exception:
             self.db.rollback();raise
         return self.detail(cid,p)
+
+    def _lookup_customer(self, text, principal, pending):
+        match = _CUSTOMER_NAME_LOOKUP.fullmatch(text)
+        if match is None:
+            return None
+        name = match['name']
+        explicit = bool(match['customer'])
+        if name.startswith(_NON_CUSTOMER_NAMES) or name.endswith(_NON_CUSTOMER_NAMES):
+            return None
+        if not explicit and (len(name) > 4 or name.startswith(_NON_CUSTOMER_PREFIXES)):
+            return None
+        if not explicit and 'crm:read' not in principal.permissions:
+            return None
+        require_permission(principal, 'crm:read')
+        try:
+            lead = ConsultantRepository(self.db).find_lead_by_name(name, principal.employee_id)
+        except ConflictError:
+            reply = f'当前名下有多位名为“{name}”的客户，请按客户编号查询。'
+        else:
+            if lead is not None:
+                action = json.dumps({'intent': 'lead_detail', 'params': {'lead_id': lead.id}})
+                return {**plan(action, text), 'pending': pending or ''}
+            if not explicit:
+                return None
+            reply = f'当前名下没有查到姓名为“{name}”的客户，请核对姓名或客户编号。'
+        return {'intent': 'lead_detail', 'call_api': False, 'pending': pending or '', 'reply': reply}
 
     def _interpret(self, cid, text, pending, metadata, on_text=None):
         saved = json.loads(pending) if pending else {}

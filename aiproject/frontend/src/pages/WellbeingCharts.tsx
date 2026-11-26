@@ -17,12 +17,14 @@ const colors = ['#278675', '#e6ac45', '#cf6863', '#698cc7', '#8c79ad']
 
 function Donut({title, groups, palette = colors}: {title: string; groups: Group[]; palette?: string[]}) {
   const total = groups.reduce((sum, row) => sum + row.count, 0)
-  let position = 0
-  const stops = groups.map((row, index) => {
-    const start = position
-    position += total ? row.count / total * 100 : 0
-    return palette[index % palette.length] + ' ' + start + '% ' + position + '%'
-  })
+  const stops = groups.reduce<{items: string[]; position: number}>((acc, row, index) => {
+    const start = acc.position
+    const next = start + (total ? row.count / total * 100 : 0)
+    return {
+      items: [...acc.items, palette[index % palette.length] + ' ' + start + '% ' + next + '%'],
+      position: next,
+    }
+  }, {items: [], position: 0}).items
   return <Card title={title}>
     <Typography.Paragraph type="secondary">按所选周新增预警条数统计</Typography.Paragraph>
     {total ? <div className="wellbeing-donut-layout">

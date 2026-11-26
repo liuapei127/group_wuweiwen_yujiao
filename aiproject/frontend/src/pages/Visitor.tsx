@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react'
+import {useEffect, startTransition, useState} from 'react'
 import {Link, Navigate, useLocation, useNavigate} from 'react-router-dom'
 import {Student} from './Student'
 import {WebsiteCourses} from './WebsiteCourses'
@@ -189,9 +189,12 @@ async function visitorApi<T>(path: string, token: string, method = 'GET', body?:
 }
 
 export function Visitor() {
-  const [loginForm] = Form.useForm<Credentials>()
-  const localStudentTest = import.meta.env.DEV && ['127.0.0.1', 'localhost', '[::1]'].includes(window.location.hostname)
-    && import.meta.env.VITE_STUDENT_TEST_USERNAME && import.meta.env.VITE_STUDENT_TEST_PASSWORD
+  const demoAccounts = import.meta.env.DEV && ['127.0.0.1', 'localhost', '[::1]'].includes(window.location.hostname)
+    ? [
+      {type: 'visitor', label: '游客', username: import.meta.env.VITE_VISITOR_TEST_USERNAME, password: import.meta.env.VITE_VISITOR_TEST_PASSWORD},
+      {type: 'student', label: '学生', username: import.meta.env.VITE_STUDENT_TEST_USERNAME, password: import.meta.env.VITE_STUDENT_TEST_PASSWORD},
+    ].filter(account => account.username && account.password)
+    : []
   const [token, setToken] = useState(() => sessionStorage.getItem(storageKey) || '')
   const [chatKey, setChatKey] = useState(() => token ? registeredChatKey() : guestChatKey)
   const current = useLocation()
@@ -222,6 +225,7 @@ export function Visitor() {
   const [register, setRegister] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
   const [authBusy, setAuthBusy] = useState(false)
+  const [demoLogin, setDemoLogin] = useState<string>()
   const [changingPassword, setChangingPassword] = useState(false)
   const {message} = App.useApp()
   const cache = useQueryClient()
@@ -248,8 +252,10 @@ export function Visitor() {
     if (returnToServices || returnToProfile) void navigate('/website', {replace: true})
   }
 
-  async function signIn({username, password, nickname}: Credentials) {
+  async function signIn({username, password, nickname}: Credentials, demoType?: string) {
+    if (authBusy) return
     setAuthBusy(true)
+    setDemoLogin(demoType)
     try {
       const result = await visitorApi<WebsiteIdentity & {access_token: string}>(
         '/api/v1/visitors/' + (register ? 'register' : 'login'), '', 'POST',
@@ -260,12 +266,17 @@ export function Visitor() {
       message.destroy('website-auth')
       cache.setQueryData(['visitor', 'identity', result.access_token], {account_type: result.account_type})
       setAuthOpen(false)
-      setToken(result.access_token)
-      const destination = returnToServices ? visitorServicesPath : visitorHome
-      void navigate(returnToProfile ? customerProfilePath : result.account_type === 'student' ? '/website/student' : destination, {replace: true})
+      const destination = result.account_type === 'student' ? '/website/student'
+        : (demoType || returnToServices) ? visitorServicesPath : visitorHome
+      // Commit the authenticated identity and location together for the route guards.
+      startTransition(() => {
+        setToken(result.access_token)
+        void navigate(returnToProfile && !demoType ? customerProfilePath : destination, {replace: true})
+      })
     } catch (error) {
       void message.error({key: 'website-auth', content: (error as Error).message})
     } finally {
+      setDemoLogin(undefined)
       setAuthBusy(false)
     }
   }
@@ -428,10 +439,15 @@ export function Visitor() {
       keyboard={!authBusy}
       mask={{closable: !authBusy}}
     >
-      <Form<Credentials> form={loginForm} key={String(register)} name="website-auth" layout="vertical" onFinish={v => void signIn(v)}>
-        {!register && localStudentTest && <Button type="dashed" block disabled={authBusy} style={{marginBottom: 16}}
-          onClick={() => loginForm.setFieldsValue({username: import.meta.env.VITE_STUDENT_TEST_USERNAME,
-            password: import.meta.env.VITE_STUDENT_TEST_PASSWORD})}>填入学生测试账号</Button>}
+      {!register && demoAccounts.length > 0 && <section className="login-test-access" aria-label="演示角色快捷登录"
+        style={{marginTop: 0, marginBottom: 20}}>
+        <Typography.Paragraph strong>演示角色快捷登录</Typography.Paragraph>
+        <div className="login-test-roles">
+          {demoAccounts.map(account => <Button key={account.type} disabled={authBusy} loading={demoLogin === account.type}
+            onClick={() => void signIn(account, account.type)}>{account.label}一键登录</Button>)}
+        </div>
+      </section>}
+      <Form<Credentials> key={String(register)} name="website-auth" layout="vertical" disabled={authBusy} onFinish={v => void signIn(v)}>
         {register && <Form.Item label="昵称" name="nickname"
           rules={[{required: true, whitespace: true, message: '请输入昵称'}]}>
           <Input autoComplete="nickname" maxLength={64}/>
@@ -447,7 +463,7 @@ export function Visitor() {
           <Input.Password autoComplete={register ? 'new-password' : 'current-password'} maxLength={128}/>
         </Form.Item>
         <div className="visitor-login-actions">
-          <Button type="primary" htmlType="submit" loading={authBusy}>{register ? '注册' : '登录'}</Button>
+          <Button type="primary" htmlType="submit" loading={authBusy && !demoLogin}>{register ? '注册' : '登录'}</Button>
           <Button type="link" disabled={authBusy} onClick={() => setRegister(value => !value)}>
             {register ? '已有账号，去登录' : '注册游客账号'}
           </Button>

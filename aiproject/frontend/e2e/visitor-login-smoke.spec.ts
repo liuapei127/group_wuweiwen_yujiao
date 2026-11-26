@@ -23,7 +23,7 @@ test('website login reports an unavailable service and can retry after recovery'
     account_type: 'visitor', created_at: '2026-11-15T07:00:00Z', avatar_url: null,
   }}}))
   const dialog = await openLogin(page)
-  const login = dialog.getByRole('button', {name: /登\s*录$/})
+  const login = dialog.locator('button[type="submit"]')
   for (let attempt = 0; attempt < 2; attempt++) {
     const reply = page.waitForResponse(response => response.url().endsWith('/api/v1/visitors/login'))
     await login.click()

@@ -21,8 +21,7 @@ export function DistributionChart({title,counts,labels=statuses,variant='horizon
     <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前授权范围和所选期间暂无数据"/>
   </Card>
   const max=Math.max(...entries.map(([,value])=>value),1)
-  let offset=0
-  const stops=entries.map(([,value],index)=>{const start=offset;offset+=value/total*100;return palette[index%palette.length]+' '+start+'% '+offset+'%'}).join(',')
+  const stops=entries.reduce<{items:string[];offset:number}>((acc,[,value],index)=>{const start=acc.offset;const next=start+value/total*100;return {items:[...acc.items,palette[index%palette.length]+' '+start+'% '+next+'%'],offset:next}},{items:[],offset:0}).items.join(',')
   const label=(key:string)=>labels[key]||key
   const describe=(key:string,value:number)=>title+' · '+label(key)+' · '+value+' 条明细'
   return <Card title={title} role="region" aria-label={title} className="report-center-panel report-distribution" data-chart={variant}>

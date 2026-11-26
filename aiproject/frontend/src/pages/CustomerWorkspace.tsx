@@ -78,7 +78,7 @@ function CustomerDetail({id, userId}: {id: string; userId?: number}) {
   const cache = useQueryClient()
   const [action, setAction] = useState<ActionSpec | null>(null)
   const [requested, setRequested] = useState(false)
-  const [editCheck, setEditCheck] = useState<object>()
+  const [editCheckState, setEditCheckState] = useState<{source: object; value: object}>()
   const base = leads + '/' + id
   const profileUrl = base + '/profile'
   const detailKey = [userId, 'crm-detail', id]
@@ -96,10 +96,10 @@ function CustomerDetail({id, userId}: {id: string; userId?: number}) {
   }
   const editor = useCustomerEditor(profile.data, request, profileUrl, refresh)
   const changes = editor.draft?.changes
+  const editCheck = changes && editCheckState?.source === changes ? editCheckState.value : undefined
   useEffect(() => {
-    setEditCheck(undefined)
     if (!changes) return
-    const timer = window.setTimeout(() => setEditCheck(changes), 230)
+    const timer = window.setTimeout(() => setEditCheckState({source: changes, value: changes}), 230)
     return () => window.clearTimeout(timer)
   }, [changes])
   const check = useQuery({
